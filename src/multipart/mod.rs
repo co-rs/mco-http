@@ -97,7 +97,7 @@ impl FilePart {
                 Ok(v) => {Ok(v.unwrap())}
                 Err(e) => {Err(e)}
             },
-            None => Ok(String::new()),
+            None => Err(Error::NoName),
         }
     }
 
