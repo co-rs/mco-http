@@ -9,7 +9,6 @@ use std::path::PathBuf;
 use cogo_http::multipart::mult_part::read_formdata;
 use cogo_http::server::{Request, Response};
 
-// request header Content-Type: json
 fn hello(mut req: Request, res: Response) {
     let form = read_formdata(&mut req.body, &req.headers, Some(|w| -> std::io::Result<()>{
         let path="target/".to_string() + &w.filename().unwrap_or("temp.file".to_string());
