@@ -5,29 +5,22 @@ extern crate serde_json;
 
 use std::fs::File;
 use std::io::{Read, Write};
+use std::path::PathBuf;
 use cogo_http::multipart::mult_part::read_formdata;
 use cogo_http::server::{Request, Response};
 
-
 // request header Content-Type: json
 fn hello(mut req: Request, res: Response) {
-    let mut files = vec![];
     let form = read_formdata(&mut req.body, &req.headers, Some(|w| -> std::io::Result<()>{
-        w.set_write(File::create(w.path.to_str().unwrap_or("temp.file"))?);
+        let path="target/".to_string() + &w.filename().unwrap_or("temp.file".to_string());
+        w.set_write(File::create(&path)?);
+        println!("upload: {}",w.key);
+        println!("file name: {}",path);
+        // w.path = PathBuf::new();
+        // w.path.push(&path);
         Ok(())
     })).unwrap();
-    for (k, mut v) in form.files {
-        if v.path.is_file() {
-            v.do_not_delete_on_drop();
-            let name = v.filename().unwrap_or_default();
-            if !name.is_empty() {
-                //rename
-                std::fs::rename(v.path.to_str().unwrap(), "target/mime_multipart/".to_string() + &name);
-                files.push(name);
-            }
-        }
-    }
-    res.send(format!("upload:{:?}", files).to_string().as_bytes()).unwrap();
+    res.send("upload success".to_string().as_bytes()).unwrap();
 }
 
 fn main() {

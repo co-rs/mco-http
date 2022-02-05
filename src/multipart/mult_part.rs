@@ -23,7 +23,7 @@ impl FormData {
     }
 
     /// Create a mime-multipart Vec<Node> from this FormData
-    pub fn to_multipart(&self) -> Result<Vec<Node>, Error> {
+    pub fn to_multipart(&mut self) -> Result<Vec<Node>, Error> {
         // Translate to Nodes
         let mut nodes: Vec<Node> = Vec::with_capacity(self.fields.len() + self.files.len());
 
@@ -45,9 +45,9 @@ impl FormData {
             // We leave all headers that the caller specified, except that we rewrite
             // Content-Disposition.
             while filepart.headers.remove::<ContentDisposition>() {};
-            let filename = match filepart.path.file_name() {
-                Some(fname) => fname.to_string_lossy().into_owned(),
-                None => return Err(Error::Io(std::io::Error::new(ErrorKind::InvalidData, "not a file"))),
+            let filename = match filepart.filename() {
+                Ok(fname) => fname.to_string(),
+                Err(_) => return Err(Error::Io(std::io::Error::new(ErrorKind::InvalidData, "not a file"))),
             };
             filepart.headers.set(ContentDisposition {
                 disposition: DispositionType::Ext("form-data".to_owned()),
@@ -130,7 +130,7 @@ fn fill_formdata(formdata: &mut FormData, nodes: Vec<Node>) -> Result<(), Error>
 }
 
 #[inline]
-fn get_content_disposition_name(cd: &ContentDisposition) -> Option<String> {
+pub fn get_content_disposition_name(cd: &ContentDisposition) -> Option<String> {
     if let Some(&DispositionParam::Ext(_, ref value)) = cd.parameters.iter()
         .find(|&x| match *x {
             DispositionParam::Ext(ref token, _) => &*token == "name",
@@ -147,13 +147,13 @@ fn get_content_disposition_name(cd: &ContentDisposition) -> Option<String> {
 /// Stream out `multipart/form-data` body content matching the passed in `formdata`.  This
 /// does not stream out headers, so the caller must stream those out before calling
 /// write_formdata().
-pub fn write_formdata<S: Write>(stream: &mut S, boundary: &Vec<u8>, formdata: &FormData)
-                                -> Result<usize, Error>
+pub fn write_formdata<S: Write,W:Write>(stream: &mut S, boundary: &Vec<u8>, formdata: &mut FormData, w: Option<fn(name: &mut FilePart) -> std::io::Result<()>>)
+                                        -> Result<usize, Error>
 {
-    let nodes = formdata.to_multipart()?;
+    let mut nodes = formdata.to_multipart()?;
 
     // Write out
-    let count = crate::multipart::write_multipart(stream, boundary, &nodes)?;
+    let count = crate::multipart::write_multipart(stream, boundary, &mut nodes,w)?;
 
     Ok(count)
 }
@@ -161,7 +161,7 @@ pub fn write_formdata<S: Write>(stream: &mut S, boundary: &Vec<u8>, formdata: &F
 /// Stream out `multipart/form-data` body content matching the passed in `formdata` as
 /// Transfer-Encoding: Chunked.  This does not stream out headers, so the caller must stream
 /// those out before calling write_formdata().
-pub fn write_formdata_chunked<S: Write>(stream: &mut S, boundary: &Vec<u8>, formdata: &FormData)
+pub fn write_formdata_chunked<S: Write>(stream: &mut S, boundary: &Vec<u8>, formdata: &mut FormData)
                                         -> Result<(), Error>
 {
     let nodes = formdata.to_multipart()?;

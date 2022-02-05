@@ -30,6 +30,12 @@ use buf_read_ext::BufReadExt;
 use crate::header::{Charset, ContentDisposition, ContentType, DispositionParam, DispositionType, Headers};
 
 
+pub trait ReadWrite:Write+Read{
+
+}
+
+impl<T> ReadWrite for T where T:Read+Write  {}
+
 /// A multipart part which is not a file (stored in memory)
 #[derive(Clone, Debug, PartialEq)]
 pub struct Part {
@@ -50,24 +56,24 @@ impl Part {
 pub struct FilePart {
     /// The headers of the part
     pub headers: Headers,
-    /// A temporary file containing the file content
-    pub path: PathBuf,
     /// Optionally, the size of the file.  This is filled when multiparts are parsed, but is
     /// not necessary when they are generated.
     pub size: Option<usize>,
-    // The temporary directory the upload was put into, saved for the Drop trait
-    tempdir: Option<PathBuf>,
 
-    pub write: Option<Box<dyn Write>>,
+    pub path:PathBuf,
+
+    pub key: String,
+
+    pub write: Option<Box<dyn ReadWrite>>,
 }
 
 impl Clone for FilePart{
     fn clone(&self) -> Self {
         Self{
             headers: self.headers.clone(),
-            path: self.path.clone(),
             size: self.size.clone(),
-            tempdir: self.tempdir.clone(),
+            path: Default::default(),
+            key: "".to_string(),
             write: None
         }
     }
@@ -77,49 +83,46 @@ impl Debug for FilePart{
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FilePart")
             .field("headers",&self.headers)
-            .field("path",&self.path)
             .field("size",&self.size)
-            .field("tempdir",&self.tempdir)
             .finish()
     }
 }
 
 impl FilePart {
-    pub fn new(headers: Headers, path: &Path) -> FilePart
+    pub fn new(headers: Headers, path: PathBuf) -> FilePart
     {
         FilePart {
             headers: headers,
-            path: path.to_owned(),
             size: None,
-            tempdir: None,
+            path: path,
+            key: "".to_string(),
             write: None,
         }
     }
 
-    pub fn set_write<W: Write+'static>(&mut self, w: W) {
+    pub fn set_write<W: ReadWrite+'static>(&mut self, w: W) {
         self.write = Some(Box::new(w));
     }
 
-    /// If you do not want the file on disk to be deleted when Self drops, call this
-    /// function.  It will become your responsability to clean up.
-    pub fn do_not_delete_on_drop(&mut self) {
-        self.tempdir = None;
+    pub fn set_path(&mut self, path: PathBuf) {
+        self.path = path;
     }
 
     /// Create a new temporary FilePart (when created this way, the file will be
     /// deleted once the FilePart object goes out of scope).
     pub fn create(headers: Headers) -> Result<FilePart, Error> {
-        // Setup a file to capture the contents.
-        std::fs::create_dir_all("target/mime_multipart/");
-        let mut path = PathBuf::from("target/mime_multipart/");
-        path.push(TextNonce::sized_urlsafe(32).unwrap().into_string());
-        File::create(path.to_str().unwrap_or_default().to_string());
-        let tempdir = Some(path.clone());
+        let cd_name: Option<String> = {
+            let cd: &ContentDisposition = match headers.get() {
+                Some(cd) => cd,
+                None => return Err(Error::MissingDisposition),
+            };
+            crate::multipart::mult_part::get_content_disposition_name(&cd)
+        };
         Ok(FilePart {
             headers: headers,
-            path: path,
             size: None,
-            tempdir: tempdir,
+            path: Default::default(),
+            key: cd_name.unwrap_or_default(),
             write: None,
         })
     }
@@ -141,15 +144,6 @@ impl FilePart {
     pub fn content_type(&self) -> Option<Mime> {
         let ct: Option<&ContentType> = self.headers.get();
         ct.map(|ref ct| ct.0.clone())
-    }
-}
-
-impl Drop for FilePart {
-    fn drop(&mut self) {
-        if self.tempdir.is_some() {
-            let _ = ::std::fs::remove_file(&self.path);
-            let _ = ::std::fs::remove_dir(&self.tempdir.as_ref().unwrap());
-        }
     }
 }
 
@@ -465,7 +459,8 @@ impl<T: Write> WriteAllCount for T {
 pub fn write_multipart<S: Write>(
     stream: &mut S,
     boundary: &Vec<u8>,
-    nodes: &Vec<Node>)
+    nodes: &mut Vec<Node>,
+    file: Option<fn(name: &mut FilePart) -> std::io::Result<()>>)
     -> Result<usize, Error>
 {
     let mut count: usize = 0;
@@ -477,7 +472,7 @@ pub fn write_multipart<S: Write>(
         count += stream.write_all_count(b"\r\n")?;
 
         match node {
-            &Node::Part(ref part) => {
+            &mut Node::Part(ref part) => {
                 // write the part's headers
                 for header in part.headers.iter() {
                     count += stream.write_all_count(header.name().as_bytes())?;
@@ -492,7 +487,7 @@ pub fn write_multipart<S: Write>(
                 // Write the part's content
                 count += stream.write_all_count(&part.body)?;
             }
-            &Node::File(ref filepart) => {
+            &mut Node::File(ref mut filepart) => {
                 // write the part's headers
                 for header in filepart.headers.iter() {
                     count += stream.write_all_count(header.name().as_bytes())?;
@@ -505,10 +500,15 @@ pub fn write_multipart<S: Write>(
                 count += stream.write_all_count(b"\r\n")?;
 
                 // Write out the files's content
-                let mut file = File::open(&filepart.path)?;
-                count += std::io::copy(&mut file, stream)? as usize;
+                match file{
+                    None => {}
+                    Some(f) => {
+                        f(filepart)?;
+                        count += std::io::copy(filepart.write.as_mut().unwrap(), stream)? as usize;
+                    }
+                }
             }
-            &Node::Multipart((ref headers, ref subnodes)) => {
+            &mut Node::Multipart((ref headers, ref mut subnodes)) => {
                 // Get boundary
                 let boundary = get_multipart_boundary(headers)?;
 
@@ -524,7 +524,7 @@ pub fn write_multipart<S: Write>(
                 count += stream.write_all_count(b"\r\n")?;
 
                 // Recurse
-                count += write_multipart(stream, &boundary, &subnodes)?;
+                count += write_multipart(stream, &boundary,  subnodes,file)?;
             }
         }
 
