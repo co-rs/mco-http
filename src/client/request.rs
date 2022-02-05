@@ -175,13 +175,13 @@ mod tests {
     use std::io::Write;
     use std::str::from_utf8;
     use url::Url;
-    use method::Method::{Get, Head, Post};
-    use mock::{MockStream, MockConnector};
-    use net::Fresh;
-    use header::{ContentLength,TransferEncoding,Encoding};
+    use crate::method::Method::{Get, Head, Post};
+    use crate::mock::{MockStream, MockConnector};
+    use crate::net::Fresh;
+    use crate::header::{ContentLength,TransferEncoding,Encoding};
     use url::form_urlencoded;
     use super::Request;
-    use http::h1::Http11Message;
+    use crate::http::h1::Http11Message;
 
     fn run_request(req: Request<Fresh>) -> Vec<u8> {
         let req = req.start().unwrap();

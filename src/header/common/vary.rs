@@ -28,7 +28,7 @@ header! {
     ///
     /// # Example
     /// ```
-    /// # extern crate hyper;
+    /// # extern crate cogo_http;
     /// # extern crate unicase;
     /// # fn main() {
     /// // extern crate unicase;
@@ -52,7 +52,7 @@ header! {
 
         #[test]
         fn test2() {
-            let mut vary: ::Result<Vary>;
+            let mut vary: crate::Result<Vary>;
 
             vary = Header::parse_header([b"*".to_vec()].as_ref());
             assert_eq!(vary.ok(), Some(Vary::Any));

@@ -20,7 +20,7 @@
 //! many wrapper-style headers.
 //!
 //! ```
-//! #[macro_use] extern crate hyper;
+//! #[macro_use] extern crate cogo_http;
 //! use cogo_http::header::Headers;
 //! header! { (XRequestGuid, "X-Request-Guid") => [String] }
 //!

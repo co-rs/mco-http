@@ -26,7 +26,7 @@ use crate::header::{Header, HeaderFormat};
 ///
 /// # Examples
 /// ```
-/// # extern crate hyper;
+/// # extern crate cogo_http;
 /// # fn main() {
 ///
 /// use cogo_http::header::{Headers, AccessControlAllowCredentials};
@@ -79,7 +79,7 @@ impl Display for AccessControlAllowCredentials {
 #[cfg(test)]
 mod test_access_control_allow_credentials {
     use std::str;
-    use header::*;
+    use crate::header::*;
     use super::AccessControlAllowCredentials as HeaderField;
     test_header!(works,        vec![b"true"], Some(HeaderField));
     test_header!(ignores_case, vec![b"True"]);

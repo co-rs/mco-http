@@ -616,13 +616,13 @@ pub type DefaultConnector = HttpConnector;
 
 #[cfg(test)]
 mod tests {
-    use mock::MockStream;
+    use crate::mock::MockStream;
     use super::{NetworkStream};
 
     #[test]
     fn test_downcast_box_stream() {
         // FIXME: Use Type ascription
-        let stream: Box<NetworkStream + Send> = Box::new(MockStream::new());
+        let stream: Box<dyn NetworkStream + Send> = Box::new(MockStream::new());
 
         let mock = stream.downcast::<MockStream>().ok().unwrap();
         assert_eq!(mock, Box::new(MockStream::new()));
@@ -631,7 +631,7 @@ mod tests {
     #[test]
     fn test_downcast_unchecked_box_stream() {
         // FIXME: Use Type ascription
-        let stream: Box<NetworkStream + Send> = Box::new(MockStream::new());
+        let stream: Box<dyn NetworkStream + Send> = Box::new(MockStream::new());
 
         let mock = unsafe { stream.downcast_unchecked::<MockStream>() };
         assert_eq!(mock, Box::new(MockStream::new()));

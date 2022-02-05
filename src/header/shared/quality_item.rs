@@ -153,32 +153,32 @@ mod tests {
 
     #[test]
     fn test_quality_item_from_str1() {
-        let x: ::Result<QualityItem<Encoding>> = "chunked".parse();
+        let x: crate::Result<QualityItem<Encoding>> = "chunked".parse();
         assert_eq!(x.unwrap(), QualityItem{ item: Chunked, quality: Quality(1000), });
     }
     #[test]
     fn test_quality_item_from_str2() {
-        let x: ::Result<QualityItem<Encoding>> = "chunked; q=1".parse();
+        let x: crate::Result<QualityItem<Encoding>> = "chunked; q=1".parse();
         assert_eq!(x.unwrap(), QualityItem{ item: Chunked, quality: Quality(1000), });
     }
     #[test]
     fn test_quality_item_from_str3() {
-        let x: ::Result<QualityItem<Encoding>> = "gzip; q=0.5".parse();
+        let x: crate::Result<QualityItem<Encoding>> = "gzip; q=0.5".parse();
         assert_eq!(x.unwrap(), QualityItem{ item: Gzip, quality: Quality(500), });
     }
     #[test]
     fn test_quality_item_from_str4() {
-        let x: ::Result<QualityItem<Encoding>> = "gzip; q=0.273".parse();
+        let x: crate::Result<QualityItem<Encoding>> = "gzip; q=0.273".parse();
         assert_eq!(x.unwrap(), QualityItem{ item: Gzip, quality: Quality(273), });
     }
     #[test]
     fn test_quality_item_from_str5() {
-        let x: ::Result<QualityItem<Encoding>> = "gzip; q=0.2739999".parse();
+        let x: crate::Result<QualityItem<Encoding>> = "gzip; q=0.2739999".parse();
         assert!(x.is_err());
     }
     #[test]
     fn test_quality_item_from_str6() {
-        let x: ::Result<QualityItem<Encoding>> = "gzip; q=2".parse();
+        let x: crate::Result<QualityItem<Encoding>> = "gzip; q=2".parse();
         assert!(x.is_err());
     }
     #[test]

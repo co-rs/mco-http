@@ -109,7 +109,7 @@ fn test_parse_header() {
     let a: ReferrerPolicy = Header::parse_header([b"origin".to_vec()].as_ref()).unwrap();
     let b = ReferrerPolicy::Origin;
     assert_eq!(a, b);
-    let e: ::Result<ReferrerPolicy> = Header::parse_header([b"foobar".to_vec()].as_ref());
+    let e: crate::Result<ReferrerPolicy> = Header::parse_header([b"foobar".to_vec()].as_ref());
     assert!(e.is_err());
 }
 

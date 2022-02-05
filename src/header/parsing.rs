@@ -151,7 +151,7 @@ impl Display for ExtendedValue {
 
 #[cfg(test)]
 mod tests {
-    use header::shared::Charset;
+    use crate::header::shared::Charset;
     use super::{ExtendedValue, parse_extended_value};
 
     #[test]

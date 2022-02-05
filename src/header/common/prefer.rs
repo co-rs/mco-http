@@ -162,7 +162,7 @@ impl FromStr for Preference {
 
 #[cfg(test)]
 mod tests {
-    use header::Header;
+    use crate::header::Header;
     use super::*;
 
     #[test]
@@ -200,7 +200,7 @@ mod tests {
 
     #[test]
     fn test_fail_with_args() {
-        let prefer: ::Result<Prefer> = Header::parse_header(&[b"respond-async; foo=bar".to_vec()]);
+        let prefer: crate::Result<Prefer> = Header::parse_header(&[b"respond-async; foo=bar".to_vec()]);
         assert_eq!(prefer.ok(), None);
     }
 }

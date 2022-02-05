@@ -239,31 +239,31 @@ fn test_parse_unregistered_range_valid() {
 
 #[test]
 fn test_parse_invalid() {
-    let r: ::Result<Range> = Header::parse_header(&[b"bytes=1-a,-".to_vec()]);
+    let r: crate::Result<Range> = Header::parse_header(&[b"bytes=1-a,-".to_vec()]);
     assert_eq!(r.ok(), None);
 
-    let r: ::Result<Range> = Header::parse_header(&[b"bytes=1-2-3".to_vec()]);
+    let r: crate::Result<Range> = Header::parse_header(&[b"bytes=1-2-3".to_vec()]);
     assert_eq!(r.ok(), None);
 
-    let r: ::Result<Range> = Header::parse_header(&[b"abc".to_vec()]);
+    let r: crate::Result<Range> = Header::parse_header(&[b"abc".to_vec()]);
     assert_eq!(r.ok(), None);
 
-    let r: ::Result<Range> = Header::parse_header(&[b"bytes=1-100=".to_vec()]);
+    let r: crate::Result<Range> = Header::parse_header(&[b"bytes=1-100=".to_vec()]);
     assert_eq!(r.ok(), None);
 
-    let r: ::Result<Range> = Header::parse_header(&[b"bytes=".to_vec()]);
+    let r: crate::Result<Range> = Header::parse_header(&[b"bytes=".to_vec()]);
     assert_eq!(r.ok(), None);
 
-    let r: ::Result<Range> = Header::parse_header(&[b"custom=".to_vec()]);
+    let r: crate::Result<Range> = Header::parse_header(&[b"custom=".to_vec()]);
     assert_eq!(r.ok(), None);
 
-    let r: ::Result<Range> = Header::parse_header(&[b"=1-100".to_vec()]);
+    let r: crate::Result<Range> = Header::parse_header(&[b"=1-100".to_vec()]);
     assert_eq!(r.ok(), None);
 }
 
 #[test]
 fn test_fmt() {
-    use header::Headers;
+    use crate::header::Headers;
 
     let mut headers = Headers::new();
 

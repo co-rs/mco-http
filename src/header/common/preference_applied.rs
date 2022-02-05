@@ -87,7 +87,7 @@ impl fmt::Display for PreferenceApplied {
 
 #[cfg(test)]
 mod tests {
-    use header::{HeaderFormat, Preference};
+    use crate::header::{HeaderFormat, Preference};
     use super::*;
 
     #[test]
@@ -97,7 +97,7 @@ mod tests {
                 "foo".to_owned(),
                 "bar".to_owned(),
                 vec![("bar".to_owned(), "foo".to_owned()), ("buz".to_owned(), "".to_owned())]
-            )]) as &(HeaderFormat + Send + Sync)),
+            )]) as &(dyn HeaderFormat + Send + Sync)),
             "foo=bar".to_owned()
         );
     }

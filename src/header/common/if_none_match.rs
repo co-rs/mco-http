@@ -60,12 +60,12 @@ header! {
 #[cfg(test)]
 mod tests {
     use super::IfNoneMatch;
-    use header::Header;
-    use header::EntityTag;
+    use crate::header::Header;
+    use crate::header::EntityTag;
 
     #[test]
     fn test_if_none_match() {
-        let mut if_none_match: ::Result<IfNoneMatch>;
+        let mut if_none_match: crate::Result<IfNoneMatch>;
 
         if_none_match = Header::parse_header([b"*".to_vec()].as_ref());
         assert_eq!(if_none_match.ok(), Some(IfNoneMatch::Any));

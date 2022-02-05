@@ -169,7 +169,7 @@ impl FromStr for CacheDirective {
 
 #[cfg(test)]
 mod tests {
-    use header::Header;
+    use crate::header::Header;
     use super::*;
 
     #[test]
@@ -202,7 +202,7 @@ mod tests {
 
     #[test]
     fn test_parse_bad_syntax() {
-        let cache: ::Result<CacheControl> = Header::parse_header(&[b"foo=".to_vec()]);
+        let cache: crate::Result<CacheControl> = Header::parse_header(&[b"foo=".to_vec()]);
         assert_eq!(cache.ok(), None)
     }
 }

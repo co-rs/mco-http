@@ -107,13 +107,13 @@ mod tests {
 
     use url::Url;
 
-    use header::TransferEncoding;
-    use header::Encoding;
-    use http::HttpMessage;
-    use mock::MockStream;
-    use status;
-    use version;
-    use http::h1::Http11Message;
+    use crate::header::TransferEncoding;
+    use crate::header::Encoding;
+    use crate::http::HttpMessage;
+    use crate::mock::MockStream;
+    use crate::status;
+    use crate::version;
+    use crate::http::h1::Http11Message;
 
     use super::Response;
 
@@ -126,7 +126,7 @@ mod tests {
 
     #[test]
     fn test_into_inner() {
-        let message: Box<HttpMessage> = Box::new(
+        let message: Box<dyn HttpMessage> = Box::new(
             Http11Message::with_stream(Box::new(MockStream::new())));
         let message = message.downcast::<Http11Message>().ok().unwrap();
         let b = message.into_inner().downcast::<MockStream>().ok().unwrap();

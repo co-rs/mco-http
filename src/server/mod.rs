@@ -467,12 +467,11 @@ impl<F> Handler for F where F: Fn(Request, Response<Fresh>), F: Sync + Send {
 
 #[cfg(test)]
 mod tests {
-    use header::Headers;
-    use method::Method;
-    use mock::MockStream;
-    use status::StatusCode;
-    use uri::RequestUri;
+    use crate::header::Headers;
+    use crate::method::Method;
     use crate::mock::MockStream;
+    use crate::status::StatusCode;
+    use crate::uri::RequestUri;
 
     use super::{Request, Response, Fresh, Handler, Worker};
 

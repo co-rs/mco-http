@@ -70,7 +70,7 @@ macro_rules! bench_header(
             use test::Bencher;
             use super::*;
 
-            use header::{Header, HeaderFormatter};
+            use crate::header::{Header, HeaderFormatter};
 
             #[bench]
             fn bench_parse(b: &mut Bencher) {
@@ -96,7 +96,7 @@ macro_rules! bench_header(
 #[macro_export]
 macro_rules! __hyper__deref {
     ($from:ty => $to:ty) => {
-        impl ::std::ops::Deref for $from {
+        impl std::ops::Deref for $from {
             type Target = $to;
 
             fn deref(&self) -> &$to {
@@ -104,7 +104,7 @@ macro_rules! __hyper__deref {
             }
         }
 
-        impl ::std::ops::DerefMut for $from {
+        impl std::ops::DerefMut for $from {
             fn deref_mut(&mut self) -> &mut $to {
                 &mut self.0
             }

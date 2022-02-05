@@ -17,7 +17,7 @@ header! {
     /// # Example
     /// ```
     /// # extern crate time;
-    /// # extern crate hyper;
+    /// # extern crate cogo_http;
     /// # fn main() {
     /// // extern crate time;
     /// 

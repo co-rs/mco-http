@@ -104,7 +104,7 @@ impl FromStr for Host {
 #[cfg(test)]
 mod tests {
     use super::Host;
-    use header::Header;
+    use crate::header::Header;
 
 
     #[test]

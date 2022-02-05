@@ -35,7 +35,7 @@ header! {
     /// );
     /// ```
     /// ```
-    /// # extern crate hyper;
+    /// # extern crate cogo_http;
     /// # #[macro_use] extern crate language_tags;
     /// # use cogo_http::header::{Headers, AcceptLanguage, QualityItem, Quality, qitem};
     /// #

@@ -46,11 +46,12 @@
 //! // can outlive the main thread, so we must use reference counting to keep
 //! // the Client alive long enough. Scoped threads could skip the Arc.
 //! let client = Arc::new(Client::new());
+//! let clone0 = client.clone();
 //! let clone1 = client.clone();
 //! let clone2 = client.clone();
 //!
 //! cogo::go!(move ||{
-//!   clone1.get("http://example.domain").send().unwrap();
+//!   clone0.get("http://example.domain").send().unwrap();
 //! });
 //!
 //! thread::spawn(move || {
@@ -587,9 +588,9 @@ mod scheme {
 #[cfg(test)]
 mod tests {
     use std::io::Read;
-    use header::Server;
-    use http::h1::Http11Message;
-    use mock::{MockStream, MockSsl};
+    use crate::header::Server;
+    use crate::http::h1::Http11Message;
+    use crate::mock::{MockStream, MockSsl};
     use super::{Client, RedirectPolicy};
     use super::scheme::Scheme;
     use super::proxy::Proxy;
@@ -740,7 +741,7 @@ mod tests {
 
         impl ::std::io::Read for BadBody {
             fn read(&mut self, _buf: &mut [u8]) -> ::std::io::Result<usize> {
-                Err(crate::std::io::Error::new(crate::std::io::ErrorKind::Other, "BadBody read"))
+                Err(std::io::Error::new(std::io::ErrorKind::Other, "BadBody read"))
             }
         }
 

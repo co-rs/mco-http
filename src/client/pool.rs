@@ -398,8 +398,8 @@ mod tests {
     use std::net::Shutdown;
     use std::io::Read;
     use std::time::Duration;
-    use mock::{MockConnector};
-    use net::{NetworkConnector, NetworkStream};
+    use crate::mock::{MockConnector};
+    use crate::net::{NetworkConnector, NetworkStream};
 
     use super::{Pool, key};
 

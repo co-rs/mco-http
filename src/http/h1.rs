@@ -1153,7 +1153,7 @@ mod tests {
     #[test]
     fn test_parse_tcp_closed() {
         use std::io::ErrorKind;
-        use error::Error;
+        use crate::error::Error;
 
         let mut empty = MockStream::new();
         let mut buf = BufReader::new(&mut empty);

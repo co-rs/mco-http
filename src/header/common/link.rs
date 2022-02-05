@@ -901,11 +901,11 @@ mod tests {
     use super::{Link, LinkValue, MediaDesc, RelationType, SplitAsciiUnquoted};
     use super::{fmt_delimited, verify_and_trim};
 
-    use header::Header;
+    use crate::header::Header;
 
-    use buffer::BufReader;
-    use mock::MockStream;
-    use http::h1::parse_request;
+    use crate::buffer::BufReader;
+    use crate::mock::MockStream;
+    use crate::http::h1::parse_request;
 
     use mime::Mime;
     use mime::TopLevel::Text;

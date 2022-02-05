@@ -104,7 +104,7 @@ impl PartialEq for Origin {
 #[cfg(test)]
 mod tests {
     use super::Origin;
-    use header::Header;
+    use crate::header::Header;
 
     #[test]
     fn test_origin() {

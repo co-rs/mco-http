@@ -32,7 +32,7 @@ use crate::header::{Header, HeaderFormat, parsing};
 ///
 /// # Example
 /// ```
-/// # extern crate hyper;
+/// # extern crate cogo_http;
 /// # fn main() {
 /// use cogo_http::header::{Headers, StrictTransportSecurity};
 ///
@@ -148,7 +148,7 @@ impl fmt::Display for StrictTransportSecurity {
 #[cfg(test)]
 mod tests {
     use super::StrictTransportSecurity;
-    use header::Header;
+    use crate::header::Header;
 
     #[test]
     fn test_parse_max_age() {
@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_parse_max_age_no_value() {
-        let h: ::Result<StrictTransportSecurity> = Header::parse_header(&[b"max-age".to_vec()][..]);
+        let h: crate::Result<StrictTransportSecurity> = Header::parse_header(&[b"max-age".to_vec()][..]);
         assert!(h.is_err());
     }
 
@@ -182,13 +182,13 @@ mod tests {
 
     #[test]
     fn test_parse_no_max_age() {
-        let h: ::Result<StrictTransportSecurity> = Header::parse_header(&[b"includeSubDomains".to_vec()][..]);
+        let h: crate::Result<StrictTransportSecurity> = Header::parse_header(&[b"includeSubDomains".to_vec()][..]);
         assert!(h.is_err());
     }
 
     #[test]
     fn test_parse_max_age_nan() {
-        let h: ::Result<StrictTransportSecurity> = Header::parse_header(&[b"max-age = derp".to_vec()][..]);
+        let h: crate::Result<StrictTransportSecurity> = Header::parse_header(&[b"max-age = derp".to_vec()][..]);
         assert!(h.is_err());
     }
 

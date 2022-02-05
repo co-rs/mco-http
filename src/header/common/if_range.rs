@@ -33,7 +33,7 @@ use crate::header::{self, Header, HeaderFormat, EntityTag, HttpDate};
 /// headers.set(IfRange::EntityTag(EntityTag::new(false, "xyzzy".to_owned())));
 /// ```
 /// ```
-/// # extern crate hyper;
+/// # extern crate cogo_http;
 /// # extern crate time;
 /// # fn main() {
 /// // extern crate time;
@@ -88,7 +88,7 @@ impl Display for IfRange {
 #[cfg(test)]
 mod test_if_range {
     use std::str;
-    use header::*;
+    use crate::header::*;
     use super::IfRange as HeaderField;
     test_header!(test1, vec![b"Sat, 29 Oct 1994 19:43:31 GMT"]);
     test_header!(test2, vec![b"\"xyzzy\""]);

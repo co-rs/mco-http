@@ -79,6 +79,6 @@ fn test_parse_header() {
     let c: Pragma = Header::parse_header([b"FoObar".to_vec()].as_ref()).unwrap();
     let d = Pragma::Ext("FoObar".to_owned());
     assert_eq!(c, d);
-    let e: ::Result<Pragma> = Header::parse_header([b"".to_vec()].as_ref());
+    let e: crate::Result<Pragma> = Header::parse_header([b"".to_vec()].as_ref());
     assert_eq!(e.ok(), None);
 }

@@ -111,7 +111,7 @@ impl HeaderFormat for SetCookie {
 
 #[test]
 fn test_set_cookie_fmt() {
-    use ::header::Headers;
+    use crate::header::Headers;
     let mut headers = Headers::new();
     headers.set(SetCookie(vec![
         "foo=bar".into(),

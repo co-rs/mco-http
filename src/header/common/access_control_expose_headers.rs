@@ -17,7 +17,7 @@ header! {
     ///
     /// # Examples
     /// ```
-    /// # extern crate hyper;
+    /// # extern crate cogo_http;
     /// # extern crate unicase;
     /// # fn main() {
     /// // extern crate unicase;
@@ -35,7 +35,7 @@ header! {
     /// # }
     /// ```
     /// ```
-    /// # extern crate hyper;
+    /// # extern crate cogo_http;
     /// # extern crate unicase;
     /// # fn main() {
     /// // extern crate unicase;

@@ -271,9 +271,10 @@ impl<'a, T: Any> Drop for Response<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use header::Headers;
-    use mock::MockStream;
+    use crate::header::Headers;
+    use crate::mock::MockStream;
     use crate::runtime;
+    use crate::status::StatusCode;
     use super::Response;
 
     macro_rules! lines {
@@ -330,7 +331,7 @@ mod tests {
 
     #[test]
     fn test_fresh_drop() {
-        use status::StatusCode;
+        use crate::status::StatusCode;
         let mut headers = Headers::new();
         let mut stream = MockStream::new();
         {
@@ -356,7 +357,7 @@ mod tests {
         use std::thread;
         use std::sync::{Arc, Mutex};
 
-        use status::StatusCode;
+        use crate::status::StatusCode;
 
         let stream = MockStream::new();
         let stream = Arc::new(Mutex::new(stream));
@@ -391,7 +392,7 @@ mod tests {
     #[test]
     fn test_streaming_drop() {
         use std::io::Write;
-        use status::StatusCode;
+        use crate::status::StatusCode;
         let mut headers = Headers::new();
         let mut stream = MockStream::new();
         {
@@ -415,7 +416,6 @@ mod tests {
 
     #[test]
     fn test_no_content() {
-        use status::StatusCode;
         let mut headers = Headers::new();
         let mut stream = MockStream::new();
         {

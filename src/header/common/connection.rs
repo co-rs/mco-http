@@ -77,7 +77,7 @@ header! {
     /// headers.set(Connection::keep_alive());
     /// ```
     /// ```
-    /// # extern crate hyper;
+    /// # extern crate cogo_http;
     /// # extern crate unicase;
     /// # fn main() {
     /// // extern crate unicase;
@@ -123,7 +123,7 @@ bench_header!(header, Connection, { vec![b"authorization".to_vec()] });
 #[cfg(test)]
 mod tests {
     use super::{Connection,ConnectionHeader};
-    use header::Header;
+    use crate::header::Header;
     use unicase::UniCase;
 
     fn parse_option(header: Vec<u8>) -> Connection {

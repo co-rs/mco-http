@@ -130,7 +130,7 @@ impl fmt::Display for Method {
 mod tests {
     use std::collections::HashMap;
     use std::str::FromStr;
-    use error::Error;
+    use crate::error::Error;
     use super::Method;
     use super::Method::{Get, Post, Put, Extension};
 
