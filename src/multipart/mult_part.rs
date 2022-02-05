@@ -46,10 +46,10 @@ impl FormData {
             // We leave all headers that the caller specified, except that we rewrite
             // Content-Disposition.
             while filepart.headers.remove::<ContentDisposition>() {};
-            if filepart.path.is_empty(){
+            if filepart.name.is_empty(){
                 return Err(Error::Io(std::io::Error::new(ErrorKind::InvalidData, "not a file")));
             }
-            let filename =  filepart.path.to_owned();
+            let filename =  filepart.name.to_owned();
             filepart.headers.set(ContentDisposition {
                 disposition: DispositionType::Ext("form-data".to_owned()),
                 parameters: vec![DispositionParam::Ext("name".to_owned(), name.clone()),

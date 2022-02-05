@@ -53,7 +53,7 @@ pub struct FilePart {
     /// The headers of the part
     pub headers: Headers,
     /// A temporary file containing the file content
-    pub path: String,
+    pub name: String,
     /// Optionally, the size of the file.  This is filled when multiparts are parsed, but is
     /// not necessary when they are generated.
     pub size: Option<usize>,
@@ -64,7 +64,7 @@ impl FilePart {
     {
         FilePart {
             headers: headers,
-            path: path.to_string(),
+            name: path.to_string(),
             size: None,
         }
     }
@@ -81,7 +81,7 @@ impl FilePart {
         // Setup a file to capture the contents.
         Ok(FilePart {
             headers: headers,
-            path: file_name,
+            name: file_name,
             size: None,
         })
     }
@@ -290,7 +290,7 @@ fn inner<R: BufRead>(
             // Setup a file to capture the contents.
             let mut filepart = FilePart::create(part_headers, file_name)?;
             if data_write.is_some() {
-                let mut file = data_write.as_ref().unwrap()(filepart.path.as_str());
+                let mut file = data_write.as_ref().unwrap()(filepart.name.as_str());
                 // Stream out the file.
                 let (read, found) = reader.stream_until_token(&lt_boundary, &mut file)?;
                 if !found { return Err(Error::EofInFile); }
@@ -456,7 +456,7 @@ pub fn write_multipart<S: Write>(
                 count += stream.write_all_count(b"\r\n")?;
 
                 // Write out the files's content
-                let mut file = File::open(&filepart.path)?;
+                let mut file = File::open(&filepart.name)?;
                 count += std::io::copy(&mut file, stream)? as usize;
             }
             &Node::Multipart((ref headers, ref subnodes)) => {
@@ -547,11 +547,11 @@ pub fn write_multipart_chunked<S: Write>(
                 write_chunk(stream, b"\r\n")?;
 
                 // Write out the files's length
-                let metadata = std::fs::metadata(&filepart.path)?;
+                let metadata = std::fs::metadata(&filepart.name)?;
                 write!(stream, "{:x}\r\n", metadata.len())?;
 
                 // Write out the file's content
-                let mut file = data_write(filepart.path.as_str());
+                let mut file = data_write(filepart.name.as_str());
                 std::io::copy(&mut file, stream)? as usize;
                 stream.write(b"\r\n")?;
             }
