@@ -12,13 +12,14 @@ use cogo_http::server::{Request, Response};
 // request header Content-Type: json
 fn hello(mut req: Request, res: Response) {
     let form = read_formdata(&mut req.body, &req.headers).unwrap();
-    for (k, v) in form.files {
+    for (k, mut v) in form.files {
         if v.path.is_file() {
-            let mut r = File::open(v.path.to_str().unwrap_or_default()).unwrap();
-            std::fs::create_dir_all("target/upload/");
-            let name = "target/upload/".to_string() + &v.filename().unwrap_or_default();
-            let mut f = File::create(&name).unwrap();
-            std::io::copy(&mut r, &mut f);
+            v.do_not_delete_on_drop();
+            let name = v.filename().unwrap_or_default();
+            if !name.is_empty() {
+                //rename
+                std::fs::rename(v.path.to_str().unwrap(), "target/mime_multipart/".to_string() + &name);
+            }
         }
     }
     res.send(serde_json::json!(form.fields).to_string().as_bytes()).unwrap();
