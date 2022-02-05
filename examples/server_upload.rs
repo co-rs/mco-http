@@ -13,7 +13,7 @@ use cogo_http::server::{Request, Response};
 fn hello(mut req: Request, res: Response) {
     let form = read_formdata(&mut req.body, &req.headers, Some(|w| -> std::io::Result<()>{
         let path="target/".to_string() + &w.filename().unwrap_or("temp.file".to_string());
-        w.set_write(File::create(&path)?);
+        w.set_write(File::create(&path)?); // or any impl Write and Read Struct
         println!("upload: {}",w.key);
         println!("file name: {}",path);
         // w.path = PathBuf::new();

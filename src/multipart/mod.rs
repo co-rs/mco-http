@@ -7,6 +7,7 @@
 
 pub mod error;
 pub mod mult_part;
+pub mod byte_buf;
 
 #[cfg(test)]
 mod mock;
@@ -100,6 +101,7 @@ impl FilePart {
         }
     }
 
+    /// set any Write and Read impl struct to FilePart
     pub fn set_write<W: ReadWrite+'static>(&mut self, w: W) {
         self.write = Some(Box::new(w));
     }
