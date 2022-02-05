@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 description = "A modern HTTP library."
 readme = "README.md"
+license = "MIT/Apache-2.0"
+
+repository = "https://github.com/co-rs/cogo-http.git"
+homepage = "https://github.com/co-rs"
 
 authors = ["zhuxiujia <zhuxiujia@qq.com>",
     "Sean McArthur <sean.monstar@gmail.com>",
