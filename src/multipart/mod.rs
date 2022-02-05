@@ -21,7 +21,6 @@ use std::path::{Path, PathBuf};
 use std::borrow::Cow;
 use std::ops::Drop;
 use encoding::{all, Encoding, DecoderTrap};
-use tempdir::TempDir;
 use textnonce::TextNonce;
 use mime::{Attr, Mime, TopLevel, Value};
 use buf_read_ext::BufReadExt;
@@ -76,9 +75,10 @@ impl FilePart {
     /// deleted once the FilePart object goes out of scope).
     pub fn create(headers: Headers) -> Result<FilePart, Error> {
         // Setup a file to capture the contents.
-        let mut path = TempDir::new("mime_multipart")?.into_path();
-        let tempdir = Some(path.clone());
+        let mut path = PathBuf::from("target/mime_multipart/");
         path.push(TextNonce::sized_urlsafe(32).unwrap().into_string());
+        File::create(path.to_str().unwrap_or_default().to_string());
+        let tempdir = Some(path.clone());
         Ok(FilePart {
             headers: headers,
             path: path,
@@ -89,11 +89,14 @@ impl FilePart {
 
     /// Filename that was specified when the file was uploaded.  Returns `Ok<None>` if there
     /// was no content-disposition header supplied.
-    pub fn filename(&self) -> Result<Option<String>, Error> {
+    pub fn filename(&self) -> Result<String, Error> {
         let cd: Option<&ContentDisposition> = self.headers.get();
         match cd {
-            Some(cd) => get_content_disposition_filename(cd),
-            None => Ok(None),
+            Some(cd) => match get_content_disposition_filename(cd){
+                Ok(v) => {Ok(v.unwrap())}
+                Err(e) => {Err(e)}
+            },
+            None => Ok(String::new()),
         }
     }
 
@@ -103,6 +106,7 @@ impl FilePart {
         ct.map(|ref ct| ct.0.clone())
     }
 }
+
 impl Drop for FilePart {
     fn drop(&mut self) {
         if self.tempdir.is_some() {

@@ -43,7 +43,6 @@ cogo = {version = "0.1", optional = true }
 crossbeam = "0.8"
 crossbeam-channel = "0.5"
 encoding="0.2"
-tempdir = "0.3"
 textnonce="1"
 buf-read-ext = "0.4.0"
 
