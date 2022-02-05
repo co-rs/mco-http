@@ -11,8 +11,11 @@ use cogo_http::server::{Request, Response};
 
 // request header Content-Type: json
 fn hello(mut req: Request, res: Response) {
-    let mut files=vec![];
-    let form = read_formdata(&mut req.body, &req.headers).unwrap();
+    let mut files = vec![];
+    let form = read_formdata(&mut req.body, &req.headers, Some(|w| -> std::io::Result<()>{
+        w.set_write(File::create(w.path.to_str().unwrap_or("temp.file"))?);
+        Ok(())
+    })).unwrap();
     for (k, mut v) in form.files {
         if v.path.is_file() {
             v.do_not_delete_on_drop();
@@ -24,7 +27,7 @@ fn hello(mut req: Request, res: Response) {
             }
         }
     }
-    res.send(format!("upload:{:?}",files).to_string().as_bytes()).unwrap();
+    res.send(format!("upload:{:?}", files).to_string().as_bytes()).unwrap();
 }
 
 fn main() {

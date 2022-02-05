@@ -7,7 +7,7 @@ use crate::header::{ContentDisposition, ContentType, DispositionParam, Dispositi
 /// The extracted text fields and uploaded files from a `multipart/form-data` request.
 ///
 /// Use `parse_multipart` to devise this object from a request.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct FormData {
     /// Name-value pairs for plain text fields. Technically, these are form data parts with no
     /// filename specified in the part's `Content-Disposition`.
@@ -34,7 +34,7 @@ impl FormData {
                 disposition: DispositionType::Ext("form-data".to_owned()),
                 parameters: vec![DispositionParam::Ext("name".to_owned(), name.clone())],
             });
-            nodes.push( Node::Part( Part {
+            nodes.push(Node::Part(Part {
                 headers: h,
                 body: value.as_bytes().to_owned(),
             }));
@@ -44,17 +44,17 @@ impl FormData {
             let mut filepart = filepart.clone();
             // We leave all headers that the caller specified, except that we rewrite
             // Content-Disposition.
-            while filepart.headers.remove::<ContentDisposition>() { };
+            while filepart.headers.remove::<ContentDisposition>() {};
             let filename = match filepart.path.file_name() {
                 Some(fname) => fname.to_string_lossy().into_owned(),
-                None => return Err(Error::Io(std::io::Error::new(ErrorKind::InvalidData,"not a file"))),
+                None => return Err(Error::Io(std::io::Error::new(ErrorKind::InvalidData, "not a file"))),
             };
             filepart.headers.set(ContentDisposition {
                 disposition: DispositionType::Ext("form-data".to_owned()),
                 parameters: vec![DispositionParam::Ext("name".to_owned(), name.clone()),
                                  DispositionParam::Ext("filename".to_owned(), filename)],
             });
-            nodes.push( Node::File( filepart ) );
+            nodes.push(Node::File(filepart));
         }
 
         Ok(nodes)
@@ -62,11 +62,10 @@ impl FormData {
 }
 
 
-
 /// Parse MIME `multipart/form-data` information from a stream as a `FormData`.
-pub fn read_formdata<S: Read>(stream: &mut S, headers: &Headers) -> Result<FormData, Error>
+pub fn read_formdata<S: Read>(stream: &mut S, headers: &Headers, f: Option<fn(name: &mut FilePart) -> std::io::Result<()>>) -> Result<FormData, Error>
 {
-    let nodes = crate::multipart::read_multipart_body(stream, headers, false)?;
+    let nodes = crate::multipart::read_multipart_body(stream, headers, false, f)?;
     let mut formdata = FormData::new();
     fill_formdata(&mut formdata, nodes)?;
     Ok(formdata)
@@ -91,7 +90,7 @@ fn fill_formdata(formdata: &mut FormData, nodes: Vec<Node>) -> Result<(), Error>
                 let key = cd_name.ok_or(Error::NoName)?;
                 let val = String::from_utf8(part.body)?;
                 formdata.fields.push((key, val));
-            },
+            }
             Node::File(part) => {
                 let cd_name: Option<String> = {
                     let cd: &ContentDisposition = match part.headers.get() {
@@ -117,11 +116,11 @@ fn fill_formdata(formdata: &mut FormData, nodes: Vec<Node>) -> Result<(), Error>
                         Node::Part(part) => {
                             let val = String::from_utf8(part.body)?;
                             formdata.fields.push((key.clone(), val));
-                        },
+                        }
                         Node::File(part) => {
                             formdata.files.push((key.clone(), part));
-                        },
-                        _ => { } // don't recurse deeper
+                        }
+                        _ => {} // don't recurse deeper
                     }
                 }
             }
@@ -134,7 +133,7 @@ fn fill_formdata(formdata: &mut FormData, nodes: Vec<Node>) -> Result<(), Error>
 fn get_content_disposition_name(cd: &ContentDisposition) -> Option<String> {
     if let Some(&DispositionParam::Ext(_, ref value)) = cd.parameters.iter()
         .find(|&x| match *x {
-            DispositionParam::Ext(ref token,_) => &*token == "name",
+            DispositionParam::Ext(ref token, _) => &*token == "name",
             _ => false,
         })
     {
