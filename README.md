@@ -24,7 +24,7 @@ use cogo_http::server::{Request, Response};
 
 // read form-data
 fn hello(mut req: Request, res: Response) {
-    let form= read_formdata(&mut req.body, &req.headers).unwrap();
+    let form = read_formdata(&mut req.body, &req.headers,None).unwrap();
     res.send(serde_json::json!(form.fields).to_string().as_bytes()).unwrap();
 }
 
