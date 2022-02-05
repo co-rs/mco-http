@@ -12,6 +12,9 @@ pub type Receiver<T> = cogo::std::sync::channel::Receiver<T>;
 pub type Sender<T> = cogo::std::sync::channel::Sender<T>;
 #[cfg(feature = "cogo")]
 pub type JoinHandle<T> = cogo::coroutine::JoinHandle<T>;
+#[cfg(feature = "cogo")]
+pub type Mutex<T> = cogo::std::sync::Mutex<T>;
+
 
 #[cfg(feature = "cogo")]
 pub fn chan<T>() -> (Sender<T>, Receiver<T>) {
@@ -45,6 +48,8 @@ pub type Receiver<T> = crossbeam::channel::Receiver<T>;
 pub type Sender<T> = crossbeam::channel::Sender<T>;
 #[cfg(not(feature = "cogo"))]
 pub type JoinHandle<T> = std::thread::JoinHandle<T>;
+#[cfg(not(feature = "cogo"))]
+pub type Mutex<T> = std::sync::Mutex<T>;
 
 #[cfg(not(feature = "cogo"))]
 pub fn chan<T>() -> (Sender<T>, Receiver<T>) {

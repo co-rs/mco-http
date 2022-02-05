@@ -256,29 +256,23 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
         });
     }
 
-    /// Binds to a socket and starts handling connections.
-    pub fn handle_thread<H: Handler + 'static>(self, handler: H) -> crate::Result<Listening> {
-        self.handle_threads(handler, num_cpus::get() * 5 / 4)
-    }
-
     /// Binds to a socket and starts handling connections with the provided
-    /// number of threads.
-    pub fn handle_threads<H: Handler + 'static>(self, handler: H,
-                                                threads: usize) -> crate::Result<Listening> {
-        handle(self, handler, threads)
+    /// number of tasks on pool
+    pub fn handle_tasks<H: Handler + 'static>(self, handler: H, tasks: usize) -> crate::Result<Listening> {
+        handle_task(self, handler, tasks)
     }
 }
 
-fn handle<H, L>(mut server: Server<L>, handler: H, threads: usize) -> crate::Result<Listening>
+fn handle_task<H, L>(mut server: Server<L>, handler: H, tasks: usize) -> crate::Result<Listening>
     where H: Handler + 'static, L: NetworkListener + Send + 'static {
     let socket = r#try!(server.listener.local_addr());
 
-    debug!("threads = {:?}", threads);
+    debug!("tasks = {:?}", tasks);
     let pool = ListenerPool::new(server.listener);
     let worker = Worker::new(handler, server.timeouts);
     let work = move |mut stream| worker.handle_connection(&mut stream);
 
-    let guard = runtime::spawn(move || pool.accept(work, threads));
+    let guard = runtime::spawn(move || pool.accept(work, tasks));
 
     Ok(Listening {
         _guard: Some(guard),

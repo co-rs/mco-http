@@ -19,16 +19,16 @@ impl<A: NetworkListener + Send + 'static> ListenerPool<A> {
     /// ## Panics
     ///
     /// Panics if threads == 0.
-    pub fn accept<F>(self, work: F, threads: usize)
+    pub fn accept<F>(self, work: F, tasks: usize)
         where F: Fn(A::Stream) + Send + Sync + 'static {
-        assert!(threads != 0, "Can't accept on 0 threads.");
+        assert!(tasks != 0, "Can't accept on 0 threads.");
 
         let (super_tx, supervisor_rx) = runtime::chan();
 
         let work = Arc::new(work);
 
         // Begin work.
-        for _ in 0..threads {
+        for _ in 0..tasks {
             spawn_with(super_tx.clone(), work.clone(), self.acceptor.clone())
         }
 

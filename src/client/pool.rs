@@ -4,20 +4,21 @@ use std::collections::HashMap;
 use std::fmt;
 use std::io::{self, Read, Write};
 use std::net::{SocketAddr, Shutdown};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use std::time::{Duration, Instant};
 
 use crate::net::{NetworkConnector, NetworkStream, DefaultConnector};
 use crate::client::scheme::Scheme;
+use crate::runtime;
 
 use self::stale::{StaleCheck, Stale};
 
 /// The `NetworkConnector` that behaves as a connection pool used by hyper's `Client`.
 pub struct Pool<C: NetworkConnector> {
     connector: C,
-    inner: Arc<Mutex<PoolImpl<<C as NetworkConnector>::Stream>>>,
+    inner: Arc<runtime::Mutex<PoolImpl<<C as NetworkConnector>::Stream>>>,
     stale_check: Option<StaleCallback<C::Stream>>,
 }
 
@@ -72,7 +73,7 @@ impl<C: NetworkConnector> Pool<C> {
     pub fn with_connector(config: Config, connector: C) -> Pool<C> {
         Pool {
             connector: connector,
-            inner: Arc::new(Mutex::new(PoolImpl {
+            inner: Arc::new(runtime::Mutex::new(PoolImpl {
                 conns: HashMap::new(),
                 config: Config2 {
                     idle_timeout: None,
@@ -245,7 +246,7 @@ pub struct PooledStream<S> {
     inner: Option<PooledStreamInner<S>>,
     // mutated in &self methods
     is_closed: AtomicBool,
-    pool: Arc<Mutex<PoolImpl<S>>>,
+    pool: Arc<runtime::Mutex<PoolImpl<S>>>,
 }
 
 // manual impl to add the 'static bound for 1.7 compat
