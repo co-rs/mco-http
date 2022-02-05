@@ -179,6 +179,7 @@ pub mod server;
 pub mod status;
 pub mod uri;
 pub mod version;
+pub mod multipart;
 pub mod runtime;
 
 /// Re-exporting the mime crate, for convenience.

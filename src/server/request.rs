@@ -27,7 +27,7 @@ pub struct Request<'a, 'b: 'a> {
     pub uri: RequestUri,
     /// The version of HTTP for this request.
     pub version: HttpVersion,
-    body: HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>
+    pub body: HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>
 }
 
 
