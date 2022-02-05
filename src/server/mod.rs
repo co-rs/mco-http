@@ -233,17 +233,22 @@ macro_rules! t_c {
 impl<L: NetworkListener + Send + 'static> Server<L> {
     /// Binds to a socket and starts handling connections.
     pub fn handle<H: Handler + 'static>(self, handler: H) -> crate::Result<Listening> {
+        Self::handle_stack(self, handler, 0x2000)
+    }
+
+    /// Binds to a socket and starts handling connections.
+    pub fn handle_stack<H: Handler + 'static>(self, handler: H, stack_size: usize) -> crate::Result<Listening> {
         let worker = Arc::new(Worker::new(handler, self.timeouts));
         let mut listener = self.listener.clone();
-        let h = runtime::spawn(move || {
+        let h = runtime::spawn_stack_size(move || {
             for stream in listener.incoming() {
                 let mut stream = t_c!(stream);
-                let w=worker.clone();
-                runtime::spawn(move || {
+                let w = worker.clone();
+                runtime::spawn_stack_size(move || {
                     w.handle_connection(&mut stream)
-                });
+                }, stack_size);
             }
-        });
+        }, stack_size);
         let socket = r#try!(self.listener.clone().local_addr());
         return Ok(Listening {
             _guard: Some(h),

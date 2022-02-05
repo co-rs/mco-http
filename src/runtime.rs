@@ -25,9 +25,13 @@ pub fn sleep(d: Duration) {
 
 #[cfg(feature = "cogo")]
 pub fn spawn<F>(f: F) -> JoinHandle<()> where F: FnOnce() + std::marker::Send + 'static {
-    cogo::coroutine::Builder::new().stack_size(2*0x1000).spawn(f)
+    cogo::coroutine::Builder::new().stack_size(0x1000).spawn(f)
 }
 
+#[cfg(feature = "cogo")]
+pub fn spawn_stack_size<F>(f: F, stack_size:usize) -> JoinHandle<()> where F: FnOnce() + std::marker::Send + 'static {
+    cogo::coroutine::Builder::new().stack_size(stack_size).spawn(f)
+}
 
 
 /// if not cogo
@@ -54,5 +58,10 @@ pub fn sleep(d: Duration) {
 
 #[cfg(not(feature = "cogo"))]
 pub fn spawn<F>(f: F) -> JoinHandle<()> where F: FnOnce() + std::marker::Send + 'static {
+    std::thread::spawn(f)
+}
+
+#[cfg(not(feature = "cogo"))]
+pub fn spawn_stack_size<F>(f: F, stack_size:usize) -> JoinHandle<()> where F: FnOnce() + std::marker::Send + 'static {
     std::thread::spawn(f)
 }
