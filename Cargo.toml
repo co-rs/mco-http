@@ -5,8 +5,9 @@ edition = "2021"
 description = "A modern HTTP library."
 readme = "README.md"
 
-authors = ["Sean McArthur <sean.monstar@gmail.com>",
-    "Jonathan Reem <jonathan.reem@gmail.com>","zhuxiujia <zhuxiujia@qq.com>"]
+authors = ["zhuxiujia <zhuxiujia@qq.com>",
+    "Sean McArthur <sean.monstar@gmail.com>",
+    "Jonathan Reem <jonathan.reem@gmail.com>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 include = [
