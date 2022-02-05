@@ -75,6 +75,7 @@ impl FilePart {
     /// deleted once the FilePart object goes out of scope).
     pub fn create(headers: Headers) -> Result<FilePart, Error> {
         // Setup a file to capture the contents.
+        std::fs::create_dir_all("target/mime_multipart/");
         let mut path = PathBuf::from("target/mime_multipart/");
         path.push(TextNonce::sized_urlsafe(32).unwrap().into_string());
         File::create(path.to_str().unwrap_or_default().to_string());

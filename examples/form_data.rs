@@ -15,7 +15,8 @@ fn hello(mut req: Request, res: Response) {
     for (k, v) in form.files {
         if v.path.is_file() {
             let mut r = File::open(v.path.to_str().unwrap_or_default()).unwrap();
-            let name = "target/mime_multipart/".to_string() + &v.filename().unwrap_or_default();
+            std::fs::create_dir_all("target/upload/");
+            let name = "target/upload/".to_string() + &v.filename().unwrap_or_default();
             let mut f = File::create(&name).unwrap();
             std::io::copy(&mut r, &mut f);
         }
