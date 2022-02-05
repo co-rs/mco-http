@@ -1,4 +1,4 @@
-#![deny(warnings)]
+#[deny(unused_variables)]
 
 #[macro_use]
 // TODO: only import header!, blocked by https://github.com/rust-lang/rust/issues/25003

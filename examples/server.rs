@@ -1,4 +1,4 @@
-#![deny(warnings)]
+#[deny(unused_variables)]
 extern crate cogo_http;
 extern crate env_logger;
 

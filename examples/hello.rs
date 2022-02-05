@@ -1,4 +1,4 @@
-#![deny(warnings)]
+#[deny(unused_variables)]
 extern crate cogo_http;
 extern crate env_logger;
 
@@ -6,7 +6,7 @@ use cogo_http::server::{Request, Response};
 
 static PHRASE: &'static [u8] = b"Hello World!";
 
-fn hello(_: Request, res: Response) {
+fn hello(req: Request, res: Response) {
     res.send(PHRASE).unwrap();
 }
 
