@@ -110,7 +110,6 @@
 use std::fmt;
 use std::io::{self, ErrorKind, BufWriter, Write};
 use std::net::{SocketAddr, ToSocketAddrs, Shutdown};
-use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use num_cpus;
@@ -120,7 +119,7 @@ pub use self::response::Response;
 
 pub use crate::net::{Fresh, Streaming};
 
-use crate::Error;
+use crate::{Error, runtime};
 use crate::buffer::BufReader;
 use crate::header::{Headers, Expect, Connection};
 use crate::http;
@@ -241,7 +240,7 @@ where H: Handler + 'static, L: NetworkListener + Send + 'static {
     let worker = Worker::new(handler, server.timeouts);
     let work = move |mut stream| worker.handle_connection(&mut stream);
 
-    let guard = thread::spawn(move || pool.accept(work, threads));
+    let guard = runtime::spawn(move || pool.accept(work, threads));
 
     Ok(Listening {
         _guard: Some(guard),
@@ -373,7 +372,7 @@ impl<H: Handler + 'static> Worker<H> {
 
 /// A listening server, which can later be closed.
 pub struct Listening {
-    _guard: Option<JoinHandle<()>>,
+    _guard: Option<runtime::JoinHandle<()>>,
     /// The socket addresses that the server is bound to.
     pub socket: SocketAddr,
 }
@@ -441,6 +440,7 @@ mod tests {
     use mock::MockStream;
     use status::StatusCode;
     use uri::RequestUri;
+    use crate::mock::MockStream;
 
     use super::{Request, Response, Fresh, Handler, Worker};
 

@@ -15,6 +15,12 @@ include = [
     "src/**/*"
 ]
 
+[features]
+default = ["runtime_cogo"]
+runtime_thread = []
+runtime_cogo = ["cogo"]
+nightly = []
+
 [dependencies]
 base64 = "0.9.0"
 httparse = "1.0"
@@ -27,10 +33,11 @@ traitobject = "0.1"
 typeable = "0.1"
 unicase = "1.0"
 url = "1.0"
+cogo = {version = "0.1", optional = true }
+
+crossbeam = "0.8"
+crossbeam-channel = "0.5"
 
 [dev-dependencies]
 env_logger = "0.4"
-
-[features]
-nightly = []
 

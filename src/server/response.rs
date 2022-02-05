@@ -273,6 +273,7 @@ impl<'a, T: Any> Drop for Response<'a, T> {
 mod tests {
     use header::Headers;
     use mock::MockStream;
+    use crate::runtime;
     use super::Response;
 
     macro_rules! lines {
@@ -360,7 +361,7 @@ mod tests {
         let stream = MockStream::new();
         let stream = Arc::new(Mutex::new(stream));
         let inner_stream = stream.clone();
-        let join_handle = thread::spawn(move || {
+        let join_handle = runtime::spawn(move || {
             let mut headers = Headers::new();
             let mut stream = inner_stream.lock().unwrap();
             let mut res = Response::new(&mut *stream, &mut headers);
