@@ -27,12 +27,17 @@ use mime::{Attr, Mime, TopLevel, Value};
 use buf_read_ext::BufReadExt;
 use crate::header::{Charset, ContentDisposition, ContentType, DispositionParam, DispositionType, Headers};
 
+
+pub trait ReadWrite: Read + Write {}
+
+
 /// A multipart part which is not a file (stored in memory)
 #[derive(Clone, Debug, PartialEq)]
 pub struct Part {
     pub headers: Headers,
     pub body: Vec<u8>,
 }
+
 impl Part {
     /// Mime content-type specified in the header
     pub fn content_type(&self) -> Option<Mime> {
@@ -48,42 +53,36 @@ pub struct FilePart {
     /// The headers of the part
     pub headers: Headers,
     /// A temporary file containing the file content
-    pub path: PathBuf,
+    pub path: String,
     /// Optionally, the size of the file.  This is filled when multiparts are parsed, but is
     /// not necessary when they are generated.
     pub size: Option<usize>,
-    // The temporary directory the upload was put into, saved for the Drop trait
-    tempdir: Option<PathBuf>,
 }
+
 impl FilePart {
-    pub fn new(headers: Headers, path: &Path) -> FilePart
+    pub fn new(headers: Headers, path: &str) -> FilePart
     {
         FilePart {
             headers: headers,
-            path: path.to_owned(),
+            path: path.to_string(),
             size: None,
-            tempdir: None,
         }
     }
 
-    /// If you do not want the file on disk to be deleted when Self drops, call this
-    /// function.  It will become your responsability to clean up.
-    pub fn do_not_delete_on_drop(&mut self) {
-        self.tempdir = None;
-    }
+    // /// If you do not want the file on disk to be deleted when Self drops, call this
+    // /// function.  It will become your responsability to clean up.
+    // pub fn do_not_delete_on_drop(&mut self) {
+    //     self.tempdir = None;
+    // }
 
     /// Create a new temporary FilePart (when created this way, the file will be
     /// deleted once the FilePart object goes out of scope).
-    pub fn create(headers: Headers) -> Result<FilePart, Error> {
+    pub fn create(headers: Headers, file_name: String) -> Result<FilePart, Error> {
         // Setup a file to capture the contents.
-        let mut path = TempDir::new("mime_multipart")?.into_path();
-        let tempdir = Some(path.clone());
-        path.push(TextNonce::sized_urlsafe(32).unwrap().into_string());
         Ok(FilePart {
             headers: headers,
-            path: path,
+            path: file_name,
             size: None,
-            tempdir: tempdir,
         })
     }
 
@@ -103,14 +102,7 @@ impl FilePart {
         ct.map(|ref ct| ct.0.clone())
     }
 }
-impl Drop for FilePart {
-    fn drop(&mut self) {
-        if self.tempdir.is_some() {
-            let _ = ::std::fs::remove_file(&self.path);
-            let _ = ::std::fs::remove_dir(&self.tempdir.as_ref().unwrap());
-        }
-    }
-}
+
 
 /// A multipart part which could be either a file, in memory, or another multipart
 /// container containing nested parts.
@@ -136,7 +128,8 @@ pub enum Node {
 /// use `read_multipart_body()` instead.
 pub fn read_multipart<S: Read>(
     stream: &mut S,
-    always_use_files: bool)
+    always_use_files: bool,
+    data_write: Option<fn(&str) -> Box<dyn Write>>)
     -> Result<Vec<Node>, Error>
 {
     let mut reader = BufReader::with_capacity(4096, stream);
@@ -145,7 +138,7 @@ pub fn read_multipart<S: Read>(
     let mut buf: Vec<u8> = Vec::new();
 
     let (_, found) = reader.stream_until_token(b"\r\n\r\n", &mut buf)?;
-    if ! found { return Err(Error::EofInMainHeaders); }
+    if !found { return Err(Error::EofInMainHeaders); }
 
     // Keep the CRLFCRLF as httparse will expect it
     buf.extend(b"\r\n\r\n".iter().cloned());
@@ -155,12 +148,12 @@ pub fn read_multipart<S: Read>(
     let headers = match httparse::parse_headers(&buf, &mut header_memory) {
         Ok(httparse::Status::Complete((_, raw_headers))) => {
             Headers::from_raw(raw_headers).map_err(|e| From::from(e))
-        },
+        }
         Ok(httparse::Status::Partial) => Err(Error::PartialHeaders),
         Err(err) => Err(From::from(err)),
     }?;
 
-    inner(&mut reader, &headers, &mut nodes, always_use_files)?;
+    inner(&mut reader, &headers, &mut nodes, always_use_files, data_write)?;
     Ok(nodes)
 }
 
@@ -177,12 +170,13 @@ pub fn read_multipart<S: Read>(
 pub fn read_multipart_body<S: Read>(
     stream: &mut S,
     headers: &Headers,
-    always_use_files: bool)
+    always_use_files: bool,
+    data_write: Option<fn(&str) -> Box<dyn Write>>)
     -> Result<Vec<Node>, Error>
 {
     let mut reader = BufReader::with_capacity(4096, stream);
     let mut nodes: Vec<Node> = Vec::new();
-    inner(&mut reader, headers, &mut nodes, always_use_files)?;
+    inner(&mut reader, headers, &mut nodes, always_use_files, data_write)?;
     Ok(nodes)
 }
 
@@ -190,7 +184,8 @@ fn inner<R: BufRead>(
     reader: &mut R,
     headers: &Headers,
     nodes: &mut Vec<Node>,
-    always_use_files: bool)
+    always_use_files: bool,
+    data_write: Option<fn(&str) -> Box<dyn Write>>)
     -> Result<(), Error>
 {
     let mut buf: Vec<u8> = Vec::new();
@@ -199,26 +194,24 @@ fn inner<R: BufRead>(
 
     // Read past the initial boundary
     let (_, found) = reader.stream_until_token(&boundary, &mut buf)?;
-    if ! found { return Err(Error::EofBeforeFirstBoundary); }
+    if !found { return Err(Error::EofBeforeFirstBoundary); }
 
     // Define the boundary, including the line terminator preceding it.
     // Use their first line terminator to determine whether to use CRLF or LF.
     let (lt, ltlt, lt_boundary) = {
         let peeker = reader.fill_buf()?;
-        if peeker.len() > 1 && &peeker[..2]==b"\r\n" {
+        if peeker.len() > 1 && &peeker[..2] == b"\r\n" {
             let mut output = Vec::with_capacity(2 + boundary.len());
             output.push(b'\r');
             output.push(b'\n');
             output.extend(boundary.clone());
             (vec![b'\r', b'\n'], vec![b'\r', b'\n', b'\r', b'\n'], output)
-        }
-        else if peeker.len() > 0 && peeker[0]==b'\n' {
+        } else if peeker.len() > 0 && peeker[0] == b'\n' {
             let mut output = Vec::with_capacity(1 + boundary.len());
             output.push(b'\n');
             output.extend(boundary.clone());
             (vec![b'\n'], vec![b'\n', b'\n'], output)
-        }
-        else {
+        } else {
             return Err(Error::NoCrLfAfterBoundary);
         }
     };
@@ -234,12 +227,12 @@ fn inner<R: BufRead>(
 
         // Read the line terminator after the boundary
         let (_, found) = reader.stream_until_token(&lt, &mut buf)?;
-        if ! found { return Err(Error::NoCrLfAfterBoundary); }
+        if !found { return Err(Error::NoCrLfAfterBoundary); }
 
         // Read the headers (which end in 2 line terminators)
         buf.truncate(0); // start fresh
         let (_, found) = reader.stream_until_token(&ltlt, &mut buf)?;
-        if ! found { return Err(Error::EofInPartHeaders); }
+        if !found { return Err(Error::EofInPartHeaders); }
 
         // Keep the 2 line terminators as httparse will expect it
         buf.extend(ltlt.iter().cloned());
@@ -250,7 +243,7 @@ fn inner<R: BufRead>(
             match httparse::parse_headers(&buf, &mut header_memory) {
                 Ok(httparse::Status::Complete((_, raw_headers))) => {
                     Headers::from_raw(raw_headers).map_err(|e| From::from(e))
-                },
+                }
                 Ok(httparse::Status::Partial) => Err(Error::PartialHeaders),
                 Err(err) => Err(From::from(err)),
             }?
@@ -269,11 +262,12 @@ fn inner<R: BufRead>(
         if nested {
             // Recurse:
             let mut inner_nodes: Vec<Node> = Vec::new();
-            inner(reader, &part_headers, &mut inner_nodes, always_use_files)?;
+            inner(reader, &part_headers, &mut inner_nodes, always_use_files, data_write)?;
             nodes.push(Node::Multipart((part_headers, inner_nodes)));
             continue;
         }
 
+        let mut file_name = String::new();
         let is_file = always_use_files || {
             let cd: Option<&ContentDisposition> = part_headers.get();
             if cd.is_some() {
@@ -281,7 +275,10 @@ fn inner<R: BufRead>(
                     true
                 } else {
                     cd.unwrap().parameters.iter().any(|x| match x {
-                        &DispositionParam::Filename(_,_,_) => true,
+                        DispositionParam::Filename(_, _, d) => {
+                            file_name = String::from_utf8(d.clone()).unwrap_or_default();
+                            true
+                        }
                         _ => false
                     })
                 }
@@ -291,23 +288,22 @@ fn inner<R: BufRead>(
         };
         if is_file {
             // Setup a file to capture the contents.
-            let mut filepart = FilePart::create(part_headers)?;
-            let mut file = File::create(filepart.path.clone())?;
-
-            // Stream out the file.
-            let (read, found) = reader.stream_until_token(&lt_boundary, &mut file)?;
-            if ! found { return Err(Error::EofInFile); }
-            filepart.size = Some(read);
-
+            let mut filepart = FilePart::create(part_headers, file_name)?;
+            if data_write.is_some() {
+                let mut file = data_write.as_ref().unwrap()(filepart.path.as_str());
+                // Stream out the file.
+                let (read, found) = reader.stream_until_token(&lt_boundary, &mut file)?;
+                if !found { return Err(Error::EofInFile); }
+                filepart.size = Some(read);
+            }
             // TODO: Handle Content-Transfer-Encoding.  RFC 7578 section 4.7 deprecated
             // this, and the authors state "Currently, no deployed implementations that
             // send such bodies have been discovered", so this is very low priority.
-
             nodes.push(Node::File(filepart));
         } else {
             buf.truncate(0); // start fresh
             let (_, found) = reader.stream_until_token(&lt_boundary, &mut buf)?;
-            if ! found { return Err(Error::EofInPart); }
+            if !found { return Err(Error::EofInPart); }
 
             nodes.push(Node::Part(Part {
                 headers: part_headers,
@@ -345,10 +341,10 @@ pub fn get_multipart_boundary(headers: &Headers) -> Result<Vec<u8>, Error> {
 #[inline]
 fn get_content_disposition_filename(cd: &ContentDisposition) -> Result<Option<String>, Error> {
     if let Some(&DispositionParam::Filename(ref charset, _, ref bytes)) =
-        cd.parameters.iter().find(|&x| match *x {
-            DispositionParam::Filename(_,_,_) => true,
-            _ => false,
-        })
+    cd.parameters.iter().find(|&x| match *x {
+        DispositionParam::Filename(_, _, _) => true,
+        _ => false,
+    })
     {
         match charset_decode(charset, bytes) {
             Ok(filename) => Ok(Some(filename)),
@@ -404,6 +400,7 @@ pub fn generate_boundary() -> Vec<u8> {
 trait WriteAllCount {
     fn write_all_count(&mut self, buf: &[u8]) -> ::std::io::Result<usize>;
 }
+
 impl<T: Write> WriteAllCount for T {
     fn write_all_count(&mut self, buf: &[u8]) -> ::std::io::Result<usize>
     {
@@ -445,7 +442,7 @@ pub fn write_multipart<S: Write>(
 
                 // Write the part's content
                 count += stream.write_all_count(&part.body)?;
-            },
+            }
             &Node::File(ref filepart) => {
                 // write the part's headers
                 for header in filepart.headers.iter() {
@@ -461,7 +458,7 @@ pub fn write_multipart<S: Write>(
                 // Write out the files's content
                 let mut file = File::open(&filepart.path)?;
                 count += std::io::copy(&mut file, stream)? as usize;
-            },
+            }
             &Node::Multipart((ref headers, ref subnodes)) => {
                 // Get boundary
                 let boundary = get_multipart_boundary(headers)?;
@@ -479,7 +476,7 @@ pub fn write_multipart<S: Write>(
 
                 // Recurse
                 count += write_multipart(stream, &boundary, &subnodes)?;
-            },
+            }
         }
 
         // write a line terminator
@@ -510,7 +507,9 @@ pub fn write_chunk<S: Write>(
 pub fn write_multipart_chunked<S: Write>(
     stream: &mut S,
     boundary: &Vec<u8>,
-    nodes: &Vec<Node>)
+    nodes: &Vec<Node>,
+    data_write: fn(&str) -> Box<dyn ReadWrite>,
+)
     -> Result<(), Error>
 {
     for node in nodes {
@@ -534,7 +533,7 @@ pub fn write_multipart_chunked<S: Write>(
 
                 // Write the part's content
                 write_chunk(stream, &part.body)?;
-            },
+            }
             &Node::File(ref filepart) => {
                 // write the part's headers
                 for header in filepart.headers.iter() {
@@ -552,10 +551,10 @@ pub fn write_multipart_chunked<S: Write>(
                 write!(stream, "{:x}\r\n", metadata.len())?;
 
                 // Write out the file's content
-                let mut file = File::open(&filepart.path)?;
+                let mut file = data_write(filepart.path.as_str());
                 std::io::copy(&mut file, stream)? as usize;
                 stream.write(b"\r\n")?;
-            },
+            }
             &Node::Multipart((ref headers, ref subnodes)) => {
                 // Get boundary
                 let boundary = get_multipart_boundary(headers)?;
@@ -572,8 +571,8 @@ pub fn write_multipart_chunked<S: Write>(
                 write_chunk(stream, b"\r\n")?;
 
                 // Recurse
-                write_multipart_chunked(stream, &boundary, &subnodes)?;
-            },
+                write_multipart_chunked(stream, &boundary, &subnodes, data_write)?;
+            }
         }
 
         // write a line terminator

@@ -1,5 +1,6 @@
 use std::io::{ErrorKind, Read, Write};
-use crate::multipart::{Node, Part, FilePart};
+use std::path::PathBuf;
+use crate::multipart::{Node, Part, FilePart, ReadWrite};
 use mime::{Mime, TopLevel, SubLevel};
 use crate::multipart::error::Error;
 use crate::header::{ContentDisposition, ContentType, DispositionParam, DispositionType, Headers};
@@ -34,7 +35,7 @@ impl FormData {
                 disposition: DispositionType::Ext("form-data".to_owned()),
                 parameters: vec![DispositionParam::Ext("name".to_owned(), name.clone())],
             });
-            nodes.push( Node::Part( Part {
+            nodes.push(Node::Part(Part {
                 headers: h,
                 body: value.as_bytes().to_owned(),
             }));
@@ -44,17 +45,17 @@ impl FormData {
             let mut filepart = filepart.clone();
             // We leave all headers that the caller specified, except that we rewrite
             // Content-Disposition.
-            while filepart.headers.remove::<ContentDisposition>() { };
-            let filename = match filepart.path.file_name() {
-                Some(fname) => fname.to_string_lossy().into_owned(),
-                None => return Err(Error::Io(std::io::Error::new(ErrorKind::InvalidData,"not a file"))),
-            };
+            while filepart.headers.remove::<ContentDisposition>() {};
+            if filepart.path.is_empty(){
+                return Err(Error::Io(std::io::Error::new(ErrorKind::InvalidData, "not a file")));
+            }
+            let filename =  filepart.path.to_owned();
             filepart.headers.set(ContentDisposition {
                 disposition: DispositionType::Ext("form-data".to_owned()),
                 parameters: vec![DispositionParam::Ext("name".to_owned(), name.clone()),
                                  DispositionParam::Ext("filename".to_owned(), filename)],
             });
-            nodes.push( Node::File( filepart ) );
+            nodes.push(Node::File(filepart));
         }
 
         Ok(nodes)
@@ -62,11 +63,19 @@ impl FormData {
 }
 
 
-
 /// Parse MIME `multipart/form-data` information from a stream as a `FormData`.
-pub fn read_formdata<S: Read>(stream: &mut S, headers: &Headers) -> Result<FormData, Error>
+/// data_write =  fn(file_name:&str) -> Box<dyn Write>.
+/// for example:
+/// let form = read_formdata(&mut req.body, &req.headers, Some(|name| {
+///         //if upload file
+///         let path= format!("target/{}",name);
+///         let mut f = File::create(&path).unwrap();
+///         println!("will write file: {}",&path);
+///         Box::new(f)
+///     })).unwrap();
+pub fn read_formdata<S: Read>(stream: &mut S, headers: &Headers, data_write: Option<fn(&str) -> Box<dyn Write>>) -> Result<FormData, Error>
 {
-    let nodes = crate::multipart::read_multipart_body(stream, headers, false)?;
+    let nodes = crate::multipart::read_multipart_body(stream, headers, false, data_write)?;
     let mut formdata = FormData::new();
     fill_formdata(&mut formdata, nodes)?;
     Ok(formdata)
@@ -91,7 +100,7 @@ fn fill_formdata(formdata: &mut FormData, nodes: Vec<Node>) -> Result<(), Error>
                 let key = cd_name.ok_or(Error::NoName)?;
                 let val = String::from_utf8(part.body)?;
                 formdata.fields.push((key, val));
-            },
+            }
             Node::File(part) => {
                 let cd_name: Option<String> = {
                     let cd: &ContentDisposition = match part.headers.get() {
@@ -117,11 +126,11 @@ fn fill_formdata(formdata: &mut FormData, nodes: Vec<Node>) -> Result<(), Error>
                         Node::Part(part) => {
                             let val = String::from_utf8(part.body)?;
                             formdata.fields.push((key.clone(), val));
-                        },
+                        }
                         Node::File(part) => {
                             formdata.files.push((key.clone(), part));
-                        },
-                        _ => { } // don't recurse deeper
+                        }
+                        _ => {} // don't recurse deeper
                     }
                 }
             }
@@ -134,7 +143,7 @@ fn fill_formdata(formdata: &mut FormData, nodes: Vec<Node>) -> Result<(), Error>
 fn get_content_disposition_name(cd: &ContentDisposition) -> Option<String> {
     if let Some(&DispositionParam::Ext(_, ref value)) = cd.parameters.iter()
         .find(|&x| match *x {
-            DispositionParam::Ext(ref token,_) => &*token == "name",
+            DispositionParam::Ext(ref token, _) => &*token == "name",
             _ => false,
         })
     {
@@ -162,13 +171,13 @@ pub fn write_formdata<S: Write>(stream: &mut S, boundary: &Vec<u8>, formdata: &F
 /// Stream out `multipart/form-data` body content matching the passed in `formdata` as
 /// Transfer-Encoding: Chunked.  This does not stream out headers, so the caller must stream
 /// those out before calling write_formdata().
-pub fn write_formdata_chunked<S: Write>(stream: &mut S, boundary: &Vec<u8>, formdata: &FormData)
+pub fn write_formdata_chunked<S: Write>(stream: &mut S, boundary: &Vec<u8>, formdata: &FormData,data_write: fn(&str) -> Box<dyn ReadWrite>)
                                         -> Result<(), Error>
 {
     let nodes = formdata.to_multipart()?;
 
     // Write out
-    crate::multipart::write_multipart_chunked(stream, boundary, &nodes)?;
+    crate::multipart::write_multipart_chunked(stream, boundary, &nodes,data_write)?;
 
     Ok(())
 }
