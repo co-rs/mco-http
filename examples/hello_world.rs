@@ -4,10 +4,8 @@ extern crate env_logger;
 
 use cogo_http::server::{Request, Response};
 
-static PHRASE: &'static [u8] = b"Hello World!";
-
 fn hello(req: Request, res: Response) {
-    res.send(PHRASE).unwrap();
+    res.send(b"Hello World!").unwrap();
 }
 
 fn main() {
