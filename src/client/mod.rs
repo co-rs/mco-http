@@ -48,6 +48,11 @@
 //! let client = Arc::new(Client::new());
 //! let clone1 = client.clone();
 //! let clone2 = client.clone();
+//!
+//! cogo::go!(move ||{
+//!   clone1.get("http://example.domain").send().unwrap();
+//! });
+//!
 //! thread::spawn(move || {
 //!     clone1.get("http://example.domain").send().unwrap();
 //! });
