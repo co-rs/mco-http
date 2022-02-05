@@ -7,7 +7,7 @@ use std::mem;
 use std::sync::Arc;
 
 use std::time::Duration;
-use cogo::net::TcpListener;
+use crate::runtime::TcpListener;
 
 use typeable::Typeable;
 use traitobject;
