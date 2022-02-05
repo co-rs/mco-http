@@ -2,14 +2,16 @@
 use std::any::{Any, TypeId};
 use std::fmt;
 use std::io::{self, ErrorKind, Read, Write};
-use std::net::{SocketAddr, ToSocketAddrs, TcpStream, TcpListener, Shutdown};
+use std::net::{SocketAddr, ToSocketAddrs, Shutdown};
 use std::mem;
 use std::sync::Arc;
 
 use std::time::Duration;
+use cogo::net::TcpListener;
 
 use typeable::Typeable;
 use traitobject;
+use crate::runtime::TcpStream;
 
 /// The write-status indicating headers have not been written.
 pub enum Fresh {}
