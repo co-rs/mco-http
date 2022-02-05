@@ -80,7 +80,7 @@
 //!     match req.method {
 //!         cogo_http::Post => {
 //!             io::copy(&mut req, &mut res.start().unwrap()).unwrap();
-//!         },
+//!         }
 //!         _ => *res.status_mut() = StatusCode::MethodNotAllowed
 //!     }
 //! }).unwrap();
@@ -110,6 +110,7 @@
 use std::fmt;
 use std::io::{self, ErrorKind, BufWriter, Write};
 use std::net::{SocketAddr, ToSocketAddrs, Shutdown};
+use std::sync::Arc;
 use std::time::Duration;
 
 use num_cpus;
@@ -156,7 +157,7 @@ impl Default for Timeouts {
     fn default() -> Timeouts {
         Timeouts {
             read: None,
-            keep_alive: Some(Duration::from_secs(5))
+            keep_alive: Some(Duration::from_secs(5)),
         }
     }
 }
@@ -167,7 +168,7 @@ impl<L: NetworkListener> Server<L> {
     pub fn new(listener: L) -> Server<L> {
         Server {
             listener: listener,
-            timeouts: Timeouts::default()
+            timeouts: Timeouts::default(),
         }
     }
 
@@ -217,22 +218,54 @@ impl<S: SslServer + Clone + Send> Server<HttpsListener<S>> {
     }
 }
 
+macro_rules! t_c {
+    ($e: expr) => {
+        match $e {
+            Ok(val) => val,
+            Err(err) => {
+                error!("call = {:?}\nerr = {:?}", stringify!($e), err);
+                continue;
+            }
+        }
+    };
+}
+
 impl<L: NetworkListener + Send + 'static> Server<L> {
     /// Binds to a socket and starts handling connections.
     pub fn handle<H: Handler + 'static>(self, handler: H) -> crate::Result<Listening> {
+        let worker = Arc::new(Worker::new(handler, self.timeouts));
+        let mut listener = self.listener.clone();
+        let h = runtime::spawn(move || {
+            for stream in listener.incoming() {
+                let mut stream = t_c!(stream);
+                let w=worker.clone();
+                runtime::spawn(move || {
+                    w.handle_connection(&mut stream)
+                });
+            }
+        });
+        let socket = r#try!(self.listener.clone().local_addr());
+        return Ok(Listening {
+            _guard: Some(h),
+            socket: socket,
+        });
+    }
+
+    /// Binds to a socket and starts handling connections.
+    pub fn handle_thread<H: Handler + 'static>(self, handler: H) -> crate::Result<Listening> {
         self.handle_threads(handler, num_cpus::get() * 5 / 4)
     }
 
     /// Binds to a socket and starts handling connections with the provided
     /// number of threads.
     pub fn handle_threads<H: Handler + 'static>(self, handler: H,
-            threads: usize) -> crate::Result<Listening> {
+                                                threads: usize) -> crate::Result<Listening> {
         handle(self, handler, threads)
     }
 }
 
 fn handle<H, L>(mut server: Server<L>, handler: H, threads: usize) -> crate::Result<Listening>
-where H: Handler + 'static, L: NetworkListener + Send + 'static {
+    where H: Handler + 'static, L: NetworkListener + Send + 'static {
     let socket = r#try!(server.listener.local_addr());
 
     debug!("threads = {:?}", threads);
@@ -299,7 +332,7 @@ impl<H: Handler + 'static> Worker<H> {
     }
 
     fn keep_alive_loop<W: Write>(&self, rdr: &mut BufReader<&mut dyn NetworkStream>,
-            wrt: &mut W, addr: SocketAddr) -> bool {
+                                 wrt: &mut W, addr: SocketAddr) -> bool {
         let req = match Request::new(rdr, addr) {
             Ok(req) => req,
             Err(Error::Io(ref e)) if e.kind() == ErrorKind::ConnectionAborted => {
@@ -350,7 +383,7 @@ impl<H: Handler + 'static> Worker<H> {
     }
 
     fn handle_expect<W: Write>(&self, req: &Request, wrt: &mut W) -> bool {
-         if req.version == Http11 && req.headers.get() == Some(&Expect::Continue) {
+        if req.version == Http11 && req.headers.get() == Some(&Expect::Continue) {
             let status = self.handler.check_continue((&req.method, &req.uri, &req.headers));
             match write!(wrt, "{} {}\r\n\r\n", Http11, status).and_then(|_| wrt.flush()) {
                 Ok(..) => (),
@@ -419,12 +452,12 @@ pub trait Handler: Sync + Send {
     /// This is run after a connection is received, on a per-connection basis (not a
     /// per-request basis, as a connection with keep-alive may handle multiple
     /// requests)
-    fn on_connection_start(&self) { }
+    fn on_connection_start(&self) {}
 
     /// This is run before a connection is closed, on a per-connection basis (not a
     /// per-request basis, as a connection with keep-alive may handle multiple
     /// requests)
-    fn on_connection_end(&self) { }
+    fn on_connection_end(&self) {}
 }
 
 impl<F> Handler for F where F: Fn(Request, Response<Fresh>), F: Sync + Send {
