@@ -7,7 +7,7 @@
 
 use std::borrow::Cow;
 use std::error::Error as StdError;
-use std::fmt::{self, Display};
+use std::fmt::{self, Debug, Display};
 use std::io;
 use std::string::FromUtf8Error;
 use httparse;
@@ -69,18 +69,54 @@ impl From<FromUtf8Error> for Error {
 
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
+        match self {
             Error::Httparse(ref e) =>
-                format!("{}: {:?}", self, e).fmt(f),
+                std::fmt::Display::fmt(&e, f),
             Error::Io(ref e) =>
-                format!("{}: {}", self, e).fmt(f),
+                std::fmt::Display::fmt(&e, f),
             Error::Hyper(ref e) =>
-                format!("{}: {}", self, e).fmt(f),
+                std::fmt::Display::fmt(&e, f),
             Error::Utf8(ref e) =>
-                format!("{}: {}", self, e).fmt(f),
+                std::fmt::Display::fmt(&e, f),
             Error::Decoding(ref e) =>
-                format!("{}: {}", self, e).fmt(f),
-            _ => format!("{}", self).fmt(f),
+                std::fmt::Display::fmt(&e, f),
+
+            Error::NoRequestContentType => {
+                f.write_str("NoRequestContentType")
+            }
+            Error::NotMultipart => {
+                f.write_str("NotMultipart")
+            }
+            Error::BoundaryNotSpecified => {
+                f.write_str("BoundaryNotSpecified")
+            }
+            Error::PartialHeaders => {
+                f.write_str("PartialHeaders")
+            }
+            Error::EofInMainHeaders => {
+                f.write_str("EofInMainHeaders")
+            }
+            Error::EofBeforeFirstBoundary => {
+                f.write_str("EofBeforeFirstBoundary")
+            }
+            Error::NoCrLfAfterBoundary => {
+                f.write_str("NoCrLfAfterBoundary")
+            }
+            Error::EofInPartHeaders => {
+                f.write_str("EofInPartHeaders")
+            }
+            Error::EofInFile => {
+                f.write_str("EofInFile")
+            }
+            Error::EofInPart => {
+                f.write_str("EofInPart")
+            }
+            Error::MissingDisposition => {
+                f.write_str("MissingDisposition")
+            }
+            Error::NoName => {
+                f.write_str("NoName")
+            }
         }
     }
 }

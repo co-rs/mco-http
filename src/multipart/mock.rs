@@ -27,7 +27,7 @@ use std::io::{self, Read, Write, Cursor};
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use hyper::net::NetworkStream;
+use crate::net::NetworkStream;
 
 pub struct MockStream {
     pub read: Cursor<Vec<u8>>,
