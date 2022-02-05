@@ -1,6 +1,6 @@
 # cogo-http
 
-* Coroutine HTTP framework for Cogo, fork from Hyper
+* Coroutine HTTP framework for Cogo, Original code fork from Hyper
 * support http server
 * support http client
 ## Performance
