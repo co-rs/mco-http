@@ -1,4 +1,4 @@
-use std::sync::{Arc, mpsc};
+use std::sync::{Arc};
 use std::thread;
 
 use crate::net::NetworkListener;
@@ -23,7 +23,7 @@ impl<A: NetworkListener + Send + 'static> ListenerPool<A> {
         where F: Fn(A::Stream) + Send + Sync + 'static {
         assert!(threads != 0, "Can't accept on 0 threads.");
 
-        let (super_tx, supervisor_rx) = mpsc::channel();
+        let (super_tx, supervisor_rx) = runtime::chan();
 
         let work = Arc::new(work);
 
@@ -40,7 +40,7 @@ impl<A: NetworkListener + Send + 'static> ListenerPool<A> {
     }
 }
 
-fn spawn_with<A, F>(supervisor: mpsc::Sender<()>, work: Arc<F>, mut acceptor: A)
+fn spawn_with<A, F>(supervisor: runtime::Sender<()>, work: Arc<F>, mut acceptor: A)
 where A: NetworkListener + Send + 'static,
       F: Fn(<A as NetworkListener>::Stream) + Send + Sync + 'static {
     runtime::spawn(move || {
@@ -58,11 +58,11 @@ where A: NetworkListener + Send + 'static,
 
 struct Sentinel<T: Send + 'static> {
     value: Option<T>,
-    supervisor: mpsc::Sender<T>,
+    supervisor: runtime::Sender<T>,
 }
 
 impl<T: Send + 'static> Sentinel<T> {
-    fn new(channel: mpsc::Sender<T>, data: T) -> Sentinel<T> {
+    fn new(channel: runtime::Sender<T>, data: T) -> Sentinel<T> {
         Sentinel {
             value: Some(data),
             supervisor: channel,
