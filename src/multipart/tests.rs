@@ -53,8 +53,14 @@ fn parser() {
     let req = HyperRequest::new(&mut stream, sock).unwrap();
     let (_, _, headers, _, _, mut reader) = req.deconstruct();
 
-    match read_multipart_body(&mut reader, &headers, false,Some(|name|->std::io::Result<Box<dyn Write>>{
-        Ok(Box::new(File::create(name).unwrap()))
+    match read_multipart_body(&mut reader, &headers, false,Some(|w|->std::io::Result<()>{
+        w.set_write(File::create(w.filename().unwrap_or_default()).unwrap());
+        w.path={
+            let mut p =PathBuf::new();
+            p.push(w.filename().unwrap_or_default());
+            p
+        };
+        Ok(())
     })) {
         Ok(nodes) => {
 
@@ -131,8 +137,11 @@ fn mixed_parser() {
     let req = HyperRequest::new(&mut stream, sock).unwrap();
     let (_, _, headers, _, _, mut reader) = req.deconstruct();
 
-    match read_multipart_body(&mut reader, &headers, false,Some(|name|->std::io::Result<Box<dyn Write>>{
-        Ok(Box::new(File::create(name).unwrap()))
+    match read_multipart_body(&mut reader, &headers, false,Some(|w|->std::io::Result<()>{
+        w.set_write(File::create(w.filename().unwrap_or_default()).unwrap());
+        w.path=PathBuf::new();
+        w.path.push(w.filename().unwrap_or_default());
+        Ok(())
     })) {
         Ok(nodes) => {
 
@@ -216,8 +225,9 @@ fn test_line_feed() {
     let req = HyperRequest::new(&mut stream, sock).unwrap();
     let (_, _, headers, _, _, mut reader) = req.deconstruct();
 
-    if let Err(e) = read_multipart_body(&mut reader, &headers, false,Some(|name|->std::io::Result<Box<dyn Write>>{
-        Ok(Box::new(File::create(name).unwrap()))
+    if let Err(e) = read_multipart_body(&mut reader, &headers, false,Some(|w|->std::io::Result<()>{
+        w.set_write(File::create(w.filename().unwrap_or_default()).unwrap());
+        Ok(())
     })) {
         panic!("{}", e);
     }
@@ -272,7 +282,7 @@ fn test_output() {
     nodes.push(Node::Part(first_name));
     nodes.push(Node::Part(last_name));
 
-    let count = match write_multipart(&mut output, &boundary, &nodes) {
+    let count = match write_multipart(&mut output, &boundary, &mut nodes,None) {
         Ok(c) => c,
         Err(e) => panic!("{:?}", e),
     };
