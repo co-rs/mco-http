@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use mime::Mime;
 
 header! {
@@ -91,6 +92,12 @@ impl ContentType {
     #[inline]
     pub fn png() -> ContentType {
         ContentType(mime!(Image/Png))
+    }
+
+    /// from a content_type str
+    #[inline]
+    pub fn from_str(content_type:&str) -> Result<ContentType,()> {
+        Ok(ContentType(Mime::from_str(content_type)?))
     }
 }
 
