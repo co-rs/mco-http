@@ -9,7 +9,6 @@ use crate::uri::RequestUri::AbsolutePath;
 use std::io::copy;
 use std::ops::Deref;
 use std::sync::Arc;
-use dashmap::DashMap;
 use crate::runtime::{SyncHashMap};
 use crate::uri::RequestUri;
 
