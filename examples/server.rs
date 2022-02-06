@@ -18,11 +18,11 @@ macro_rules! try_return(
     }}
 );
 
-fn echo(mut req: Request, mut res: Response) {
+fn routing(mut req: Request, mut res: Response) {
     match req.uri {
         AbsolutePath(ref path) => match (&req.method, &path[..]) {
             (&Get, "/") | (&Get, "/echo") => {
-                try_return!(res.send(b"Try POST /echo"));
+                try_return!(res.send(b"echo"));
                 return;
             },
             (&Post, "/echo") => (), // fall through, fighting mutable borrows
@@ -44,6 +44,6 @@ fn echo(mut req: Request, mut res: Response) {
 fn main() {
     env_logger::init().unwrap();
     let server = Server::http("127.0.0.1:1337").unwrap();
-    let _guard = server.handle(echo);
+    let _guard = server.handle(routing);
     println!("Listening on http://127.0.0.1:1337");
 }
