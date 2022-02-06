@@ -7,9 +7,8 @@ use cogo_http::server::{Request, Response};
 
 // http://127.0.0.1:3000?q=query_info
 fn hello(req: Request, res: Response) {
-    let q = read_query(&req.uri.to_string());
-    let param =  q.get("q");
-    res.send(param.unwrap_or(&"not find param q".to_string()).as_bytes()).unwrap();
+    let param = read_query(&req.uri.to_string());
+    res.send(format!("{:?}",param).as_bytes()).unwrap();
 }
 
 fn main() {
