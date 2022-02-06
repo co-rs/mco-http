@@ -21,7 +21,7 @@ include = [
 ]
 
 [features]
-default = ["runtime_cogo"]
+default = ["runtime_cogo","dashmap"]
 runtime_thread = ["dashmap"]
 runtime_cogo = ["cogo"]
 nightly = []

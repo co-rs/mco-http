@@ -16,6 +16,8 @@ pub type JoinHandle<T> = cogo::coroutine::JoinHandle<T>;
 pub type Mutex<T> = cogo::std::sync::Mutex<T>;
 #[cfg(feature = "cogo")]
 pub type SyncBtreeMap<K,V> = cogo::std::map::SyncBtreeMap<K,V>;
+#[cfg(feature = "cogo")]
+pub type SyncHashMap<K,V> = cogo::std::map::SyncHashMap<K,V>;
 
 #[cfg(feature = "cogo")]
 pub fn chan<T>() -> (Sender<T>, Receiver<T>) {
@@ -53,6 +55,8 @@ pub type JoinHandle<T> = std::thread::JoinHandle<T>;
 pub type Mutex<T> = std::sync::Mutex<T>;
 #[cfg(not(feature = "cogo"))]
 pub type SyncBtreeMap<K,V> = dashmap::DashMap<K,V>;
+#[cfg(not(feature = "cogo"))]
+pub type SyncHashMap<K,V> = dashmap::DashMap<K,V>;
 
 #[cfg(not(feature = "cogo"))]
 pub fn chan<T>() -> (Sender<T>, Receiver<T>) {

@@ -9,7 +9,8 @@ use crate::uri::RequestUri::AbsolutePath;
 use std::io::copy;
 use std::ops::Deref;
 use std::sync::Arc;
-use crate::runtime::SyncBtreeMap;
+use dashmap::DashMap;
+use crate::runtime::{SyncHashMap};
 use crate::uri::RequestUri;
 
 pub struct HandleBox {
@@ -33,18 +34,18 @@ pub trait MiddleWare: Send + Sync + Debug {
 
 #[derive(Debug)]
 pub struct Route {
-    pub container: SyncBtreeMap<String, Arc<Box<dyn Any>>>,
+    pub container: SyncHashMap<String, Arc<Box<dyn Any>>>,
     pub middleware: Vec<Box<dyn MiddleWare>>,
-    pub handlers: SyncBtreeMap<String, HandleBox>,
+    pub handlers: SyncHashMap<String, HandleBox>,
 }
 
 
 impl Route {
     pub fn new() -> Self {
         Self {
-            container: SyncBtreeMap::new(),
+            container: SyncHashMap::new(),
             middleware: vec![],
-            handlers: SyncBtreeMap::new(),
+            handlers: SyncHashMap::new(),
         }
     }
     pub fn handle_fn<H: Handler + 'static>(&self, url: &str, h: H) {
@@ -77,7 +78,7 @@ impl Route {
 
 
 impl Handler for Route {
-    fn handle<'a, 'k>(&'a self, mut req: Request<'a, 'k>, mut res: Response<'a, Fresh>) {
+    fn handle(&self, mut req: Request, mut res: Response<'_, Fresh>) {
         for x in &self.middleware {
             //finish?.this is safety
             if x.handle(&mut req, &mut res) {
@@ -86,14 +87,16 @@ impl Handler for Route {
         }
         match &req.uri {
             AbsolutePath(p) => {
-                match self.handlers.get(&p[0..p.find("?").unwrap_or(p.len())]) {
+                let path = &p[0..p.find("?").unwrap_or(p.len())];
+                match self.handlers.get(path) {
                     None => {
                         //404
                         res.status = StatusCode::NotFound;
                         return;
                     }
                     Some(h) => {
-                        h.inner.handle(req, res);
+                        let i = &h.inner;
+                        i.handle(req, res);
                         return;
                     }
                 }
@@ -106,7 +109,7 @@ impl Handler for Route {
 }
 
 impl Handler for Arc<Route> {
-    fn handle<'a, 'k>(&'a self, mut req: Request<'a, 'k>, mut res: Response<'a, Fresh>) {
+    fn handle(&self, mut req: Request, mut res: Response<'_, Fresh>) {
         Route::handle(self, req, res)
     }
 }

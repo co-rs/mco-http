@@ -439,7 +439,7 @@ pub trait Handler: Sync + Send {
     /// Receives a `Request`/`Response` pair, and should perform some action on them.
     ///
     /// This could reading from the request, and writing to the response.
-    fn handle<'a, 'k>(&'a self, _: Request<'a, 'k>, _: Response<'a, Fresh>);
+    fn handle(&self, _: Request, _: Response<'_, Fresh>);
 
     /// Called when a Request includes a `Expect: 100-continue` header.
     ///
@@ -461,7 +461,7 @@ pub trait Handler: Sync + Send {
 }
 
 impl<F> Handler for F where F: Fn(Request, Response<Fresh>), F: Sync + Send {
-    fn handle<'a, 'k>(&'a self, req: Request<'a, 'k>, res: Response<'a, Fresh>) {
+    fn handle(&self, req: Request, res: Response) {
         self(req, res)
     }
 }
