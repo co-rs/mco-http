@@ -6,6 +6,7 @@ use std::io::copy;
 
 use cogo_http::{Get, Post};
 use cogo_http::server::{Server, Request, Response};
+use cogo_http::status::StatusCode;
 use cogo_http::uri::RequestUri::AbsolutePath;
 
 macro_rules! try_return(
@@ -31,6 +32,7 @@ fn echo(mut req: Request, mut res: Response) {
             }
         },
         _ => {
+            res.status = StatusCode::NotFound;
             return;
         }
     };

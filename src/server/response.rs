@@ -31,11 +31,11 @@ pub struct Response<'a, W: Any = Fresh> {
     /// The HTTP version of this response.
     pub version: version::HttpVersion,
     // Stream the Response is writing to, not accessible through UnwrittenResponse
-    body: HttpWriter<&'a mut (dyn Write + 'a)>,
+    pub body: HttpWriter<&'a mut (dyn Write + 'a)>,
     // The status code for the request.
-    status: status::StatusCode,
+    pub status: status::StatusCode,
     // The outgoing headers on this response.
-    headers: &'a mut header::Headers,
+    pub headers: &'a mut header::Headers,
 
     _writing: PhantomData<W>
 }
