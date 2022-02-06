@@ -5,7 +5,7 @@ extern crate env_logger;
 use cogo_http::query::read_query;
 use cogo_http::server::{Request, Response};
 
-// http://127.0.0.1:3000?q=query_info
+// http://127.0.0.1:3000/?q=query_info&b=123
 fn hello(req: Request, res: Response) {
     let param = read_query(&req.uri.to_string());
     res.send(format!("{:?}",param).as_bytes()).unwrap();
@@ -16,5 +16,5 @@ fn main() {
     let _listening = cogo_http::Server::http("0.0.0.0:3000").unwrap()
         .handle(hello);
     println!("Listening on http://127.0.0.1:3000");
-    println!("please click http://127.0.0.1:3000?q=query_info");
+    println!("please click http://127.0.0.1:3000/?q=query_info&b=123");
 }
