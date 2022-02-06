@@ -311,10 +311,11 @@ impl<H: Handler + 'static> Worker<H> {
         let mut wrt = BufWriter::new(stream);
 
         while self.keep_alive_loop(&mut rdr, &mut wrt, addr) {
-            if let Err(e) = self.set_read_timeout(*rdr.get_ref(), self.timeouts.keep_alive) {
-                info!("set_read_timeout keep_alive {:?}", e);
-                break;
-            }
+            //TODO set read timeout
+            // if let Err(e) = self.set_read_timeout(*rdr.get_ref(), self.timeouts.keep_alive) {
+            //     info!("set_read_timeout keep_alive {:?}", e);
+            //     break;
+            // }
         }
 
         self.handler.on_connection_end();
