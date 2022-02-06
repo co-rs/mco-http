@@ -49,7 +49,7 @@ fn main() {
                        // .apply_filter(Wave::new(2.0, 20.0).vertical())
                        .view(160, 60)
                        .apply_filter(Dots::new(4));
-                   let png = captcha.as_png().unwrap();
+                   let png = captcha.as_png().unwrap_or_default();
                    PngChannel.0.send(png);
                }
                Err(_) => {}
