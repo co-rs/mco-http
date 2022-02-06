@@ -1,4 +1,3 @@
-use cogo_http::net::Fresh;
 use cogo_http::query::read_query;
 use cogo_http::route::Route;
 use cogo_http::server::{Request, Response};
