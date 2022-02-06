@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::collections::{BTreeMap, HashMap};
+use std::fmt::{Debug, Formatter};
 use crate::net::Fresh;
 use crate::server::{Handler, Request, Response};
 use crate::status::StatusCode;
@@ -12,14 +13,25 @@ pub struct HandleBox {
     pub inner: Box<dyn Handler>,
 }
 
-pub trait Container: Send + Sync {}
+impl Debug for HandleBox{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HandleBox")
+            .field("url",&self.url)
+            .field("inner",&"*")
+            .finish()
+    }
+}
 
 
-pub trait MiddleWare: Send + Sync {
+pub trait Container: Send + Sync+Debug {}
+
+
+pub trait MiddleWare: Send + Sync+Debug {
     //return is finish. if finish will be return
     fn handle<'r,'a, 'k>(&'r self, req: &'r mut Request<'a, 'k>, res: &'r mut Response<'a,Fresh>) -> bool;
 }
 
+#[derive(Debug)]
 pub struct Route {
     pub container: BTreeMap<String, Box<dyn Container>>,
     pub middleware: Vec<Box<dyn MiddleWare>>,

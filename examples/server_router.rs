@@ -14,6 +14,7 @@ fn hello(req: Request, res: Response) {
 }
 
 // MiddleWare
+#[derive(Debug)]
 pub struct MyMiddleWare {}
 
 impl MiddleWare for MyMiddleWare {
