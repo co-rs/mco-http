@@ -24,6 +24,7 @@ use self::Error::{
 };
 
 pub use url::ParseError;
+use crate::Error::Parse;
 
 /// Result type often returned from methods that can have hyper `Error`s.
 pub type Result<T> = ::std::result::Result<T, Error>;
@@ -51,7 +52,9 @@ pub enum Error {
     Utf8(Utf8Error),
 
     #[doc(hidden)]
-    __Nonexhaustive(Void)
+    __Nonexhaustive(Void),
+
+    Parse(String)
 }
 
 #[doc(hidden)]
@@ -87,6 +90,7 @@ impl StdError for Error {
             Io(ref e) => e.description(),
             Ssl(ref e) => e.description(),
             Utf8(ref e) => e.description(),
+            Parse(ref e) => e,
             Error::__Nonexhaustive(..) =>  unreachable!(),
         }
     }
@@ -147,6 +151,12 @@ impl From<httparse::Error> for Error {
             httparse::Error::TooManyHeaders => TooLarge,
             httparse::Error::Version => Version,
         }
+    }
+}
+
+impl From<serde_urlencoded::de::Error> for Error {
+    fn from(err: serde_urlencoded::de::Error) -> Error {
+        Error::Parse(err.to_string())
     }
 }
 
