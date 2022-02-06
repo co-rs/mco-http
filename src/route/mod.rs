@@ -1,11 +1,15 @@
 use std::any::Any;
 use std::collections::{BTreeMap, HashMap};
+use std::error::Error;
 use std::fmt::{Debug, Formatter};
 use crate::net::Fresh;
 use crate::server::{Handler, Request, Response};
 use crate::status::StatusCode;
 use crate::uri::RequestUri::AbsolutePath;
 use std::io::copy;
+use std::ops::Deref;
+use std::sync::Arc;
+use crate::runtime::SyncBtreeMap;
 use crate::uri::RequestUri;
 
 pub struct HandleBox {
@@ -13,27 +17,24 @@ pub struct HandleBox {
     pub inner: Box<dyn Handler>,
 }
 
-impl Debug for HandleBox{
+impl Debug for HandleBox {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("HandleBox")
-            .field("url",&self.url)
-            .field("inner",&"*")
+            .field("url", &self.url)
+            .field("inner", &"*")
             .finish()
     }
 }
 
 
-pub trait Container: Any + Send + Sync + Debug {}
-
-
-pub trait MiddleWare: Send + Sync+Debug {
+pub trait MiddleWare: Send + Sync + Debug {
     //return is finish. if finish will be return
     fn handle(&self, req: &mut Request, res: &mut Response) -> bool;
 }
 
 #[derive(Debug)]
 pub struct Route {
-    pub container: BTreeMap<String, Box<dyn Container>>,
+    pub container: SyncBtreeMap<String, Arc<Box<dyn Any>>>,
     pub middleware: Vec<Box<dyn MiddleWare>>,
     pub handlers: HashMap<String, HandleBox>,
 }
@@ -41,7 +42,7 @@ pub struct Route {
 impl Route {
     pub fn new() -> Self {
         Self {
-            container: Default::default(),
+            container: SyncBtreeMap::new(),
             middleware: vec![],
             handlers: Default::default(),
         }
@@ -53,8 +54,24 @@ impl Route {
         });
     }
 
-    pub fn add_middleware<M: MiddleWare+'static>(&mut self,m:M){
+    pub fn add_middleware<M: MiddleWare + 'static>(&mut self, m: M) {
         self.middleware.push(Box::new(m));
+    }
+
+    pub fn insert<T: Any>(&self, key: &str, data: T) {
+        self.container.insert(key.to_string(), Arc::new(Box::new(data)));
+    }
+
+    pub fn get<T: Any>(&self, key: &str) -> Option<&T> {
+        match self.container.get(key) {
+            None => {
+                None
+            }
+            Some(b) => {
+                let r: Option<&T> = b.downcast_ref();
+                r
+            }
+        }
     }
 }
 
@@ -63,7 +80,7 @@ impl Handler for Route {
     fn handle<'a, 'k>(&'a self, mut req: Request<'a, 'k>, mut res: Response<'a, Fresh>) {
         for x in &self.middleware {
             //finish?.this is safety
-            if x.handle(&mut req,  &mut res) {
+            if x.handle(&mut req, &mut res) {
                 return;
             }
         }
