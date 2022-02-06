@@ -4,12 +4,14 @@ extern crate env_logger;
 
 use std::fs::File;
 use std::ops::Deref;
+use std::sync::Arc;
 use cdbc::Executor;
 use cdbc_sqlite::SqlitePool;
-use cogo::std::lazy::sync::Lazy;
+use cogo_http::route::Route;
 use cogo_http::server::{Request, Response};
 
-#[derive(Debug,serde::Serialize,serde::Deserialize)]
+/// table
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct BizActivity {
     pub id: Option<String>,
     pub name: Option<String>,
@@ -17,32 +19,64 @@ pub struct BizActivity {
 }
 
 impl BizActivity {
-    pub fn find_all() -> cdbc::Result<Vec<Self>> {
-        let data = cdbc::row_scans!(
-        cdbc::query("select * from biz_activity limit 1")
-        .fetch_all(&*Pool)?,
-        BizActivity{id:None,name:None,delete_flag:None})?;
+    pub fn find_all(pool: &SqlitePool) -> cdbc::Result<Vec<Self>> {
+        let rows = cdbc::query("select * from biz_activity limit 1")
+            .fetch_all(pool)?;
+        let data = cdbc::row_scans!(rows,BizActivity{id:None,name:None,delete_flag:None})?;
         Ok(data)
+    }
+
+    pub fn count(pool: &SqlitePool) -> cdbc::Result<i32> {
+        pub struct Count {
+            pub count: i32,
+        }
+        let row = cdbc::query("select count(1) as count from biz_activity limit 1")
+            .fetch_one(pool)?;
+        let c = cdbc::row_scan!(row,Count{count:0})?;
+        Ok(c.count)
+    }
+}
+
+pub trait Controllers {
+    fn find_all(&self, req: Request, res: Response);
+    fn count(&self, req: Request, res: Response);
+}
+
+impl Controllers for Route {
+    fn find_all(&self, req: Request, res: Response) {
+        let pool = self.get::<SqlitePool>("sqlite");
+        let records = BizActivity::find_all(pool.unwrap()).unwrap();
+        res.send(serde_json::json!(records).to_string().as_bytes());
+    }
+    fn count(&self, req: Request, res: Response) {
+        let pool = self.get::<SqlitePool>("sqlite");
+        let records = BizActivity::count(pool.unwrap()).unwrap();
+        res.send(serde_json::json!(records).to_string().as_bytes());
     }
 }
 
 
-fn hello(req: Request, res: Response) {
-    let records = BizActivity::find_all().unwrap();
-    res.send(serde_json::json!(records).to_string().as_bytes());
-}
-
 fn main() {
-    //or use  fast_log::init_log();
     env_logger::init().unwrap();
 
+    let mut route = Arc::new(Route::new());
+    //insert pool
+    route.insert("sqlite", make_sqlite().unwrap());
+
+    let route_clone = route.clone();
+    route.handle_fn("/", move |req: Request, res: Response| {
+        route_clone.find_all(req, res);
+    });
+    let route_clone = route.clone();
+    route.handle_fn("/count", move |req: Request, res: Response| {
+        route_clone.count(req, res);
+    });
+
     let _listening = cogo_http::Server::http("0.0.0.0:3000").unwrap()
-        .handle(hello);
+        .handle(route);
     println!("Listening on http://127.0.0.1:3000");
+    println!("Listening on http://127.0.0.1:3000/count");
 }
-
-
-pub static Pool: Lazy<SqlitePool> = Lazy::new(|| { make_sqlite().unwrap() });
 
 fn make_sqlite() -> cdbc::Result<SqlitePool> {
     //first. create sqlite dir/file
