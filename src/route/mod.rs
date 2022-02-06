@@ -28,7 +28,7 @@ pub trait Container: Any + Send + Sync + Debug {}
 
 pub trait MiddleWare: Send + Sync+Debug {
     //return is finish. if finish will be return
-    fn handle(&self, req: &mut Request<'_, '_>, res: &mut Response<'_,Fresh>) -> bool;
+    fn handle(&self, req: &mut Request, res: &mut Response) -> bool;
 }
 
 #[derive(Debug)]

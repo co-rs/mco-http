@@ -18,7 +18,7 @@ fn hello(req: Request, res: Response) {
 pub struct MyMiddleWare {}
 
 impl MiddleWare for MyMiddleWare {
-    fn handle(&self, req: &mut Request<'_, '_>, res: &mut Response<'_, Fresh>) -> bool {
+    fn handle(&self, req: &mut Request, res: &mut Response) -> bool {
         println!("hello MiddleWare!");
         //return true is done
         return false;
