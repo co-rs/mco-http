@@ -182,6 +182,7 @@ pub mod version;
 pub mod multipart;
 pub mod query;
 pub mod path;
+pub mod route;
 pub mod runtime;
 
 /// Re-exporting the mime crate, for convenience.
