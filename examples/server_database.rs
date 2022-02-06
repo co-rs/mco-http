@@ -26,31 +26,25 @@ impl BizActivity {
         Ok(data)
     }
 
-    pub fn count(pool: &SqlitePool) -> cdbc::Result<i32> {
-        pub struct Count {
-            pub count: i32,
-        }
-        let row = cdbc::query("select count(1) as count from biz_activity limit 1")
-            .fetch_one(pool)?;
-        let c = cdbc::row_scan!(row,Count{count:0})?;
-        Ok(c.count)
-    }
+    // pub fn count(pool: &SqlitePool) -> cdbc::Result<i32> {
+    //     pub struct Count {
+    //         pub count: i32,
+    //     }
+    //     let row = cdbc::query("select count(1) as count from biz_activity limit 1")
+    //         .fetch_one(pool)?;
+    //     let c = cdbc::row_scan!(row,Count{count:0})?;
+    //     Ok(c.count)
+    // }
 }
 
 pub trait Controllers {
     fn find_all(&self, req: Request, res: Response);
-    fn count(&self, req: Request, res: Response);
 }
 
 impl Controllers for Route {
     fn find_all(&self, req: Request, res: Response) {
         let pool = self.get::<SqlitePool>("sqlite");
         let records = BizActivity::find_all(pool.unwrap()).unwrap();
-        res.send(serde_json::json!(records).to_string().as_bytes());
-    }
-    fn count(&self, req: Request, res: Response) {
-        let pool = self.get::<SqlitePool>("sqlite");
-        let records = BizActivity::count(pool.unwrap()).unwrap();
         res.send(serde_json::json!(records).to_string().as_bytes());
     }
 }
@@ -67,15 +61,9 @@ fn main() {
     route.handle_fn("/", move |req: Request, res: Response| {
         route_clone.find_all(req, res);
     });
-    let route_clone = route.clone();
-    route.handle_fn("/count", move |req: Request, res: Response| {
-        route_clone.count(req, res);
-    });
-
     let _listening = cogo_http::Server::http("0.0.0.0:3000").unwrap()
         .handle(route);
     println!("Listening on http://127.0.0.1:3000");
-    println!("Listening on http://127.0.0.1:3000/count");
 }
 
 fn make_sqlite() -> cdbc::Result<SqlitePool> {
