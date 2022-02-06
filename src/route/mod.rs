@@ -23,7 +23,7 @@ impl Debug for HandleBox{
 }
 
 
-pub trait Container: Send + Sync+Debug {}
+pub trait Container: Any + Send + Sync + Debug {}
 
 
 pub trait MiddleWare: Send + Sync+Debug {
