@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use cogo_http::query::read_query;
 use cogo_http::route::Route;
 use cogo_http::server::{Request, Response};
@@ -35,10 +36,12 @@ fn main() {
         res.send(format!("fn").as_bytes());
     });
 
+    let route = Arc::new(route);
     let _listening = cogo_http::Server::http("0.0.0.0:3000").unwrap()
-        .handle(route);
+        .handle(route.clone());
     println!("Listening on http://127.0.0.1:3000");
-    println!("please click http://127.0.0.1:3000/?q=query_info&b=123");
-    println!("please click http://127.0.0.1:3000/js");
-    println!("please click http://127.0.0.1:3000/fn");
+
+    for x in &route.handlers {
+        println!("please click http://127.0.0.1:3000{}{}",x.0,{if x.0.eq("/"){ "?a=b&c=2" }else{ "" }});
+    }
 }
