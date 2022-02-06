@@ -20,17 +20,21 @@ use cogo_http::server::{Request, Response};
 pub static PngChannel:Lazy<(Sender<Vec<u8>>,Receiver<Vec<u8>>)> = Lazy::new(||{ chan!(1) });
 
 fn download(mut req: Request, res: Response) {
+    //first set header content type
     res.headers.set(ContentType::png());
 
+    //next,req thread new an png to me
     PngChannel.0.send(vec![]);
     let png=PngChannel.1.recv().unwrap_or_default();
 
+    //return data
     res.send(&png).unwrap();
 }
 
 fn main() {
     env_logger::init().unwrap();
 
+    //Heavy computing tasks should be performed by threads
     std::thread::spawn(||{
        loop{
            match PngChannel.1.recv(){
