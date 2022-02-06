@@ -2,14 +2,15 @@
 extern crate cogo_http;
 extern crate env_logger;
 
+use cogo_http::path::Path;
 use cogo_http::query::read_query;
 use cogo_http::server::{Request, Response};
 
-// http://127.0.0.1:3000?q=query_info
+// http://127.0.0.1:3000/1/2/3
 fn hello(req: Request, res: Response) {
-    let q = read_query(&req.uri.to_string());
-    let param =  q.get("q");
-    res.send(param.unwrap_or(&"not find param q".to_string()).as_bytes()).unwrap();
+    let p = Path::new("/{a}/{b}/");
+    let param =  p.read_path_data(&req.uri.to_string());
+    res.send(format!("{:?}",param).as_bytes()).unwrap();
 }
 
 fn main() {
@@ -17,5 +18,5 @@ fn main() {
     let _listening = cogo_http::Server::http("0.0.0.0:3000").unwrap()
         .handle(hello);
     println!("Listening on http://127.0.0.1:3000");
-    println!("please click http://127.0.0.1:3000?q=query_info");
+    println!("please click http://127.0.0.1:3000/1/2/3");
 }
