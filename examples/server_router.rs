@@ -31,9 +31,14 @@ fn main() {
     route.add_middleware(MyMiddleWare {});
     route.handle_fn("/", hello);
     route.handle_fn("/js", js);
+    route.handle_fn("/fn", |req: Request, res: Response| {
+        res.send(format!("fn").as_bytes());
+    });
 
     let _listening = cogo_http::Server::http("0.0.0.0:3000").unwrap()
         .handle(route);
     println!("Listening on http://127.0.0.1:3000");
     println!("please click http://127.0.0.1:3000/?q=query_info&b=123");
+    println!("please click http://127.0.0.1:3000/js");
+    println!("please click http://127.0.0.1:3000/fn");
 }
