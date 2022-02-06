@@ -105,31 +105,8 @@ impl Handler for Route {
     }
 }
 
-impl Handler for Arc<Route>{
+impl Handler for Arc<Route> {
     fn handle<'a, 'k>(&'a self, mut req: Request<'a, 'k>, mut res: Response<'a, Fresh>) {
-        for x in &self.middleware {
-            //finish?.this is safety
-            if x.handle(&mut req, &mut res) {
-                return;
-            }
-        }
-        match &req.uri {
-            AbsolutePath(p) => {
-                match self.handlers.get(&p[0..p.find("?").unwrap_or(p.len())]) {
-                    None => {
-                        //404
-                        res.status = StatusCode::NotFound;
-                        return;
-                    }
-                    Some(h) => {
-                        h.inner.handle(req, res);
-                        return;
-                    }
-                }
-            }
-            RequestUri::AbsoluteUri(_) => {}
-            RequestUri::Authority(_) => {}
-            RequestUri::Star => {}
-        }
+        Route::handle(self, req, res)
     }
 }
