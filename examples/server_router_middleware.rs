@@ -4,19 +4,26 @@ use cogo_http::route::Route;
 use cogo_http::server::{Request, Response};
 use cogo_http::route::MiddleWare;
 
+// MiddleWare
+#[derive(Debug)]
+pub struct MyMiddleWare {}
+
+impl MiddleWare for MyMiddleWare {
+    fn handle(&self, req: &mut Request, res: &mut Response) -> bool {
+        println!("hello MiddleWare!");
+        //return true is done
+        return false;
+    }
+}
+
 fn main() {
     env_logger::init().unwrap();
 
     let mut route = Route::new();
+    route.add_middleware(MyMiddleWare {});
     route.handle_fn("/", |req: Request, res: Response| {
         let param = read_query(&req.uri.to_string());
         res.send(format!("{:?}", param).as_bytes()).unwrap();
-    });
-    route.handle_fn("/js", |req: Request, res: Response| {
-        res.send("{\"name\":\"joe\"}".as_bytes()).unwrap();
-    });
-    route.handle_fn("/fn", |req: Request, res: Response| {
-        res.send(format!("fn").as_bytes());
     });
 
     let route = Arc::new(route);
