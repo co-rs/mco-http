@@ -73,6 +73,19 @@ impl Route {
             }
         }
     }
+
+    /// index will get from container.if not exist will be panic!
+    pub fn index<T: Any>(&self, key: &str) -> &T {
+        match self.container.get(key) {
+            None => {
+                panic!("key:{} Does not exist in the container",key)
+            }
+            Some(b) => {
+                let r: Option<&T> = b.downcast_ref();
+                r.unwrap()
+            }
+        }
+    }
 }
 
 

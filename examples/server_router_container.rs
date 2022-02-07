@@ -10,8 +10,9 @@ pub trait Api {
 
 impl Api for Route {
     fn js(&self, req: Request, res: Response) {
-        let name = self.get::<&str>("name");
-        res.send(format!("server name:{:?}", name).as_bytes()).unwrap();
+        let name = self.index::<&str>("name");
+        let age = self.index::<i32>("age");
+        res.send(format!("server name:{},age:{}", name, age).as_bytes()).unwrap();
     }
 }
 
@@ -21,6 +22,7 @@ fn main() {
 
     let mut route = Arc::new(Route::new());
     route.insert("name", "joe");
+    route.insert("age", 18);
 
     let route_clone = route.clone();
     route.handle_fn("/", move |req: Request, res: Response| {
