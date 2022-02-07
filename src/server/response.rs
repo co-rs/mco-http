@@ -75,7 +75,6 @@ impl<'a, W: Any> Response<'a, W> {
                 self.status,
                 ptr::read(&self.headers)
             );
-            mem::forget(self);
             parts
         }
     }
