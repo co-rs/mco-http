@@ -66,7 +66,7 @@ impl<'a, W: Any> Response<'a, W> {
 
     /// Deconstruct this Response into its constituent parts.
     #[inline]
-    pub fn deconstruct(self) -> (version::HttpVersion, HttpWriter<&'a mut (dyn Write + 'a)>,
+    pub fn deconstruct(&mut self) -> (version::HttpVersion, HttpWriter<&'a mut (dyn Write + 'a)>,
                                  status::StatusCode, &'a mut header::Headers) {
         unsafe {
             let parts = (
@@ -166,7 +166,7 @@ impl<'a> Response<'a, Fresh> {
     /// }
     /// ```
     #[inline]
-    pub fn send(self, body: &[u8]) -> io::Result<()> {
+    pub fn send(&mut self, body: &[u8]) -> io::Result<()> {
         self.headers.set(header::ContentLength(body.len() as u64));
         let mut stream = r#try!(self.start());
         r#try!(stream.write_all(body));
@@ -175,7 +175,7 @@ impl<'a> Response<'a, Fresh> {
 
     /// Consume this Response<Fresh>, writing the Headers and Status and
     /// creating a Response<Streaming>
-    pub fn start(mut self) -> io::Result<Response<'a, Streaming>> {
+    pub fn start(&mut self) -> io::Result<Response<'a, Streaming>> {
         let body_type = r#try!(self.write_head());
         let (version, body, status, headers) = self.deconstruct();
         let stream = match body_type {
@@ -206,7 +206,7 @@ impl<'a> Response<'a, Fresh> {
 impl<'a> Response<'a, Streaming> {
     /// Flushes all writing of a response to the client.
     #[inline]
-    pub fn end(self) -> io::Result<()> {
+    pub fn end(mut self) -> io::Result<()> {
         trace!("ending");
         let (_, body, _, _) = self.deconstruct();
         r#try!(body.end());

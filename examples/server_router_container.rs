@@ -9,7 +9,7 @@ pub trait Api {
 }
 
 impl Api for Route {
-    fn js(&self, req: Request, res: Response) {
+    fn js(&self, req: Request, mut res: Response) {
         let name = self.index::<&str>("name");
         let age = self.index::<i32>("age");
         res.send(format!("server name:{},age:{}", name, age).as_bytes()).unwrap();
