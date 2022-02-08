@@ -85,7 +85,8 @@ impl<'a, W: Any> Response<'a, W> {
         r#try!(write!(&mut self.body, "{} {}\r\n", self.version, self.status));
 
         if !self.headers.has::<header::Date>() {
-            self.headers.set(header::Date(header::HttpDate(now_utc())));
+            let date = httpdate::HttpDate::from(std::time::SystemTime::now()).to_string();
+            self.headers.set_raw("Date",vec![date.into_bytes()]);
         }
 
         let body_type = match self.status {
