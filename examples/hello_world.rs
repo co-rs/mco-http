@@ -12,10 +12,7 @@ fn hello(req: Request, res: Response) {
 fn main() {
     env_logger::init().unwrap();
 
-    let mut route = Route::new();
-    route.handle_fn("/", hello);
-
     let _listening = cogo_http::Server::http("0.0.0.0:3000").unwrap()
-        .handle(route);
+        .handle(hello);
     println!("Listening on http://127.0.0.1:3000");
 }
