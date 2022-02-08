@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use cogo_http::query::read_query;
+
 use cogo_http::route::Route;
 use cogo_http::server::{Request, Response};
 use cogo_http::route::MiddleWare;
@@ -9,8 +9,7 @@ fn main() {
 
     let mut route = Route::new();
     route.handle_fn("/", |req: Request, res: Response| {
-        let param = read_query(&req.uri.to_string());
-        res.send(format!("{:?}", param).as_bytes()).unwrap();
+        res.send(b"Hello World!").unwrap();
     });
     route.handle_fn("/js", |req: Request, res: Response| {
         res.send("{\"name\":\"joe\"}".as_bytes()).unwrap();
@@ -25,6 +24,6 @@ fn main() {
     println!("Listening on http://127.0.0.1:3000");
 
     for x in &route.handlers {
-        println!("please click http://127.0.0.1:3000{}{}",x.0,{if x.0.eq("/"){ "?a=b&c=2" }else{ "" }});
+        println!("please click http://127.0.0.1:3000{}",x.0);
     }
 }
