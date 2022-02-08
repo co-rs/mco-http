@@ -133,7 +133,6 @@ extern crate time;
 #[macro_use] extern crate url;
 extern crate unicase;
 extern crate httparse;
-extern crate num_cpus;
 extern crate traitobject;
 extern crate typeable;
 

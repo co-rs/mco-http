@@ -112,14 +112,9 @@ use std::io::{self, ErrorKind, BufWriter, Write};
 use std::net::{SocketAddr, ToSocketAddrs, Shutdown};
 use std::sync::Arc;
 use std::time::Duration;
-
-use num_cpus;
-
 pub use self::request::Request;
 pub use self::response::Response;
-
 pub use crate::net::{Fresh, Streaming};
-
 use crate::{Error, runtime};
 use crate::buffer::BufReader;
 use crate::header::{Headers, Expect, Connection};
@@ -306,7 +301,9 @@ impl<H: Handler + 'static> Worker<H> {
             }
         };
 
-        let stream2: &mut dyn NetworkStream = &mut stream.clone();
+        //safety will forget copy s
+        let mut s:S = unsafe { std::mem::transmute_copy(stream) };
+        let stream2: &mut dyn NetworkStream = &mut s;
         let mut rdr = BufReader::new(stream2);
         let mut wrt = BufWriter::new(stream);
 
@@ -325,6 +322,7 @@ impl<H: Handler + 'static> Worker<H> {
         if let Err(e) = rdr.get_mut().close(Shutdown::Both) {
             info!("failed to close stream: {}", e);
         }
+        std::mem::forget(s);
     }
 
     fn set_read_timeout(&self, s: &dyn NetworkStream, timeout: Option<Duration>) -> io::Result<()> {
