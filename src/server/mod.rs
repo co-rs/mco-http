@@ -157,7 +157,7 @@ impl Default for Timeouts {
     fn default() -> Timeouts {
         Timeouts {
             read: None,
-            keep_alive: Some(Duration::from_secs(5)),
+            keep_alive: Some(Duration::from_secs(0)),
         }
     }
 }
