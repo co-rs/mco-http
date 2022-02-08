@@ -17,9 +17,6 @@ use cogo::std::sync::{Receiver, Sender};
 use cogo_http::header::ContentType;
 use cogo_http::server::{Request, Response};
 
-pub static PNG_TASK: Lazy<(Sender<Vec<u8>>, Receiver<Vec<u8>>)> = Lazy::new(|| { chan!(1) });
-pub static PNG_DATA: Lazy<(Sender<Vec<u8>>, Receiver<Vec<u8>>)> = Lazy::new(|| { chan!(1) });
-
 /// Draw a captcha code and display it on the web
 fn download(mut req: Request, res: Response) {
     //first set header content type
