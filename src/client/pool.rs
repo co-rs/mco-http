@@ -78,7 +78,7 @@ impl<C: NetworkConnector> Pool<C> {
                 config: Config2 {
                     idle_timeout: None,
                     max_idle: config.max_idle,
-                }
+                },
             })),
             stale_check: None,
         }
@@ -90,7 +90,7 @@ impl<C: NetworkConnector> Pool<C> {
     }
 
     pub fn set_stale_check<F>(&mut self, callback: F)
-    where F: Fn(StaleCheck<C::Stream>) -> Stale + Send + Sync + 'static {
+        where F: Fn(StaleCheck<C::Stream>) -> Stale + Send + Sync + 'static {
         self.stale_check = Some(Box::new(callback));
     }
 
@@ -160,14 +160,13 @@ impl<C: NetworkConnector<Stream=S>, S: NetworkStream + Send> NetworkConnector fo
             Some(inner) => {
                 trace!("Pool had connection, using");
                 inner
-            },
+            }
             None => PooledStreamInner {
                 key: key.clone(),
                 idle: None,
                 stream: r#try!(self.connector.connect(host, port, scheme)),
                 previous_response_expected_no_content: false,
             }
-
         };
         Ok(PooledStream {
             has_read: false,
@@ -253,11 +252,11 @@ pub struct PooledStream<S> {
 impl<S> fmt::Debug for PooledStream<S> where S: fmt::Debug + 'static {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("PooledStream")
-           .field("inner", &self.inner)
-           .field("has_read", &self.has_read)
-           .field("is_closed", &self.is_closed.load(Ordering::Relaxed))
-           .field("pool", &self.pool)
-           .finish()
+            .field("inner", &self.inner)
+            .field("has_read", &self.has_read)
+            .field("is_closed", &self.is_closed.load(Ordering::Relaxed))
+            .field("pool", &self.pool)
+            .finish()
     }
 }
 
@@ -304,7 +303,7 @@ impl<S: NetworkStream> Read for PooledStream<S> {
                 // idle being some means this is a reused stream
                 Err(io::Error::new(
                     io::ErrorKind::ConnectionAborted,
-                    "Pooled stream disconnected"
+                    "Pooled stream disconnected",
                 ))
             } else {
                 Ok(0)
@@ -373,6 +372,18 @@ impl<S: NetworkStream> NetworkStream for PooledStream<S> {
         let answer = self.inner.as_ref().unwrap().previous_response_expected_no_content;
         trace!("previous_response_expected_no_content {}", answer);
         answer
+    }
+
+    fn set_nonblocking(&self, b: bool) {
+        self.inner.as_ref().unwrap().stream.set_nonblocking(b);
+    }
+
+    fn reset_io(&self) {
+        self.inner.as_ref().unwrap().stream.reset_io();
+    }
+
+    fn wait_io(&self) {
+        self.inner.as_ref().unwrap().stream.wait_io();
     }
 }
 

@@ -13,22 +13,21 @@ pub fn tunnel(proxy: (Scheme, Cow<'static, str>, u16)) -> Proxy<HttpConnector, s
         proxy: proxy,
         ssl: self::no_ssl::Plaintext,
     }
-
 }
 
 pub struct Proxy<C, S>
-where C: NetworkConnector + Send + Sync + 'static,
-      C::Stream: NetworkStream + Send + Clone,
-      S: SslClient<C::Stream> {
+    where C: NetworkConnector + Send + Sync + 'static,
+          C::Stream: NetworkStream + Send + Clone,
+          S: SslClient<C::Stream> {
     pub connector: C,
     pub proxy: (Scheme, Cow<'static, str>, u16),
     pub ssl: S,
 }
 
 impl<C, S> NetworkConnector for Proxy<C, S>
-where C: NetworkConnector + Send + Sync + 'static,
-      C::Stream: NetworkStream + Send + Clone,
-      S: SslClient<C::Stream> {
+    where C: NetworkConnector + Send + Sync + 'static,
+          C::Stream: NetworkStream + Send + Clone,
+          S: SslClient<C::Stream> {
     type Stream = Proxied<C::Stream, S::Stream>;
 
     fn connect(&self, host: &str, port: u16, scheme: &str) -> crate::Result<Self::Stream> {
@@ -40,7 +39,7 @@ where C: NetworkConnector + Send + Sync + 'static,
             "http" => {
                 self.connector.connect(self.proxy.1.as_ref(), self.proxy.2, self.proxy.0.as_ref())
                     .map(Proxied::Normal)
-            },
+            }
             "https" => {
                 let mut stream = r#try!(self.connector.connect(self.proxy.1.as_ref(), self.proxy.2, self.proxy.0.as_ref()));
                 trace!("{:?} CONNECT {}:{}", self.proxy, host, port);
@@ -58,7 +57,7 @@ where C: NetworkConnector + Send + Sync + 'static,
                         if code >= 200 && code < 300 {
                             trace!("CONNECT success = {:?}", code);
                             return self.ssl.wrap_client(stream, host)
-                                .map(Proxied::Tunneled)
+                                .map(Proxied::Tunneled);
                         } else {
                             trace!("CONNECT response = {:?}", code);
                             return Err(crate::Error::Status);
@@ -66,7 +65,7 @@ where C: NetworkConnector + Send + Sync + 'static,
                     }
                 }
                 Err(crate::Error::TooLarge)
-            },
+            }
             _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid scheme").into())
         }
     }
@@ -75,7 +74,7 @@ where C: NetworkConnector + Send + Sync + 'static,
 #[derive(Debug)]
 pub enum Proxied<T1, T2> {
     Normal(T1),
-    Tunneled(T2)
+    Tunneled(T2),
 }
 
 #[cfg(test)]
@@ -155,6 +154,27 @@ impl<T1: NetworkStream, T2: NetworkStream> NetworkStream for Proxied<T1, T2> {
             Proxied::Tunneled(ref mut s) => s.close(how)
         }
     }
+
+    fn set_nonblocking(&self, b: bool) {
+        match *self {
+            Proxied::Normal(ref s) => s.set_nonblocking(b),
+            Proxied::Tunneled(ref s) => s.set_nonblocking(b)
+        }
+    }
+
+    fn reset_io(&self) {
+        match *self {
+            Proxied::Normal(ref s) => s.reset_io(),
+            Proxied::Tunneled(ref s) => s.reset_io()
+        }
+    }
+
+    fn wait_io(&self) {
+        match *self {
+            Proxied::Normal(ref s) => s.wait_io(),
+            Proxied::Tunneled(ref s) => s.wait_io()
+        }
+    }
 }
 
 #[cfg(not(any(feature = "openssl", feature = "security-framework")))]
@@ -207,6 +227,18 @@ mod no_ssl {
 
         #[inline]
         fn close(&mut self, _how: Shutdown) -> io::Result<()> {
+            match *self {}
+        }
+
+        fn set_nonblocking(&self, b: bool) {
+            match *self {}
+        }
+
+        fn reset_io(&self) {
+            match *self {}
+        }
+
+        fn wait_io(&self) {
             match *self {}
         }
     }

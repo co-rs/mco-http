@@ -7,6 +7,7 @@ use std::mem;
 use std::sync::Arc;
 
 use std::time::Duration;
+use cogo::io::WaitIo;
 use crate::runtime::TcpListener;
 
 use typeable::Typeable;
@@ -82,12 +83,18 @@ pub trait NetworkStream: Read + Write + Any + Send + Typeable {
     // Unsure about name and implementation...
 
     #[doc(hidden)]
-    fn set_previous_response_expected_no_content(&mut self, _expected: bool) { }
+    fn set_previous_response_expected_no_content(&mut self, _expected: bool) {}
 
     #[doc(hidden)]
     fn previous_response_expected_no_content(&self) -> bool {
         false
     }
+
+    fn set_nonblocking(&self, b: bool);
+
+    fn reset_io(&self);
+
+    fn wait_io(&self);
 }
 
 /// A connector creates a NetworkStream.
@@ -120,7 +127,7 @@ impl dyn NetworkStream {
         mem::transmute(traitobject::data_mut(self))
     }
 
-    unsafe fn downcast_unchecked<T: 'static>(self: Box<dyn NetworkStream>) -> Box<T>  {
+    unsafe fn downcast_unchecked<T: 'static>(self: Box<dyn NetworkStream>) -> Box<T> {
         let raw: *mut dyn NetworkStream = mem::transmute(self);
         mem::transmute(traitobject::data_mut(raw))
     }
@@ -157,7 +164,7 @@ impl dyn NetworkStream {
     /// If the underlying type is `T`, extract it.
     #[inline]
     pub fn downcast<T: Any>(self: Box<dyn NetworkStream>)
-            -> Result<Box<T>, Box<dyn NetworkStream>> {
+                            -> Result<Box<T>, Box<dyn NetworkStream>> {
         if self.is::<T>() {
             Ok(unsafe { self.downcast_unchecked() })
         } else {
@@ -175,7 +182,7 @@ impl dyn NetworkStream + Send {
         mem::transmute(traitobject::data_mut(self))
     }
 
-    unsafe fn downcast_unchecked<T: 'static>(self: Box<dyn NetworkStream + Send>) -> Box<T>  {
+    unsafe fn downcast_unchecked<T: 'static>(self: Box<dyn NetworkStream + Send>) -> Box<T> {
         let raw: *mut dyn NetworkStream = mem::transmute(self);
         mem::transmute(traitobject::data_mut(raw))
     }
@@ -212,7 +219,7 @@ impl dyn NetworkStream + Send {
     /// If the underlying type is `T`, extract it.
     #[inline]
     pub fn downcast<T: Any>(self: Box<dyn NetworkStream + Send>)
-            -> Result<Box<T>, Box<dyn NetworkStream + Send>> {
+                            -> Result<Box<T>, Box<dyn NetworkStream + Send>> {
         if self.is::<T>() {
             Ok(unsafe { self.downcast_unchecked() })
         } else {
@@ -226,7 +233,7 @@ impl dyn NetworkStream + Send {
 pub struct HttpListener {
     listener: Arc<TcpListener>,
 
-    read_timeout : Option<Duration>,
+    read_timeout: Option<Duration>,
     write_timeout: Option<Duration>,
 }
 
@@ -235,7 +242,7 @@ impl From<TcpListener> for HttpListener {
         HttpListener {
             listener: Arc::new(listener),
 
-            read_timeout : None,
+            read_timeout: None,
             write_timeout: None,
         }
     }
@@ -366,7 +373,7 @@ impl ::std::os::unix::io::FromRawFd for HttpStream {
 impl NetworkStream for HttpStream {
     #[inline]
     fn peer_addr(&mut self) -> io::Result<SocketAddr> {
-            self.0.peer_addr()
+        self.0.peer_addr()
     }
 
     #[inline]
@@ -387,6 +394,18 @@ impl NetworkStream for HttpStream {
             Err(ref e) if e.kind() == ErrorKind::NotConnected => Ok(()),
             err => err
         }
+    }
+
+    fn set_nonblocking(&self, b: bool) {
+        self.0.set_nonblocking(b);
+    }
+
+    fn reset_io(&self) {
+        self.0.reset_io();
+    }
+
+    fn wait_io(&self) {
+        self.0.wait_io();
     }
 }
 
@@ -463,7 +482,7 @@ pub enum HttpsStream<S: NetworkStream> {
     /// A plain text stream.
     Http(HttpStream),
     /// A stream protected by SSL.
-    Https(S)
+    Https(S),
 }
 
 impl<S: NetworkStream> Read for HttpsStream<S> {
@@ -526,6 +545,27 @@ impl<S: NetworkStream> NetworkStream for HttpsStream<S> {
             HttpsStream::Https(ref mut s) => s.close(how)
         }
     }
+    #[inline]
+    fn set_nonblocking(&self, b: bool) {
+        match *self {
+            HttpsStream::Http(ref s) => s.set_nonblocking(b),
+            HttpsStream::Https(ref s) => s.set_nonblocking(b)
+        }
+    }
+    #[inline]
+    fn reset_io(&self) {
+        match *self {
+            HttpsStream::Http(ref s) => s.reset_io(),
+            HttpsStream::Https(ref s) => s.reset_io()
+        }
+    }
+    #[inline]
+    fn wait_io(&self) {
+        match *self {
+            HttpsStream::Http(ref s) => s.wait_io(),
+            HttpsStream::Https(ref s) => s.wait_io()
+        }
+    }
 }
 
 /// A Http Listener over SSL.
@@ -540,7 +580,7 @@ impl<S: SslServer> HttpsListener<S> {
     pub fn new<To: ToSocketAddrs>(addr: To, ssl: S) -> crate::Result<HttpsListener<S>> {
         HttpListener::new(addr).map(|l| HttpsListener {
             listener: l,
-            ssl: ssl
+            ssl: ssl,
         })
     }
 
@@ -548,7 +588,7 @@ impl<S: SslServer> HttpsListener<S> {
     pub fn with_listener(listener: HttpListener, ssl: S) -> HttpsListener<S> {
         HttpsListener {
             listener: listener,
-            ssl: ssl
+            ssl: ssl,
         }
     }
 }

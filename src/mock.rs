@@ -61,7 +61,7 @@ impl Read for MockStream {
                         }
                     }
                     Ok(n)
-                },
+                }
                 r => r
             }
         }
@@ -101,6 +101,12 @@ impl NetworkStream for MockStream {
         self.is_closed = true;
         Ok(())
     }
+
+    fn set_nonblocking(&self, b: bool) {}
+
+    fn reset_io(&self) {}
+
+    fn wait_io(&self) {}
 }
 
 pub struct MockConnector;

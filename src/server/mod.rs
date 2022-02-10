@@ -291,6 +291,9 @@ impl<H: Handler + 'static> Worker<H> {
     pub fn handle_connection<S>(&self, stream: &mut S) where S: NetworkStream + Clone {
         debug!("Incoming stream");
 
+        stream.set_nonblocking(true);
+        stream.reset_io();
+
         self.handler.on_connection_start();
 
         let addr = match stream.peer_addr() {
@@ -314,8 +317,11 @@ impl<H: Handler + 'static> Worker<H> {
         // //     break;
         // // }
 
+        wrt.get_mut().wait_io();
 
         self.handler.on_connection_end();
+
+
 
         debug!("keep_alive loop ending for {}", addr);
 
