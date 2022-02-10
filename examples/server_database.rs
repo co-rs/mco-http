@@ -38,13 +38,17 @@ impl BizActivity {
 }
 
 pub trait Controllers {
+    fn get_pool(&self)-> &SqlitePool;
     fn find_all(&self, req: Request, res: Response);
 }
 
 impl Controllers for Route {
+    fn get_pool(&self) -> &SqlitePool {
+        self.index::<SqlitePool>("sqlite")
+    }
+
     fn find_all(&self, req: Request, res: Response) {
-        let pool = self.get::<SqlitePool>("sqlite");
-        let records = BizActivity::find_all(pool.unwrap()).unwrap();
+        let records = BizActivity::find_all(self.get_pool()).unwrap();
         res.send(serde_json::json!(records).to_string().as_bytes());
     }
 }
