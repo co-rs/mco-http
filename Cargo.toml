@@ -28,7 +28,7 @@ nightly = []
 
 [dependencies]
 base64 = "0.9.0"
-httparse = "1.0"
+httparse = "1"
 language-tags = "0.2"
 log = "0.3"
 mime = "0.2"
