@@ -240,7 +240,17 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                 let mut stream = t_c!(stream);
                 let w = worker.clone();
                 runtime::spawn_stack_size(move || {
-                    w.handle_connection(&mut stream)
+                    #[cfg(unix)]
+                    {
+                        stream.set_nonblocking(true);
+                        loop{
+                            stream.reset_io();
+                            w.handle_connection(&mut stream);
+                            stream.wait_io();
+                        }
+                    }
+                    #[cfg(not(unix))]
+                    w.handle_connection(&mut stream);
                 }, stack_size);
             }
         }, stack_size);

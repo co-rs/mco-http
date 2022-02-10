@@ -840,12 +840,15 @@ impl<W: Write> Write for HttpWriter<W> {
 
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
-        match *self {
+        #[cfg(unix)]
+        return Ok(());
+        #[cfg(not(unix))]
+        return match *self {
             ThroughWriter(ref mut w) => w.flush(),
             ChunkedWriter(ref mut w) => w.flush(),
             SizedWriter(ref mut w, _) => w.flush(),
             EmptyWriter(ref mut w) => w.flush(),
-        }
+        };
     }
 }
 
