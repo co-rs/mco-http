@@ -59,4 +59,5 @@ cdbc = "0.1"
 # cdbc-mysql,cdbc-pg... and more...
 cdbc-sqlite = "0.1"
 #captcha
+lodepng = "~3.5.2"
 captcha = "0.0.8"
