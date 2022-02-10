@@ -244,16 +244,22 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                     #[cfg(unix)]
                         {
                             stream.set_nonblocking(true);
-                            let mut empty_num = 0;
-                            loop {
-                                stream.reset_io();
-                                let reads = w.handle_connection(&mut stream);
-                                stream.wait_io();
-                                if reads == 0 {
-                                    empty_num += 1;
-                                    if empty_num >= 100 {
-                                        break;
+                            stream.reset_io();
+                            let time_out = w.handle_connection(&mut stream);
+                            match time_out {
+                                Some(v) => {
+                                    let d = std::time::Instant::now();
+                                    loop {
+                                        stream.reset_io();
+                                        w.handle_connection(&mut stream);
+                                        stream.wait_io();
+                                        if d.elapsed() > v {
+                                            return;
+                                        }
                                     }
+                                }
+                                None => {
+                                    return;
                                 }
                             }
                         }
@@ -310,7 +316,7 @@ impl<H: Handler + 'static> Worker<H> {
         }
     }
 
-    pub fn handle_connection<S>(&self, stream: &mut S) -> usize where S: NetworkStream + Clone {
+    pub fn handle_connection<S>(&self, stream: &mut S) -> Option<Duration> where S: NetworkStream + Clone {
         debug!("Incoming stream");
         self.handler.on_connection_start();
 
@@ -318,7 +324,7 @@ impl<H: Handler + 'static> Worker<H> {
             Ok(addr) => addr,
             Err(e) => {
                 info!("Peer Name error: {:?}", e);
-                return 0;
+                return None;
             }
         };
         //safety will forget copy s
@@ -327,17 +333,24 @@ impl<H: Handler + 'static> Worker<H> {
         let mut rdr = BufReader::new(stream2);
         let mut wrt = BufWriter::new(stream);
 
+        let mut timeout = None;
         while self.keep_alive_loop(&mut rdr, &mut wrt, addr) {
             if let Err(e) = self.set_read_timeout(*rdr.get_ref(), self.timeouts.keep_alive) {
                 info!("set_read_timeout keep_alive {:?}", e);
                 break;
             }
+            match self.timeouts.keep_alive.as_ref() {
+                None => {}
+                Some(v) => {
+                    timeout = Some(v.clone());
+                }
+            }
         }
         self.handler.on_connection_end();
         debug!("keep_alive loop ending for {}", addr);
-        let len = rdr.get_buf().len();
+
         std::mem::forget(s);
-        len
+        timeout
     }
 
     fn set_read_timeout(&self, s: &dyn NetworkStream, timeout: Option<Duration>) -> io::Result<()> {
