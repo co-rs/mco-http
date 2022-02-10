@@ -143,7 +143,7 @@ pub struct Server<L = HttpListener> {
 }
 
 #[derive(Clone, Copy, Debug)]
-struct Timeouts {
+pub struct Timeouts {
     read: Option<Duration>,
     keep_alive: Option<Duration>,
 }
@@ -275,20 +275,20 @@ fn handle_task<H, L>(mut server: Server<L>, handler: H, tasks: usize) -> crate::
     })
 }
 
-struct Worker<H: Handler + 'static> {
+pub struct Worker<H: Handler + 'static> {
     handler: H,
     timeouts: Timeouts,
 }
 
 impl<H: Handler + 'static> Worker<H> {
-    fn new(handler: H, timeouts: Timeouts) -> Worker<H> {
+    pub fn new(handler: H, timeouts: Timeouts) -> Worker<H> {
         Worker {
             handler: handler,
             timeouts: timeouts,
         }
     }
 
-    fn handle_connection<S>(&self, stream: &mut S) where S: NetworkStream + Clone {
+    pub fn handle_connection<S>(&self, stream: &mut S) where S: NetworkStream + Clone {
         debug!("Incoming stream");
 
         self.handler.on_connection_start();

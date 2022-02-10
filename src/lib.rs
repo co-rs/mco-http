@@ -163,9 +163,9 @@ macro_rules! todo(
     })
 );
 
-#[cfg(test)]
+//#[cfg(test)]
 #[macro_use]
-mod mock;
+pub mod mock;
 #[doc(hidden)]
 pub mod buffer;
 pub mod client;
