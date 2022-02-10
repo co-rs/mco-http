@@ -112,6 +112,7 @@ use std::io::{self, ErrorKind, BufWriter, Write};
 use std::net::{SocketAddr, ToSocketAddrs, Shutdown};
 use std::sync::Arc;
 use std::time::Duration;
+use cogo::coroutine::yield_now;
 pub use self::request::Request;
 pub use self::response::Response;
 pub use crate::net::{Fresh, Streaming};
@@ -241,16 +242,23 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                 let w = worker.clone();
                 runtime::spawn_stack_size(move || {
                     #[cfg(unix)]
-                    {
-                        stream.set_nonblocking(true);
-                        loop{
-                            stream.reset_io();
-                            w.handle_connection(&mut stream);
-                            stream.wait_io();
+                        {
+                            stream.set_nonblocking(true);
+                            let mut empty_num = 0;
+                            loop {
+                                stream.reset_io();
+                                let reads = w.handle_connection(&mut stream);
+                                stream.wait_io();
+                                if reads == 0 {
+                                    empty_num += 1;
+                                    if empty_num >= 100 {
+                                        break;
+                                    }
+                                }
+                            }
                         }
-                    }
                     #[cfg(not(unix))]
-                    w.handle_connection(&mut stream);
+                        w.handle_connection(&mut stream);
                 }, stack_size);
             }
         }, stack_size);
@@ -275,9 +283,13 @@ fn handle_task<H, L>(mut server: Server<L>, handler: H, tasks: usize) -> crate::
     debug!("tasks = {:?}", tasks);
     let pool = ListenerPool::new(server.listener);
     let worker = Worker::new(handler, server.timeouts);
-    let work = move |mut stream| worker.handle_connection(&mut stream);
+    let work = move |mut stream| {
+        worker.handle_connection(&mut stream);
+    };
 
-    let guard = runtime::spawn(move || pool.accept(work, tasks));
+    let guard = runtime::spawn(move || {
+        pool.accept(work, tasks);
+    });
 
     Ok(Listening {
         _guard: Some(guard),
@@ -298,7 +310,7 @@ impl<H: Handler + 'static> Worker<H> {
         }
     }
 
-    pub fn handle_connection<S>(&self, stream: &mut S) where S: NetworkStream + Clone {
+    pub fn handle_connection<S>(&self, stream: &mut S) -> usize where S: NetworkStream + Clone {
         debug!("Incoming stream");
         self.handler.on_connection_start();
 
@@ -306,7 +318,7 @@ impl<H: Handler + 'static> Worker<H> {
             Ok(addr) => addr,
             Err(e) => {
                 info!("Peer Name error: {:?}", e);
-                return;
+                return 0;
             }
         };
         //safety will forget copy s
@@ -323,7 +335,9 @@ impl<H: Handler + 'static> Worker<H> {
         }
         self.handler.on_connection_end();
         debug!("keep_alive loop ending for {}", addr);
+        let len = rdr.get_buf().len();
         std::mem::forget(s);
+        len
     }
 
     fn set_read_timeout(&self, s: &dyn NetworkStream, timeout: Option<Duration>) -> io::Result<()> {
