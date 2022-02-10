@@ -152,7 +152,7 @@ impl Default for Timeouts {
     fn default() -> Timeouts {
         Timeouts {
             read: None,
-            keep_alive: Some(Duration::from_secs(0)),
+            keep_alive: Some(Duration::from_secs(5)),
         }
     }
 }
@@ -291,8 +291,8 @@ impl<H: Handler + 'static> Worker<H> {
     pub fn handle_connection<S>(&self, stream: &mut S) where S: NetworkStream + Clone {
         debug!("Incoming stream");
 
-        stream.set_nonblocking(true);
-        stream.reset_io();
+        //stream.set_nonblocking(true);
+        //stream.reset_io();
 
         self.handler.on_connection_start();
 
@@ -310,24 +310,24 @@ impl<H: Handler + 'static> Worker<H> {
         let mut rdr = BufReader::new(stream2);
         let mut wrt = BufWriter::new(stream);
 
-        self.keep_alive_loop(&mut rdr, &mut wrt, addr);
-        // //TODO set read timeout
-        // // if let Err(e) = self.set_read_timeout(*rdr.get_ref(), self.timeouts.keep_alive) {
-        // //     info!("set_read_timeout keep_alive {:?}", e);
-        // //     break;
-        // // }
+        while self.keep_alive_loop(&mut rdr, &mut wrt, addr) {
+            if let Err(e) = self.set_read_timeout(*rdr.get_ref(), self.timeouts.keep_alive) {
+                info!("set_read_timeout keep_alive {:?}", e);
+                break;
+            }
+        }
 
-        wrt.get_mut().wait_io();
+
 
         self.handler.on_connection_end();
 
-
+        //wrt.get_mut().wait_io();
 
         debug!("keep_alive loop ending for {}", addr);
 
-        if let Err(e) = rdr.get_mut().close(Shutdown::Both) {
-            info!("failed to close stream: {}", e);
-        }
+        // if let Err(e) = rdr.get_mut().close(Shutdown::Both) {
+        //     info!("failed to close stream: {}", e);
+        // }
         std::mem::forget(s);
     }
 
