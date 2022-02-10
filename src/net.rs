@@ -7,7 +7,6 @@ use std::mem;
 use std::sync::Arc;
 
 use std::time::Duration;
-use cogo::io::WaitIo;
 use crate::runtime::TcpListener;
 
 use typeable::Typeable;
@@ -397,14 +396,21 @@ impl NetworkStream for HttpStream {
     }
 
     fn set_nonblocking(&self, b: bool) {
+        #[cfg(unix)]
         self.0.set_nonblocking(b);
     }
 
     fn reset_io(&self) {
+        #[cfg(unix)]
+        use cogo::io::WaitIo;
+        #[cfg(unix)]
         self.0.reset_io();
     }
 
     fn wait_io(&self) {
+        #[cfg(unix)]
+        use cogo::io::WaitIo;
+        #[cfg(unix)]
         self.0.wait_io();
     }
 }
