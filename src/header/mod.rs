@@ -14,9 +14,9 @@
 //!
 //! # Defining Custom Headers
 //!
-//! Hyper provides many of the most commonly used headers in HTTP. If
+//! cogo-http provides many of the most commonly used headers in HTTP. If
 //! you need to define a custom header, it's easy to do while still taking
-//! advantage of the type system. Hyper includes a `header!` macro for defining
+//! advantage of the type system. cogo-http includes a `header!` macro for defining
 //! many wrapper-style headers.
 //!
 //! ```
