@@ -14,42 +14,31 @@
 ```rust
 #[deny(unused_variables)]
 extern crate cogo_http;
-extern crate env_logger;
-extern crate serde_json;
 
-use std::io::Read;
-use cogo_http::multipart::mult_part::read_formdata;
+use cogo_http::route::Route;
 use cogo_http::server::{Request, Response};
 
-
-// read form-data
-fn hello(mut req: Request, res: Response) {
-    let form = read_formdata(&mut req.body, &req.headers,None).unwrap();
-    res.send(serde_json::json!(form.fields).to_string().as_bytes()).unwrap();
+fn hello(req: Request, res: Response) {
+    res.send(b"Hello World!").unwrap();
 }
 
 fn main() {
-    env_logger::init().unwrap();
     let _listening = cogo_http::Server::http("0.0.0.0:3000").unwrap()
-        .handle(hello).unwrap();
+        .handle(hello);
     println!("Listening on http://127.0.0.1:3000");
 }
+
 ```
 
 ## example-client
 ```rust
 extern crate cogo_http;
-extern crate env_logger;
 
-use std::env;
 use std::io;
-
 use cogo_http::Client;
 use cogo_http::header::Connection;
 
 fn main() {
-    env_logger::init().unwrap();
-
     let mut url = "http://www.baidu.com".to_string();
 
     let client = Client::new();
