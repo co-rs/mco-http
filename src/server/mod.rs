@@ -302,18 +302,18 @@ impl<H: Handler + 'static> Worker<H> {
         };
 
         //safety will forget copy s
-        let mut s:S = unsafe { std::mem::transmute_copy(stream) };
+        let mut s: S = unsafe { std::mem::transmute_copy(stream) };
         let stream2: &mut dyn NetworkStream = &mut s;
         let mut rdr = BufReader::new(stream2);
         let mut wrt = BufWriter::new(stream);
 
-        while self.keep_alive_loop(&mut rdr, &mut wrt, addr) {
-            //TODO set read timeout
-            // if let Err(e) = self.set_read_timeout(*rdr.get_ref(), self.timeouts.keep_alive) {
-            //     info!("set_read_timeout keep_alive {:?}", e);
-            //     break;
-            // }
-        }
+        self.keep_alive_loop(&mut rdr, &mut wrt, addr);
+        // //TODO set read timeout
+        // // if let Err(e) = self.set_read_timeout(*rdr.get_ref(), self.timeouts.keep_alive) {
+        // //     info!("set_read_timeout keep_alive {:?}", e);
+        // //     break;
+        // // }
+
 
         self.handler.on_connection_end();
 
