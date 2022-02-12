@@ -172,7 +172,7 @@ impl HttpMessage for Http11Message {
                         let u1= stream.write(name.as_str().as_bytes())?;
                         let u2= stream.write(":".as_bytes())?;
                         let u3 =stream.write(value.as_bytes())?;
-                        let u4= stream.write("\n".as_bytes())?;
+                        let u4= stream.write("\r\n".as_bytes())?;
                         ws+=u1;
                         ws+=u2;
                         ws+=u3;

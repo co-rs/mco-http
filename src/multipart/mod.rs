@@ -537,7 +537,7 @@ pub fn write_multipart<S: Write>(
                     count += stream.write_all_count(name.as_str().as_bytes())?;
                     count += stream.write_all_count(b": ")?;
                     count += stream.write_all_count(value.as_bytes())?;
-                    count += stream.write_all_count(b"\n")?;
+                    count += stream.write_all_count(b"\r\n")?;
                 }
 
                 // write the blank line
@@ -552,7 +552,7 @@ pub fn write_multipart<S: Write>(
                     count += stream.write_all_count(name.as_str().as_bytes())?;
                     count += stream.write_all_count(b": ")?;
                     count += stream.write_all_count(value.as_bytes())?;
-                    count += stream.write_all_count(b"\n")?;
+                    count += stream.write_all_count(b"\r\n")?;
                 }
 
                 // write the blank line
@@ -576,7 +576,7 @@ pub fn write_multipart<S: Write>(
                     count += stream.write_all_count(name.as_str().as_bytes())?;
                     count += stream.write_all_count(b": ")?;
                     count += stream.write_all_count(value.as_bytes())?;
-                    count += stream.write_all_count(b"\n")?;
+                    count += stream.write_all_count(b"\r\n")?;
                 }
 
                 // write the blank line
@@ -631,7 +631,7 @@ pub fn write_multipart_chunked<S: Write>(
                     write_chunk(stream, name.as_str().as_bytes())?;
                     write_chunk(stream, b": ")?;
                     write_chunk(stream, value.as_bytes())?;
-                    write_chunk(stream, b"\n")?;
+                    write_chunk(stream, b"\r\n")?;
                 }
 
                 // write the blank line
@@ -646,7 +646,7 @@ pub fn write_multipart_chunked<S: Write>(
                     write_chunk(stream, name.as_str().as_bytes())?;
                     write_chunk(stream, b": ")?;
                     write_chunk(stream, value.as_bytes())?;
-                    write_chunk(stream, b"\n")?;
+                    write_chunk(stream, b"\r\n")?;
                 }
 
                 // write the blank line
@@ -670,7 +670,7 @@ pub fn write_multipart_chunked<S: Write>(
                     write_chunk(stream, k.as_str().as_bytes())?;
                     write_chunk(stream, b": ")?;
                     write_chunk(stream, v.as_bytes())?;
-                    write_chunk(stream, b"\n")?;
+                    write_chunk(stream, b"\r\n")?;
                 }
 
                 // write the blank line

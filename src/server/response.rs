@@ -126,7 +126,7 @@ impl<'a, W: Any> Response<'a, W> {
             self.body.write(name.as_str().as_bytes())?;
             self.body.write(":".as_bytes())?;
             self.body.write(value.as_bytes())?;
-            self.body.write("\n".as_bytes())?;
+            self.body.write("\r\n".as_bytes())?;
         }
 
         r#try!(write!(&mut self.body, "{}", LINE_ENDING));
