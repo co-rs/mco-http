@@ -65,17 +65,17 @@ use std::borrow::Cow;
 use std::default::Default;
 use std::io::{self, copy, Read};
 use std::fmt;
+use std::str::FromStr;
 
 use std::time::Duration;
+use http::{HeaderValue, Uri};
+use http::uri::InvalidUri;
 
 use url::Url;
 use url::ParseError as UrlError;
-
-use crate::header::{Headers, Header, HeaderFormat};
-use crate::header::{ContentLength, Host, Location};
 use crate::method::Method;
 use crate::net::{NetworkConnector, NetworkStream, SslClient};
-use crate::Error;
+use crate::{Error, header_value};
 
 use self::proxy::{Proxy, tunnel};
 use self::scheme::Scheme;
@@ -100,22 +100,21 @@ pub struct Client {
     redirect_policy: RedirectPolicy,
     read_timeout: Option<Duration>,
     write_timeout: Option<Duration>,
-    proxy: Option<(Scheme, Cow<'static, str>, u16)>
+    proxy: Option<(Scheme, Cow<'static, str>, u16)>,
 }
 
 impl fmt::Debug for Client {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("Client")
-           .field("redirect_policy", &self.redirect_policy)
-           .field("read_timeout", &self.read_timeout)
-           .field("write_timeout", &self.write_timeout)
-           .field("proxy", &self.proxy)
-           .finish()
+            .field("redirect_policy", &self.redirect_policy)
+            .field("read_timeout", &self.read_timeout)
+            .field("write_timeout", &self.write_timeout)
+            .field("proxy", &self.proxy)
+            .finish()
     }
 }
 
 impl Client {
-
     /// Create a new Client.
     pub fn new() -> Client {
         Client::with_pool_config(Default::default())
@@ -128,7 +127,7 @@ impl Client {
 
     /// Create a Client with an HTTP proxy to a (host, port).
     pub fn with_http_proxy<H>(host: H, port: u16) -> Client
-    where H: Into<Cow<'static, str>> {
+        where H: Into<Cow<'static, str>> {
         let host = host.into();
         let proxy = tunnel((Scheme::Http, host.clone(), port));
         let mut client = Client::with_connector(Pool::with_connector(Default::default(), proxy));
@@ -138,10 +137,9 @@ impl Client {
 
     /// Create a Client using a proxy with a custom connector and SSL client.
     pub fn with_proxy_config<C, S>(proxy_config: ProxyConfig<C, S>) -> Client
-    where C: NetworkConnector + Send + Sync + 'static,
-          C::Stream: NetworkStream + Send + Clone,
-          S: SslClient<C::Stream> + Send + Sync + 'static {
-
+        where C: NetworkConnector + Send + Sync + 'static,
+              C::Stream: NetworkStream + Send + Clone,
+              S: SslClient<C::Stream> + Send + Sync + 'static {
         let scheme = proxy_config.scheme;
         let host = proxy_config.host;
         let port = proxy_config.port;
@@ -161,7 +159,7 @@ impl Client {
 
     /// Create a new client with a specific connector.
     pub fn with_connector<C, S>(connector: C) -> Client
-    where C: NetworkConnector<Stream=S> + Send + Sync + 'static, S: NetworkStream + Send {
+        where C: NetworkConnector<Stream=S> + Send + Sync + 'static, S: NetworkStream + Send {
         Client::with_protocol(Http11Protocol::with_connector(connector))
     }
 
@@ -254,13 +252,16 @@ pub struct RequestBuilder<'a> {
     // `cogo_http::Client::new().get("x").send().unwrap();` took ~4s to
     // compile with a generic RequestBuilder, but 2s with this scheme,)
     url: Result<Url, UrlError>,
-    headers: Option<Headers>,
+    headers: Option<http::HeaderMap>,
     method: Method,
     body: Option<Body<'a>>,
 }
 
-impl<'a> RequestBuilder<'a> {
+fn empty_header() -> http::HeaderValue {
+    http::HeaderValue::from_str("").unwrap()
+}
 
+impl<'a> RequestBuilder<'a> {
     /// Set a request body to be sent.
     pub fn body<B: Into<Body<'a>>>(mut self, body: B) -> RequestBuilder<'a> {
         self.body = Some(body.into());
@@ -268,23 +269,23 @@ impl<'a> RequestBuilder<'a> {
     }
 
     /// Add additional headers to the request.
-    pub fn headers(mut self, headers: Headers) -> RequestBuilder<'a> {
+    pub fn headers(mut self, headers: http::HeaderMap) -> RequestBuilder<'a> {
         self.headers = Some(headers);
         self
     }
 
     /// Add an individual new header to the request.
-    pub fn header<H: Header + HeaderFormat>(mut self, header: H) -> RequestBuilder<'a> {
+    pub fn header(mut self, name: &'static str, value: &str) -> RequestBuilder<'a> {
         {
             let headers = match self.headers {
                 Some(ref mut h) => h,
                 None => {
-                    self.headers = Some(Headers::new());
+                    self.headers = Some(http::header::HeaderMap::new());
                     self.headers.as_mut().unwrap()
                 }
             };
 
-            headers.set(header);
+            headers.insert(name, HeaderValue::from_str(value).unwrap_or(empty_header()));
         }
         self
     }
@@ -306,24 +307,30 @@ impl<'a> RequestBuilder<'a> {
             None
         };
 
+        let mut url = url_to_uri(url)?;
+        let scheme = match url.scheme() {
+            None => { "" }
+            Some(v) => {
+                v.as_str()
+            }
+        };
+        let method = http::Method::from_str(method.as_ref())?;
         loop {
             let mut req = {
                 let (host, port) = r#try!(get_host_and_port(&url));
-                let mut message = r#try!(client.protocol.new_message(&host, port, url.scheme()));
-                if url.scheme() == "http" && client.proxy.is_some() {
+                let mut message = r#try!(client.protocol.new_message(&host, port, scheme));
+                if scheme == "http" && client.proxy.is_some() {
                     message.set_proxied(true);
                 }
-
-                let mut h = Headers::with_capacity({match headers.as_ref() {
-                    None => {1}
-                    Some(n) => {n.len()}
-                }});
-                h.set(Host {
-                    hostname: host.to_owned(),
-                    port: Some(port),
+                let mut h = http::HeaderMap::with_capacity({
+                    match headers.as_ref() {
+                        None => { 1 }
+                        Some(n) => { n.len() }
+                    }
                 });
-                if let Some(ref headers) = headers {
-                    h.extend(headers.iter());
+                h.insert("Host", header_value!(&url.host().unwrap_or_default()));
+                for x in &headers {
+                    h.extend(x.clone());
                 }
                 let headers = h;
                 Request::with_headers_and_message(method.clone(), url.clone(), headers, message)
@@ -334,11 +341,15 @@ impl<'a> RequestBuilder<'a> {
 
             match (can_have_body, body.as_ref()) {
                 (true, Some(body)) => match body.size() {
-                    Some(size) => req.headers_mut().set(ContentLength(size)),
-                    None => (), // chunked, Request will add it automatically
+                    Some(size) => {
+                        req.headers_mut().insert(http::header::CONTENT_LENGTH, header_value!(&size.to_string()));
+                    }
+                    None => {} // chunked, Request will add it automatically
                 },
-                (true, None) => req.headers_mut().set(ContentLength(0)),
-                _ => () // neither
+                (true, None) => {
+                    req.headers_mut().insert(http::header::CONTENT_LENGTH, header_value!("0"));
+                }
+                _ => {} // neither
             }
             let mut streaming = r#try!(req.start());
             if let Some(mut rdr) = body.take() {
@@ -346,15 +357,14 @@ impl<'a> RequestBuilder<'a> {
             }
             let res = r#try!(streaming.send());
             if !res.status.is_redirection() {
-                return Ok(res)
+                return Ok(res);
             }
             debug!("redirect code {:?} for {}", res.status, url);
-
             let loc = {
                 // punching borrowck here
-                let loc = match res.headers.get("Location") {
+                let loc = match res.headers.get(http::header::LOCATION) {
                     Some(loc) => {
-                        Some(url.join(loc.to_str().unwrap_or_default()))
+                        Some(http::Uri::from_str(&format!("{}{}", url, loc.to_str().unwrap_or_default())))
                     }
                     None => {
                         debug!("no Location header");
@@ -367,7 +377,7 @@ impl<'a> RequestBuilder<'a> {
                     None => return Ok(res)
                 }
             };
-            url = match loc {
+            let url = match loc {
                 Ok(u) => u,
                 Err(e) => {
                     debug!("Location header had invalid URI: {:?}", e);
@@ -391,7 +401,7 @@ pub enum Body<'a> {
     /// For Readers that can know their size, like a `File`.
     SizedBody(&'a mut (dyn Read + 'a), u64),
     /// A String has a size, and uses Content-Length.
-    BufBody(&'a [u8] , usize),
+    BufBody(&'a [u8], usize),
 }
 
 impl<'a> Body<'a> {
@@ -469,9 +479,9 @@ impl<'a> IntoUrl for &'a String {
 
 /// Proxy server configuration with a custom connector and TLS wrapper.
 pub struct ProxyConfig<C, S>
-where C: NetworkConnector + Send + Sync + 'static,
-      C::Stream: NetworkStream + Clone + Send,
-      S: SslClient<C::Stream> + Send + Sync + 'static {
+    where C: NetworkConnector + Send + Sync + 'static,
+          C::Stream: NetworkStream + Clone + Send,
+          S: SslClient<C::Stream> + Send + Sync + 'static {
     scheme: Scheme,
     host: Cow<'static, str>,
     port: u16,
@@ -481,10 +491,9 @@ where C: NetworkConnector + Send + Sync + 'static,
 }
 
 impl<C, S> ProxyConfig<C, S>
-where C: NetworkConnector + Send + Sync + 'static,
-      C::Stream: NetworkStream + Clone + Send,
-      S: SslClient<C::Stream> + Send + Sync + 'static {
-
+    where C: NetworkConnector + Send + Sync + 'static,
+          C::Stream: NetworkStream + Clone + Send,
+          S: SslClient<C::Stream> + Send + Sync + 'static {
     /// Create a new `ProxyConfig`.
     #[inline]
     pub fn new<H: Into<Cow<'static, str>>>(scheme: &str, host: H, port: u16, connector: C, ssl: S) -> ProxyConfig<C, S> {
@@ -516,7 +525,7 @@ pub enum RedirectPolicy {
     /// Follow all redirects.
     FollowAll,
     /// Follow a redirect if the contained function returns true.
-    FollowIf(fn(&Url) -> bool),
+    FollowIf(fn(&http::Uri) -> bool),
 }
 
 impl fmt::Debug for RedirectPolicy {
@@ -543,22 +552,58 @@ impl Default for RedirectPolicy {
 }
 
 
-fn get_host_and_port(url: &Url) -> crate::Result<(&str, u16)> {
-    let host = match url.host_str() {
+fn url_to_uri(url: url::Url) -> Result<http::Uri, Error> {
+    match http::Uri::from_str(url.as_str()) {
+        Ok(v) => {
+            Ok(v)
+        }
+        Err(e) => {
+            Err(Error::Parse(e.to_string()))
+        }
+    }
+}
+
+fn get_host_and_port(url: &http::Uri) -> crate::Result<(&str, u16)> {
+    let host = match url.host() {
         Some(host) => host,
         None => return Err(Error::Uri(UrlError::EmptyHost)),
     };
     trace!("host={:?}", host);
-    let port = match url.port_or_known_default() {
+    let port = match url.port_u16() {
         Some(port) => port,
-        None => return Err(Error::Uri(UrlError::InvalidPort)),
+        None => {
+            match url.scheme() {
+                None => {}
+                Some(v) => {
+                    let def_port = default_port(v.as_str());
+                    match def_port {
+                        None => {}
+                        Some(port) => {
+                            trace!("port={:?}", port);
+                            return Ok((host, port));
+                        }
+                    }
+                }
+            }
+            return Err(Error::Uri(UrlError::InvalidPort));
+        }
     };
     trace!("port={:?}", port);
     Ok((host, port))
 }
 
-mod scheme {
+pub fn default_port(scheme: &str) -> Option<u16> {
+    match scheme {
+        "http" | "ws" => Some(80),
+        "https" | "wss" => Some(443),
+        "ftp" => Some(21),
+        "gopher" => Some(70),
+        _ => None,
+    }
+}
 
+
+mod scheme {
     #[derive(Clone, PartialEq, Eq, Debug, Hash)]
     pub enum Scheme {
         Http,
@@ -585,14 +630,12 @@ mod scheme {
             }
         }
     }
-
 }
 
 #[cfg(test)]
 mod tests {
     use std::io::Read;
-    use crate::header::Server;
-    use crate::http::h1::Http11Message;
+    use crate::proto::h1::Http11Message;
     use crate::mock::{MockStream, MockSsl};
     use super::{Client, RedirectPolicy};
     use super::scheme::Scheme;
@@ -637,7 +680,7 @@ mod tests {
 
         let box_message = client.protocol.new_message("127.0.0.1", 80, "http").unwrap();
         let message = box_message.downcast::<Http11Message>().unwrap();
-        let stream =  message.into_inner().downcast::<MessageStream>().unwrap().into_inner().into_normal().unwrap();
+        let stream = message.into_inner().downcast::<MessageStream>().unwrap().into_inner().into_normal().unwrap();
 
         let s = ::std::str::from_utf8(&stream.write).unwrap();
         let request_line = "GET http://127.0.0.1/foo/bar HTTP/1.1\r\n";

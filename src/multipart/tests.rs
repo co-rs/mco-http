@@ -15,8 +15,6 @@ use crate::server::Request as HyperRequest;
 
 use mock::MockStream;
 
-use crate::header::{Headers, ContentDisposition, DispositionParam, ContentType,
-                    DispositionType};
 // This is required to import the old style macros
 use mime::*;
 
@@ -254,7 +252,7 @@ fn test_output() {
 
     let first_name = Part {
         headers: {
-            let mut h = Headers::new();
+            let mut h = http::HeaderMap::new();
             h.set(ContentType(Mime(TopLevel::Text, SubLevel::Plain, vec![])));
             h.set(ContentDisposition {
                 disposition: DispositionType::Ext("form-data".to_owned()),
@@ -267,7 +265,7 @@ fn test_output() {
 
     let last_name = Part {
         headers: {
-            let mut h = Headers::new();
+            let mut h = http::HeaderMap::new();
             h.set(ContentType(Mime(TopLevel::Text, SubLevel::Plain, vec![])));
             h.set(ContentDisposition {
                 disposition: DispositionType::Ext("form-data".to_owned()),
@@ -303,7 +301,7 @@ fn test_chunked() {
 
     let first_name = Part {
         headers: {
-            let mut h = Headers::new();
+            let mut h = http::HeaderMap::new();
             h.set(ContentType(Mime(TopLevel::Text, SubLevel::Plain, vec![])));
             h.set(ContentDisposition {
                 disposition: DispositionType::Ext("form-data".to_owned()),
@@ -316,7 +314,7 @@ fn test_chunked() {
 
     let last_name = Part {
         headers: {
-            let mut h = Headers::new();
+            let mut h = http::HeaderMap::new();
             h.set(ContentType(Mime(TopLevel::Text, SubLevel::Plain, vec![])));
             h.set(ContentDisposition {
                 disposition: DispositionType::Ext("form-data".to_owned()),

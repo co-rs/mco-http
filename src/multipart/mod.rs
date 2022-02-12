@@ -9,6 +9,7 @@ pub mod error;
 pub mod mult_part;
 pub mod byte_buf;
 
+mod charset;
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
@@ -23,32 +24,35 @@ use std::borrow::{BorrowMut, Cow};
 use std::cell::RefCell;
 use std::fmt::{Debug, Formatter};
 use std::ops::{DerefMut, Drop};
+use std::str::FromStr;
 use std::sync::Arc;
 use encoding::{all, Encoding, DecoderTrap};
 use textnonce::TextNonce;
 use mime::{Attr, Mime, TopLevel, Value};
 use buf_read_ext::BufReadExt;
-use crate::header::{Charset, ContentDisposition, ContentType, DispositionParam, DispositionType, Headers};
+use http::header::{HeaderName, InvalidHeaderName};
+use http::HeaderValue;
+use charset::*;
+use crate::{header_name, header_value};
 
+pub trait ReadWrite: Write + Read {}
 
-pub trait ReadWrite:Write+Read{
-
-}
-
-impl<T> ReadWrite for T where T:Read+Write  {}
+impl<T> ReadWrite for T where T: Read + Write {}
 
 /// A multipart part which is not a file (stored in memory)
 #[derive(Clone, Debug, PartialEq)]
 pub struct Part {
-    pub headers: Headers,
+    pub headers: http::HeaderMap,
     pub body: Vec<u8>,
 }
 
 impl Part {
     /// Mime content-type specified in the header
     pub fn content_type(&self) -> Option<Mime> {
-        let ct: Option<&ContentType> = self.headers.get();
-        ct.map(|ref ct| ct.0.clone())
+        let ct = self.headers.get(http::header::CONTENT_TYPE);
+        ct.map(|ref ct| {
+            Mime::from_str(ct.to_str().unwrap_or_default()).unwrap()
+        })
     }
 }
 
@@ -56,41 +60,41 @@ impl Part {
 /// was received as part of `multipart/*` parsing.
 pub struct FilePart {
     /// The headers of the part
-    pub headers: Headers,
+    pub headers: http::HeaderMap,
     /// Optionally, the size of the file.  This is filled when multiparts are parsed, but is
     /// not necessary when they are generated.
     pub size: Option<usize>,
 
-    pub path:PathBuf,
+    pub path: PathBuf,
 
     pub key: String,
 
     pub write: Option<Box<dyn ReadWrite>>,
 }
 
-impl Clone for FilePart{
+impl Clone for FilePart {
     fn clone(&self) -> Self {
-        Self{
+        Self {
             headers: self.headers.clone(),
             size: self.size.clone(),
             path: Default::default(),
             key: "".to_string(),
-            write: None
+            write: None,
         }
     }
 }
 
-impl Debug for FilePart{
+impl Debug for FilePart {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FilePart")
-            .field("headers",&self.headers)
-            .field("size",&self.size)
+            .field("headers", &self.headers)
+            .field("size", &self.size)
             .finish()
     }
 }
 
 impl FilePart {
-    pub fn new(headers: Headers, path: PathBuf) -> FilePart
+    pub fn new(headers: http::HeaderMap, path: PathBuf) -> FilePart
     {
         FilePart {
             headers: headers,
@@ -102,7 +106,7 @@ impl FilePart {
     }
 
     /// set any Write and Read impl struct to FilePart
-    pub fn set_write<W: ReadWrite+'static>(&mut self, w: W) {
+    pub fn set_write<W: ReadWrite + 'static>(&mut self, w: W) {
         self.write = Some(Box::new(w));
     }
 
@@ -112,9 +116,9 @@ impl FilePart {
 
     /// Create a new temporary FilePart (when created this way, the file will be
     /// deleted once the FilePart object goes out of scope).
-    pub fn create(headers: Headers) -> Result<FilePart, Error> {
+    pub fn create(headers: http::HeaderMap) -> Result<FilePart, Error> {
         let cd_name: Option<String> = {
-            let cd: &ContentDisposition = match headers.get() {
+            let cd = match headers.get(http::header::CONTENT_DISPOSITION) {
                 Some(cd) => cd,
                 None => return Err(Error::MissingDisposition),
             };
@@ -132,9 +136,9 @@ impl FilePart {
     /// Filename that was specified when the file was uploaded.  Returns `Ok<None>` if there
     /// was no content-disposition header supplied.
     pub fn filename(&self) -> Result<String, Error> {
-        let cd: Option<&ContentDisposition> = self.headers.get();
+        let cd = self.headers.get(http::header::CONTENT_DISPOSITION);
         match cd {
-            Some(cd) => match get_content_disposition_filename(cd) {
+            Some(cd) => match get_content_disposition_filename(Some(&cd)) {
                 Ok(v) => { Ok(v.unwrap()) }
                 Err(e) => { Err(e) }
             },
@@ -144,8 +148,10 @@ impl FilePart {
 
     /// Mime content-type specified in the header
     pub fn content_type(&self) -> Option<Mime> {
-        let ct: Option<&ContentType> = self.headers.get();
-        ct.map(|ref ct| ct.0.clone())
+        let ct = self.headers.get(http::header::CONTENT_TYPE);
+        ct.map(|ref ct| {
+            Mime::from_str(ct.to_str().unwrap_or_default()).unwrap()
+        })
     }
 }
 
@@ -158,7 +164,7 @@ pub enum Node {
     /// A part streamed to a file
     File(FilePart),
     /// A container of nested multipart parts
-    Multipart((Headers, Vec<Node>)),
+    Multipart((http::HeaderMap, Vec<Node>)),
 }
 
 /// Parse a MIME `multipart/*` from a `Read`able stream into a `Vec` of `Node`s, streaming
@@ -191,7 +197,11 @@ pub fn read_multipart<S: Read>(
     let mut header_memory = [httparse::EMPTY_HEADER; 64];
     let headers = match httparse::parse_headers(&buf, &mut header_memory) {
         Ok(httparse::Status::Complete((_, raw_headers))) => {
-            Headers::from_raw(raw_headers).map_err(|e| From::from(e))
+            let mut h = http::HeaderMap::new();
+            for x in raw_headers {
+                h.insert(header_name!(x.name)?, header_value!(&String::from_utf8(x.value.to_vec()).unwrap_or_default()));
+            }
+            Ok(h)
         }
         Ok(httparse::Status::Partial) => Err(Error::PartialHeaders),
         Err(err) => Err(From::from(err)),
@@ -213,7 +223,7 @@ pub fn read_multipart<S: Read>(
 /// If the headers are still in the stream, use `read_multipart()` instead.
 pub fn read_multipart_body<S: Read>(
     stream: &mut S,
-    headers: &Headers,
+    headers: &http::HeaderMap,
     always_use_files: bool, f: Option<fn(name: &mut FilePart) -> std::io::Result<()>>)
     -> Result<Vec<Node>, Error>
 {
@@ -225,7 +235,7 @@ pub fn read_multipart_body<S: Read>(
 
 fn inner<R: BufRead>(
     reader: &mut R,
-    headers: &Headers,
+    headers: &http::HeaderMap,
     nodes: &mut Vec<Node>,
     always_use_files: bool,
     f: Option<fn(name: &mut FilePart) -> std::io::Result<()>>)
@@ -281,11 +291,20 @@ fn inner<R: BufRead>(
         buf.extend(ltlt.iter().cloned());
 
         // Parse the headers
-        let part_headers = {
+        let mut part_headers = {
             let mut header_memory = [httparse::EMPTY_HEADER; 4];
             match httparse::parse_headers(&buf, &mut header_memory) {
                 Ok(httparse::Status::Complete((_, raw_headers))) => {
-                    Headers::from_raw(raw_headers).map_err(|e| From::from(e))
+                    let mut h = http::HeaderMap::new();
+                    for x in raw_headers {
+                        match header_name!(x.name){
+                            Ok(header_name) => {
+                                h.insert(header_name, header_value!(&String::from_utf8(x.value.to_vec()).unwrap_or_default()));
+                            }
+                            Err(_) => {}
+                        }
+                    }
+                    Ok(h)
                 }
                 Ok(httparse::Status::Partial) => Err(Error::PartialHeaders),
                 Err(err) => Err(From::from(err)),
@@ -294,9 +313,16 @@ fn inner<R: BufRead>(
 
         // Check for a nested multipart
         let nested = {
-            let ct: Option<&ContentType> = part_headers.get();
+            let ct = part_headers.get_mut(http::header::CONTENT_TYPE);
             if let Some(ct) = ct {
-                let &ContentType(Mime(ref top_level, _, _)) = ct;
+                let Mime(ref top_level, _, _) = {
+                    match Mime::from_str(ct.to_str().unwrap_or_default()) {
+                        Ok(v) => { Ok(v) }
+                        Err(e) => {
+                            Err(crate::Error::Parse("MimeParse error".to_string()))
+                        }
+                    }
+                }?;
                 *top_level == TopLevel::Multipart
             } else {
                 false
@@ -311,15 +337,20 @@ fn inner<R: BufRead>(
         }
 
         let is_file = always_use_files || {
-            let cd: Option<&ContentDisposition> = part_headers.get();
+            let cd = part_headers.get(http::header::CONTENT_DISPOSITION);
             if cd.is_some() {
-                if cd.unwrap().disposition == DispositionType::Attachment {
+                if cd.unwrap().to_str().unwrap_or_default().contains("attachment") {
                     true
                 } else {
-                    cd.unwrap().parameters.iter().any(|x| match x {
-                        &DispositionParam::Filename(_, _, _) => true,
-                        _ => false
-                    })
+                    let v = cd.unwrap().to_str().unwrap_or_default();
+                    let mut r = false;
+                    for x in v.split(";") {
+                        if x.eq("filename") {
+                            r = true;
+                            break;
+                        }
+                    }
+                    r
                 }
             } else {
                 false
@@ -358,15 +389,20 @@ fn inner<R: BufRead>(
     }
 }
 
-/// Get the `multipart/*` boundary string from `hyper::Headers`
-pub fn get_multipart_boundary(headers: &Headers) -> Result<Vec<u8>, Error> {
+/// Get the `multipart/*` boundary string from `http::HeaderMap`
+pub fn get_multipart_boundary(headers: &http::HeaderMap) -> Result<Vec<u8>, Error> {
     // Verify that the request is 'Content-Type: multipart/*'.
-    let ct: &ContentType = match headers.get() {
+    let ct = match headers.get(http::header::CONTENT_TYPE) {
         Some(ct) => ct,
         None => return Err(Error::NoRequestContentType),
     };
-    let ContentType(ref mime) = *ct;
-    let Mime(ref top_level, _, ref params) = *mime;
+    let mime = match Mime::from_str(ct.to_str().unwrap_or_default()) {
+        Ok(v) => { Ok(v) }
+        Err(_) => {
+            Err(crate::Error::Parse("MimeParse Error".to_string()))
+        }
+    }?;
+    let Mime(ref top_level, _, ref params) = mime;
 
     if *top_level != TopLevel::Multipart {
         return Err(Error::NotMultipart);
@@ -384,20 +420,41 @@ pub fn get_multipart_boundary(headers: &Headers) -> Result<Vec<u8>, Error> {
 }
 
 #[inline]
-fn get_content_disposition_filename(cd: &ContentDisposition) -> Result<Option<String>, Error> {
-    if let Some(&DispositionParam::Filename(ref charset, _, ref bytes)) =
-    cd.parameters.iter().find(|&x| match *x {
-        DispositionParam::Filename(_, _, _) => true,
-        _ => false,
-    })
-    {
-        match charset_decode(charset, bytes) {
-            Ok(filename) => Ok(Some(filename)),
-            Err(e) => Err(Error::Decoding(e)),
+fn get_content_disposition_filename(cd: Option<&http::HeaderValue>) -> Result<Option<String>, Error> {
+    match cd {
+        None => {
+            Ok(None)
         }
-    } else {
-        Ok(None)
+        Some(v) => {
+            let vec: Vec<&str> = v.to_str().unwrap_or_default().split(";").collect();
+            let mut idx = 0;
+            for x in &vec {
+                if (*x).eq("filename") {
+                    match vec.get(idx + 1) {
+                        None => { return Ok(None); }
+                        Some(v) => {
+                            return Ok(Some(v.to_string()));
+                        }
+                    }
+                }
+                idx += 1;
+            }
+            return Ok(None);
+        }
     }
+    // if let Some(&DispositionParam::Filename(ref charset, _, ref bytes)) =
+    // cd.parameters.iter().find(|&x| match *x {
+    //     DispositionParam::Filename(_, _, _) => true,
+    //     _ => false,
+    // })
+    // {
+    //     match charset_decode(charset, bytes) {
+    //         Ok(filename) => Ok(Some(filename)),
+    //         Err(e) => Err(Error::Decoding(e)),
+    //     }
+    // } else {
+    //     Ok(None)
+    // }
 }
 
 // This decodes bytes encoded according to a hyper::header::Charset encoding, using the
@@ -476,11 +533,11 @@ pub fn write_multipart<S: Write>(
         match node {
             &mut Node::Part(ref part) => {
                 // write the part's headers
-                for header in part.headers.iter() {
-                    count += stream.write_all_count(header.name().as_bytes())?;
+                for (name, value) in part.headers.iter() {
+                    count += stream.write_all_count(name.as_str().as_bytes())?;
                     count += stream.write_all_count(b": ")?;
-                    count += stream.write_all_count(header.value_string().as_bytes())?;
-                    count += stream.write_all_count(b"\r\n")?;
+                    count += stream.write_all_count(value.as_bytes())?;
+                    count += stream.write_all_count(b"\n")?;
                 }
 
                 // write the blank line
@@ -491,18 +548,18 @@ pub fn write_multipart<S: Write>(
             }
             &mut Node::File(ref mut filepart) => {
                 // write the part's headers
-                for header in filepart.headers.iter() {
-                    count += stream.write_all_count(header.name().as_bytes())?;
+                for (name, value) in filepart.headers.iter() {
+                    count += stream.write_all_count(name.as_str().as_bytes())?;
                     count += stream.write_all_count(b": ")?;
-                    count += stream.write_all_count(header.value_string().as_bytes())?;
-                    count += stream.write_all_count(b"\r\n")?;
+                    count += stream.write_all_count(value.as_bytes())?;
+                    count += stream.write_all_count(b"\n")?;
                 }
 
                 // write the blank line
                 count += stream.write_all_count(b"\r\n")?;
 
                 // Write out the files's content
-                match file{
+                match file {
                     None => {}
                     Some(f) => {
                         f(filepart)?;
@@ -515,18 +572,18 @@ pub fn write_multipart<S: Write>(
                 let boundary = get_multipart_boundary(headers)?;
 
                 // write the multipart headers
-                for header in headers.iter() {
-                    count += stream.write_all_count(header.name().as_bytes())?;
+                for (name, value) in headers.iter() {
+                    count += stream.write_all_count(name.as_str().as_bytes())?;
                     count += stream.write_all_count(b": ")?;
-                    count += stream.write_all_count(header.value_string().as_bytes())?;
-                    count += stream.write_all_count(b"\r\n")?;
+                    count += stream.write_all_count(value.as_bytes())?;
+                    count += stream.write_all_count(b"\n")?;
                 }
 
                 // write the blank line
                 count += stream.write_all_count(b"\r\n")?;
 
                 // Recurse
-                count += write_multipart(stream, &boundary,  subnodes,file)?;
+                count += write_multipart(stream, &boundary, subnodes, file)?;
             }
         }
 
@@ -570,11 +627,11 @@ pub fn write_multipart_chunked<S: Write>(
         match node {
             &Node::Part(ref part) => {
                 // write the part's headers
-                for header in part.headers.iter() {
-                    write_chunk(stream, header.name().as_bytes())?;
+                for (name, value) in part.headers.iter() {
+                    write_chunk(stream, name.as_str().as_bytes())?;
                     write_chunk(stream, b": ")?;
-                    write_chunk(stream, header.value_string().as_bytes())?;
-                    write_chunk(stream, b"\r\n")?;
+                    write_chunk(stream, value.as_bytes())?;
+                    write_chunk(stream, b"\n")?;
                 }
 
                 // write the blank line
@@ -585,11 +642,11 @@ pub fn write_multipart_chunked<S: Write>(
             }
             &Node::File(ref filepart) => {
                 // write the part's headers
-                for header in filepart.headers.iter() {
-                    write_chunk(stream, header.name().as_bytes())?;
+                for (name, value) in filepart.headers.iter() {
+                    write_chunk(stream, name.as_str().as_bytes())?;
                     write_chunk(stream, b": ")?;
-                    write_chunk(stream, header.value_string().as_bytes())?;
-                    write_chunk(stream, b"\r\n")?;
+                    write_chunk(stream, value.as_bytes())?;
+                    write_chunk(stream, b"\n")?;
                 }
 
                 // write the blank line
@@ -609,11 +666,11 @@ pub fn write_multipart_chunked<S: Write>(
                 let boundary = get_multipart_boundary(headers)?;
 
                 // write the multipart headers
-                for header in headers.iter() {
-                    write_chunk(stream, header.name().as_bytes())?;
+                for (k, v) in headers.iter() {
+                    write_chunk(stream, k.as_str().as_bytes())?;
                     write_chunk(stream, b": ")?;
-                    write_chunk(stream, header.value_string().as_bytes())?;
-                    write_chunk(stream, b"\r\n")?;
+                    write_chunk(stream, v.as_bytes())?;
+                    write_chunk(stream, b"\n")?;
                 }
 
                 // write the blank line

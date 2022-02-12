@@ -10,8 +10,6 @@ use std::io;
 use std::time::Duration;
 
 use typeable::Typeable;
-
-use crate::header::Headers;
 use crate::proto::RawStatus;
 use crate::url::Url;
 
@@ -30,11 +28,11 @@ pub trait Protocol {
 #[derive(Clone, Debug)]
 pub struct RequestHead {
     /// The headers of the request
-    pub headers: Headers,
+    pub headers: http::HeaderMap,
     /// The method of the request
-    pub method: method::Method,
+    pub method: http::Method,
     /// The URL of the request
-    pub url: Url,
+    pub url: http::Uri,
 }
 
 /// Describes a response.

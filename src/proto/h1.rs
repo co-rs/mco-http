@@ -9,12 +9,10 @@ use std::time::Duration;
 use http::HeaderValue;
 
 use httparse;
-use url::Position as UrlPosition;
+use url::{Position as UrlPosition, Url};
 
 use crate::buffer::BufReader;
-use crate::Error;
-use crate::header::{Headers, ContentLength, TransferEncoding};
-use crate::header::Encoding::Chunked;
+use crate::{Error, header_value};
 use crate::method::{Method};
 use crate::net::{NetworkConnector, NetworkStream};
 use crate::status::StatusCode;
@@ -32,7 +30,6 @@ use crate::proto::{
     RequestHead,
     ResponseHead,
 };
-use crate::header;
 use crate::version;
 
 const MAX_INVALID_RESPONSE_BYTES: usize = 1024 * 128;
@@ -99,7 +96,7 @@ impl Stream {
 #[derive(Debug)]
 pub struct Http11Message {
     is_proxied: bool,
-    method: Option<Method>,
+    method: Option<http::Method>,
     stream: Wrapper<Stream>,
 }
 
@@ -151,14 +148,8 @@ impl HttpMessage for Http11Message {
                 }
             };
             let mut stream = BufWriter::new(stream);
-
             {
-                let uri = if is_proxied {
-                    head.url.as_ref()
-                } else {
-                    &head.url[UrlPosition::BeforePath..UrlPosition::AfterQuery]
-                };
-
+                let uri = head.url.path();
                 let version = version::HttpVersion::Http11;
                 debug!("request line: {:?} {:?} {:?}", head.method, uri, version);
                 match write!(&mut stream, "{} {} {}{}",
@@ -174,22 +165,29 @@ impl HttpMessage for Http11Message {
             }
 
             let stream = {
-                let write_headers = |mut stream: BufWriter<Box<dyn NetworkStream + Send>>, head: &RequestHead| {
+                let write_headers = |stream: &mut BufWriter<Box<dyn NetworkStream + Send>>, head: &RequestHead| -> Result<(),Error> {
                     debug!("headers={:?}", head.headers);
-                    match write!(&mut stream, "{}{}", head.headers, LINE_ENDING) {
-                        Ok(_) => Ok(stream),
-                        Err(e) => {
-                            Err((e, stream.into_inner().unwrap()))
-                        }
+                    let mut ws= 0;
+                    for (name,value) in head.headers.iter() {
+                        let u1= stream.write(name.as_str().as_bytes())?;
+                        let u2= stream.write(":".as_bytes())?;
+                        let u3 =stream.write(value.as_bytes())?;
+                        let u4= stream.write("\n".as_bytes())?;
+                        ws+=u1;
+                        ws+=u2;
+                        ws+=u3;
+                        ws+=u4;
                     }
+                    Ok(())
                 };
                 match head.method {
-                    Method::Get | Method::Head => {
-                        let writer = match write_headers(stream, &head) {
-                            Ok(w) => w,
+                    http::Method::GET | http::Method::HEAD => {
+                        let writer = match write_headers(&mut stream, &head) {
+                            Ok(w) => stream,
                             Err(e) => {
-                                res = Err(From::from(e.0));
-                                return Stream::Idle(e.1);
+                                res = Err(e);
+                                let b=stream.into_inner().unwrap();
+                                return Stream::Idle(b);
                             }
                         };
                         EmptyWriter(writer)
@@ -198,36 +196,39 @@ impl HttpMessage for Http11Message {
                         let mut chunked = true;
                         let mut len = 0;
 
-                        match head.headers.get::<header::ContentLength>() {
+                        match head.headers.get(http::header::CONTENT_LENGTH) {
                             Some(cl) => {
                                 chunked = false;
-                                len = **cl;
+                                len = cl.to_str().unwrap_or_default().parse().unwrap_or_default();
                             }
                             None => ()
                         };
 
                         // can't do in match above, thanks borrowck
                         if chunked {
-                            let encodings = match head.headers.get_mut::<header::TransferEncoding>() {
+                            let encodings = match head.headers.get_mut(http::header::TRANSFER_ENCODING) {
                                 Some(encodings) => {
-                                    //TODO: check if chunked is already in encodings. use HashSet?
-                                    encodings.push(header::Encoding::Chunked);
-                                    false
+                                    //check if chunked is already in encodings.
+                                    let estr=encodings.to_str().unwrap_or_default();
+                                    if !estr.contains("chunked"){
+                                        *encodings = header_value!(&(estr.to_string()+";chunked"));
+                                    }
+                                     false
                                 }
                                 None => true
                             };
 
                             if encodings {
-                                head.headers.set(
-                                    header::TransferEncoding(vec![header::Encoding::Chunked]))
+                                head.headers.insert("Transfer-Encoding",HeaderValue::from_static("chunked"));
                             }
                         }
 
-                        let stream = match write_headers(stream, &head) {
-                            Ok(s) => s,
+                        let stream = match write_headers(&mut stream, &head) {
+                            Ok(s) => stream,
                             Err(e) => {
-                                res = Err(From::from(e.0));
-                                return Stream::Idle(e.1);
+                                res = Err(From::from(e));
+                                let idle = stream.into_inner().unwrap();
+                                return Stream::Idle(idle);
                             }
                         };
 
@@ -251,7 +252,7 @@ impl HttpMessage for Http11Message {
 
     fn get_incoming(&mut self) -> crate::Result<ResponseHead> {
         r#try!(self.flush_outgoing());
-        let method = self.method.take().unwrap_or(Method::Get);
+        let method = self.method.take().unwrap_or(http::Method::GET);
         let mut res = Err(From::from(
             io::Error::new(io::ErrorKind::Other,
                            "Read already in progress")));
@@ -718,14 +719,14 @@ fn read_chunk_size<R: Read>(rdr: &mut R) -> io::Result<u64> {
     Ok(size)
 }
 
-fn should_have_response_body(method: &Method, status: http::StatusCode) -> bool {
+fn should_have_response_body(method: &http::Method, status: http::StatusCode) -> bool {
     trace!("should_have_response_body({:?}, {})", method, status);
     match (method, status.as_u16()) {
-        (&Method::Head, _) |
+        (&http::Method::HEAD, _) |
         (_, 100..=199) |
         (_, 204) |
         (_, 304) |
-        (&Method::Connect, 200..=299) => false,
+        (&http::Method::CONNECT, 200..=299) => false,
         _ => true
     }
 }
@@ -1035,7 +1036,7 @@ mod tests {
 
     use crate::buffer::BufReader;
     use crate::mock::MockStream;
-    use crate::http::HttpMessage;
+    use crate::proto::HttpMessage;
 
     use super::{read_chunk_size, parse_request, parse_response, Http11Message};
 

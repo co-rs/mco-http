@@ -119,7 +119,6 @@ pub use self::response::Response;
 pub use crate::net::{Fresh, Streaming};
 use crate::{Error, runtime};
 use crate::buffer::BufReader;
-use crate::header::{Headers, Expect, Connection, Header};
 use crate::proto;
 use crate::method::Method;
 use crate::net::{NetworkListener, NetworkStream, HttpListener, HttpsListener, SslServer};
@@ -442,7 +441,7 @@ impl<H: Handler + 'static> Worker<H> {
     }
 
     fn handle_expect<W: Write>(&self, req: &Request, wrt: &mut W) -> bool {
-        if req.version() == http::Version::HTTP_11 && req.headers().get(Expect::header_name()) == Some(&HeaderValue::from_static("100-continue")) {
+        if req.version() == http::Version::HTTP_11 && req.headers().get(http::header::EXPECT) == Some(&HeaderValue::from_static("100-continue")) {
             let status = self.handler.check_continue((req.method(), &req.uri(), &req.headers()));
             match write!(wrt, "{} {}\r\n\r\n", Http11, status).and_then(|_| wrt.flush()) {
                 Ok(..) => (),
@@ -527,7 +526,6 @@ impl<F> Handler for F where F: Fn(Request, Response<Fresh>), F: Sync + Send {
 
 #[cfg(test)]
 mod tests {
-    use crate::header::Headers;
     use crate::method::Method;
     use crate::mock::MockStream;
     use crate::status::StatusCode;

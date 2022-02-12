@@ -13,7 +13,6 @@ use crate::buffer::BufReader;
 use crate::net::NetworkStream;
 use crate::version::{HttpVersion};
 use crate::method::Method;
-use crate::header::{Headers, ContentLength, TransferEncoding, Header};
 use crate::proto::h1::{self, Incoming, HttpReader};
 use crate::proto::h1::HttpReader::{SizedReader, ChunkedReader, EmptyReader};
 use crate::uri::RequestUri;
@@ -50,7 +49,7 @@ impl<'a, 'b: 'a> Request<'a, 'b> {
         let body = if let Some(content_len) = headers.get(http::header::CONTENT_LENGTH) {
             let cl = content_len.to_str().unwrap_or_default().parse()?;
             SizedReader(stream, cl)
-        } else if let Some(v) = headers.get(TransferEncoding::header_name()) {
+        } else if let Some(v) = headers.get("Transfer-Encoding") {
             todo!("check for Transfer-Encoding: chunked");
             ChunkedReader(stream, None)
         } else {
@@ -134,7 +133,6 @@ impl<'a, 'b> Read for Request<'a, 'b> {
 #[cfg(test)]
 mod tests {
     use crate::buffer::BufReader;
-    use crate::header::{Host, TransferEncoding, Encoding};
     use crate::net::NetworkStream;
     use crate::mock::MockStream;
     use super::Request;

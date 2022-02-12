@@ -1,9 +1,5 @@
 //! Pieces pertaining to the HTTP message protocol.
 use std::borrow::Cow;
-
-use crate::header::Connection;
-use crate::header::ConnectionOption::{KeepAlive, Close};
-use crate::header::Headers;
 use crate::proto;
 use crate::version::HttpVersion;
 use crate::version::HttpVersion::{Http10, Http11};
@@ -22,8 +18,8 @@ pub type   RawStatus= http::StatusCode;
 /// Checks if a connection should be kept alive.
 #[inline]
 pub fn should_keep_alive(version: http::Version, headers: &http::HeaderMap) -> bool {
-    trace!("should_keep_alive( {:?}, {:?} )", version, headers.get("Connection"));
-    match (version, headers.get("Connection")) {
+    trace!("should_keep_alive( {:?}, {:?} )", version, headers.get(http::header::CONNECTION));
+    match (version, headers.get(http::header::CONNECTION)) {
         (http::Version::HTTP_10, None) => false,
         (http::Version::HTTP_10, Some(conn)) if !conn.to_str().unwrap_or_default().contains("keep-alive") => false,
         (http::Version::HTTP_11, Some(conn)) if conn.to_str().unwrap_or_default().contains("close")  => false,

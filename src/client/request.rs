@@ -3,12 +3,11 @@ use std::marker::PhantomData;
 use std::io::{self, Write};
 
 use std::time::Duration;
+use http::uri::Scheme;
 
 use url::Url;
 
 use crate::method::Method;
-use crate::header::Headers;
-use crate::header::Host;
 use crate::net::{NetworkStream, NetworkConnector, DefaultConnector, Fresh, Streaming};
 use crate::version;
 use crate::client::{Response, get_host_and_port};
@@ -21,14 +20,14 @@ use crate::proto::h1::Http11Message;
 /// The W type tracks the state of the request, Fresh vs Streaming.
 pub struct Request<W> {
     /// The target URI for this request.
-    pub url: Url,
+    pub url: http::Uri,
 
     /// The HTTP version of this request.
-    pub version: version::HttpVersion,
+    pub version: http::Version,
 
     message: Box<dyn HttpMessage>,
-    headers: Headers,
-    method: Method,
+    headers: http::HeaderMap,
+    method: http::Method,
 
     _marker: PhantomData<W>,
 }
@@ -36,11 +35,11 @@ pub struct Request<W> {
 impl<W> Request<W> {
     /// Read the Request headers.
     #[inline]
-    pub fn headers(&self) -> &Headers { &self.headers }
+    pub fn headers(&self) -> &http::HeaderMap { &self.headers }
 
     /// Read the Request method.
     #[inline]
-    pub fn method(&self) -> Method { self.method.clone() }
+    pub fn method(&self) -> http::Method { self.method.clone() }
 
     /// Set the write timeout.
     #[inline]
@@ -59,47 +58,48 @@ impl Request<Fresh> {
     /// Create a new `Request<Fresh>` that will use the given `HttpMessage` for its communication
     /// with the server. This implies that the given `HttpMessage` instance has already been
     /// properly initialized by the caller (e.g. a TCP connection's already established).
-    pub fn with_message(method: Method, url: Url, message: Box<dyn HttpMessage>)
-            -> crate::Result<Request<Fresh>> {
-        let mut headers = Headers::with_capacity(1);
+    pub fn with_message(method: http::Method, url: http::Uri, message: Box<dyn HttpMessage>)
+                        -> crate::Result<Request<Fresh>> {
+        let mut headers = http::HeaderMap::with_capacity(1);
         {
             let (host, port) = r#try!(get_host_and_port(&url));
-            headers.set(Host {
-                hostname: host.to_owned(),
-                port: Some(port),
-            });
+            headers.insert("Host", http::header::HeaderValue::from_str(&format!("{}:{}", host.to_owned(), port)).unwrap());
         }
 
         Ok(Request::with_headers_and_message(method, url, headers, message))
     }
 
     #[doc(hidden)]
-    pub fn with_headers_and_message(method: Method, url: Url, headers: Headers,  message: Box<dyn HttpMessage>)
-                -> Request<Fresh> {
+    pub fn with_headers_and_message(method: http::Method, url: http::Uri, headers: http::HeaderMap, message: Box<dyn HttpMessage>)
+                                    -> Request<Fresh> {
         Request {
             method: method,
             headers: headers,
             url: url,
-            version: version::HttpVersion::Http11,
+            version: http::Version::HTTP_11,
             message: message,
             _marker: PhantomData,
         }
     }
 
     /// Create a new client request.
-    pub fn new(method: Method, url: Url) -> crate::Result<Request<Fresh>> {
+    pub fn new(method: http::Method, url: http::Uri) -> crate::Result<Request<Fresh>> {
         let conn = DefaultConnector::default();
         Request::with_connector(method, url, &conn)
     }
 
     /// Create a new client request with a specific underlying NetworkStream.
-    pub fn with_connector<C, S>(method: Method, url: Url, connector: &C)
-        -> crate::Result<Request<Fresh>> where
+    pub fn with_connector<C, S>(method: http::Method, url: http::Uri, connector: &C)
+                                -> crate::Result<Request<Fresh>> where
         C: NetworkConnector<Stream=S>,
         S: Into<Box<dyn NetworkStream + Send>> {
+
         let stream = {
             let (host, port) = r#try!(get_host_and_port(&url));
-            r#try!(connector.connect(host, port, url.scheme())).into()
+            r#try!(connector.connect(host, port, { match url.scheme().as_ref(){
+            None => {""}
+            Some(s) => {s.as_str()}
+        }})).into()
         };
 
         Request::with_message(method, url, Box::new(Http11Message::with_stream(stream)))
@@ -132,9 +132,8 @@ impl Request<Fresh> {
 
     /// Get a mutable reference to the Request headers.
     #[inline]
-    pub fn headers_mut(&mut self) -> &mut Headers { &mut self.headers }
+    pub fn headers_mut(&mut self) -> &mut http::HeaderMap { &mut self.headers }
 }
-
 
 
 impl Request<Streaming> {
@@ -173,15 +172,15 @@ impl Write for Request<Streaming> {
 #[cfg(test)]
 mod tests {
     use std::io::Write;
-    use std::str::from_utf8;
-    use url::Url;
+    use std::str::{from_utf8, FromStr};
+    use http::Uri;
     use crate::method::Method::{Get, Head, Post};
     use crate::mock::{MockStream, MockConnector};
     use crate::net::Fresh;
-    use crate::header::{ContentLength,TransferEncoding,Encoding};
     use url::form_urlencoded;
+    use crate::header_value;
     use super::Request;
-    use crate::http::h1::Http11Message;
+    use crate::proto::h1::Http11Message;
 
     fn run_request(req: Request<Fresh>) -> Vec<u8> {
         let req = req.start().unwrap();
@@ -201,7 +200,7 @@ mod tests {
     #[test]
     fn test_get_empty_body() {
         let req = Request::with_connector(
-            Get, Url::parse("http://example.dom").unwrap(), &mut MockConnector
+            http::Method::GET, http::uri::Uri::from_str("http://example.dom").unwrap(), &mut MockConnector,
         ).unwrap();
         let bytes = run_request(req);
         let s = from_utf8(&bytes[..]).unwrap();
@@ -211,7 +210,7 @@ mod tests {
     #[test]
     fn test_head_empty_body() {
         let req = Request::with_connector(
-            Head, Url::parse("http://example.dom").unwrap(), &mut MockConnector
+            http::Method::Head, http::uri::Uri::from_str("http://example.dom").unwrap(), &mut MockConnector,
         ).unwrap();
         let bytes = run_request(req);
         let s = from_utf8(&bytes[..]).unwrap();
@@ -220,9 +219,9 @@ mod tests {
 
     #[test]
     fn test_url_query() {
-        let url = Url::parse("http://example.dom?q=value").unwrap();
+        let url = Uri::from_str("http://example.dom?q=value").unwrap();
         let req = Request::with_connector(
-            Get, url, &mut MockConnector
+            http::Method::GET, url, &mut MockConnector,
         ).unwrap();
         let bytes = run_request(req);
         let s = from_utf8(&bytes[..]).unwrap();
@@ -231,9 +230,9 @@ mod tests {
 
     #[test]
     fn test_post_content_length() {
-        let url = Url::parse("http://example.dom").unwrap();
+        let url = Uri::from_str("http://example.dom").unwrap();
         let mut req = Request::with_connector(
-            Post, url, &mut MockConnector
+            http::Method::POST, url, &mut MockConnector,
         ).unwrap();
         let mut body = String::new();
         form_urlencoded::Serializer::new(&mut body).append_pair("q", "value");
@@ -245,9 +244,9 @@ mod tests {
 
     #[test]
     fn test_post_chunked() {
-        let url = Url::parse("http://example.dom").unwrap();
+        let url = Uri::from_str("http://example.dom").unwrap();
         let req = Request::with_connector(
-            Post, url, &mut MockConnector
+            http::Method::POST, url, &mut MockConnector,
         ).unwrap();
         let bytes = run_request(req);
         let s = from_utf8(&bytes[..]).unwrap();
@@ -256,9 +255,9 @@ mod tests {
 
     #[test]
     fn test_host_header() {
-        let url = Url::parse("http://example.dom").unwrap();
+        let url = Uri::from_str("http://example.dom").unwrap();
         let req = Request::with_connector(
-            Get, url, &mut MockConnector
+            http::Method::GET, url, &mut MockConnector,
         ).unwrap();
         let bytes = run_request(req);
         let s = from_utf8(&bytes[..]).unwrap();
@@ -267,9 +266,9 @@ mod tests {
 
     #[test]
     fn test_proxy() {
-        let url = Url::parse("http://example.dom").unwrap();
+        let url = Uri::from_str("http://example.dom").unwrap();
         let mut req = Request::with_connector(
-            Get, url, &mut MockConnector
+            http::Method::GET, url, &mut MockConnector,
         ).unwrap();
         req.message.set_proxied(true);
         let bytes = run_request(req);
@@ -281,11 +280,11 @@ mod tests {
 
     #[test]
     fn test_post_chunked_with_encoding() {
-        let url = Url::parse("http://example.dom").unwrap();
+        let url = Uri::from_str("http://example.dom").unwrap();
         let mut req = Request::with_connector(
-            Post, url, &mut MockConnector
+            http::Method::POST, url, &mut MockConnector,
         ).unwrap();
-        req.headers_mut().set(TransferEncoding(vec![Encoding::Chunked]));
+        req.headers_mut().insert(http::header::TRANSFER_ENCODING,header_value!("chunked"));
         let bytes = run_request(req);
         let s = from_utf8(&bytes[..]).unwrap();
         assert!(!s.contains("Content-Length:"));
@@ -294,9 +293,9 @@ mod tests {
 
     #[test]
     fn test_write_error_closes() {
-        let url = Url::parse("http://hyper.rs").unwrap();
+        let url = Uri::from_str("http://hyper.rs").unwrap();
         let req = Request::with_connector(
-            Get, url, &mut MockConnector
+            http::Method::GET, url, &mut MockConnector,
         ).unwrap();
         let mut req = req.start().unwrap();
 

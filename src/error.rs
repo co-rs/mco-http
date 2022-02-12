@@ -5,6 +5,7 @@ use std::io::Error as IoError;
 use std::num::ParseIntError;
 use std::str::Utf8Error;
 use std::string::FromUtf8Error;
+use http::header::InvalidHeaderName;
 
 use httparse;
 use url;
@@ -26,6 +27,7 @@ use self::Error::{
 
 pub use url::ParseError;
 use crate::Error::Parse;
+use crate::multipart;
 
 /// Result type often returned from methods that can have hyper `Error`s.
 pub type Result<T> = ::std::result::Result<T, Error>;
@@ -134,6 +136,18 @@ impl From<http::uri::InvalidUri> for Error {
 impl From<ParseIntError> for Error{
     fn from(arg: ParseIntError) -> Self {
         Error::Parse(arg.to_string())
+    }
+}
+
+impl From<multipart::error::Error> for Error {
+    fn from(arg: multipart::error::Error) -> Self {
+        Self::Parse(arg.to_string())
+    }
+}
+
+impl From<InvalidHeaderName> for Error{
+    fn from(arg: InvalidHeaderName) -> Self {
+        Self::Parse(arg.to_string())
     }
 }
 

@@ -2,8 +2,6 @@
 use std::io::{self, Read};
 
 use url::Url;
-
-use crate::header;
 use crate::net::NetworkStream;
 use crate::proto::{self, RawStatus, ResponseHead, HttpMessage};
 use crate::proto::h1::Http11Message;
@@ -20,19 +18,19 @@ pub struct Response {
     /// The HTTP version of this response from the server.
     pub version: http::Version,
     /// The final URL of this response.
-    pub url: Url,
+    pub url: http::Uri,
     message: Box<dyn HttpMessage>,
 }
 
 impl Response {
     /// Creates a new response from a server.
-    pub fn new(url: Url, stream: Box<dyn NetworkStream + Send>) -> crate::Result<Response> {
+    pub fn new(url: http::Uri, stream: Box<dyn NetworkStream + Send>) -> crate::Result<Response> {
         trace!("Response::new");
         Response::with_message(url, Box::new(Http11Message::with_stream(stream)))
     }
 
     /// Creates a new response received from the server on the given `HttpMessage`.
-    pub fn with_message(url: Url, mut message: Box<dyn HttpMessage>) -> crate::Result<Response> {
+    pub fn with_message(url: http::Uri, mut message: Box<dyn HttpMessage>) -> crate::Result<Response> {
         trace!("Response::with_message");
         let ResponseHead { headers, raw_status, version } = match message.get_incoming() {
             Ok(head) => head,
@@ -101,16 +99,14 @@ impl Drop for Response {
 #[cfg(test)]
 mod tests {
     use std::io::{self, Read};
-
+    use std::str::FromStr;
+    use http::Uri;
     use url::Url;
-
-    use crate::header::TransferEncoding;
-    use crate::header::Encoding;
-    use crate::http::HttpMessage;
+    use crate::proto::HttpMessage;
     use crate::mock::MockStream;
     use crate::status;
     use crate::version;
-    use crate::http::h1::Http11Message;
+    use crate::proto::h1::Http11Message;
 
     use super::Response;
 
@@ -146,17 +142,17 @@ mod tests {
             \r\n"
         );
 
-        let url = Url::parse("http://hyper.rs").unwrap();
+        let url = Uri::from_str("http://hyper.rs").unwrap();
         let res = Response::new(url, Box::new(stream)).unwrap();
 
         // The status line is correct?
         assert_eq!(res.status, status::StatusCode::Ok);
         assert_eq!(res.version, version::HttpVersion::Http11);
         // The header is correct?
-        match res.headers.get::<TransferEncoding>() {
+        match res.headers.get(http::header::TRANSFER_ENCODING) {
             Some(encodings) => {
-                assert_eq!(1, encodings.len());
-                assert_eq!(Encoding::Chunked, encodings[0]);
+                assert_eq!("chunked".len(), encodings.len());
+                assert_eq!("chunked", encodings.to_str().unwrap_or_default());
             },
             None => panic!("Transfer-Encoding: chunked expected!"),
         };

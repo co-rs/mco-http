@@ -1,8 +1,8 @@
 use std::io::{ErrorKind, Read, Write};
+use http::{HeaderMap, HeaderValue};
 use crate::multipart::{Node, Part, FilePart};
 use mime::{Mime, TopLevel, SubLevel};
 use crate::multipart::error::Error;
-use crate::header::{ContentDisposition, ContentType, DispositionParam, DispositionType, Headers};
 
 /// The extracted text fields and uploaded files from a `multipart/form-data` request.
 ///
@@ -28,12 +28,9 @@ impl FormData {
         let mut nodes: Vec<Node> = Vec::with_capacity(self.fields.len() + self.files.len());
 
         for &(ref name, ref value) in &self.fields {
-            let mut h = Headers::with_capacity(2);
-            h.set(ContentType(Mime(TopLevel::Text, SubLevel::Plain, vec![])));
-            h.set(ContentDisposition {
-                disposition: DispositionType::Ext("form-data".to_owned()),
-                parameters: vec![DispositionParam::Ext("name".to_owned(), name.clone())],
-            });
+            let mut h = http::HeaderMap::with_capacity(2);
+            h.insert(http::header::CONTENT_TYPE,HeaderValue::from_str(&Mime(TopLevel::Text, SubLevel::Plain, vec![]).to_string()).unwrap());
+            h.insert(http::header::CONTENT_DISPOSITION,HeaderValue::from_str(&format!("form-data;name={}",name)).unwrap());
             nodes.push(Node::Part(Part {
                 headers: h,
                 body: value.as_bytes().to_owned(),
@@ -44,16 +41,12 @@ impl FormData {
             let mut filepart = filepart.clone();
             // We leave all headers that the caller specified, except that we rewrite
             // Content-Disposition.
-            while filepart.headers.remove::<ContentDisposition>() {};
+            filepart.headers.remove(http::header::CONTENT_DISPOSITION);
             let filename = match filepart.filename() {
                 Ok(fname) => fname.to_string(),
                 Err(_) => return Err(Error::Io(std::io::Error::new(ErrorKind::InvalidData, "not a file"))),
             };
-            filepart.headers.set(ContentDisposition {
-                disposition: DispositionType::Ext("form-data".to_owned()),
-                parameters: vec![DispositionParam::Ext("name".to_owned(), name.clone()),
-                                 DispositionParam::Ext("filename".to_owned(), filename)],
-            });
+            filepart.headers.insert(http::header::CONTENT_DISPOSITION,HeaderValue::from_str(&format!("form-data;name={};filename={}",name,filename)).unwrap());
             nodes.push(Node::File(filepart));
         }
 
@@ -63,7 +56,7 @@ impl FormData {
 
 
 /// Parse MIME `multipart/form-data` information from a stream as a `FormData`.
-pub fn read_formdata<S: Read>(stream: &mut S, headers: &Headers, f: Option<fn(name: &mut FilePart) -> std::io::Result<()>>) -> Result<FormData, Error>
+pub fn read_formdata<S: Read>(stream: &mut S, headers: &HeaderMap, f: Option<fn(name: &mut FilePart) -> std::io::Result<()>>) -> Result<FormData, Error>
 {
     let nodes = crate::multipart::read_multipart_body(stream, headers, false, f)?;
     let mut formdata = FormData::new();
@@ -81,11 +74,11 @@ fn fill_formdata(formdata: &mut FormData, nodes: Vec<Node>) -> Result<(), Error>
         match node {
             Node::Part(part) => {
                 let cd_name: Option<String> = {
-                    let cd: &ContentDisposition = match part.headers.get() {
+                    let cd = match part.headers.get(http::header::CONTENT_DISPOSITION) {
                         Some(cd) => cd,
                         None => return Err(Error::MissingDisposition),
                     };
-                    get_content_disposition_name(&cd)
+                    get_content_disposition_name(cd)
                 };
                 let key = cd_name.ok_or(Error::NoName)?;
                 let val = String::from_utf8(part.body)?;
@@ -93,7 +86,7 @@ fn fill_formdata(formdata: &mut FormData, nodes: Vec<Node>) -> Result<(), Error>
             }
             Node::File(part) => {
                 let cd_name: Option<String> = {
-                    let cd: &ContentDisposition = match part.headers.get() {
+                    let cd = match part.headers.get(http::header::CONTENT_DISPOSITION) {
                         Some(cd) => cd,
                         None => return Err(Error::MissingDisposition),
                     };
@@ -104,7 +97,7 @@ fn fill_formdata(formdata: &mut FormData, nodes: Vec<Node>) -> Result<(), Error>
             }
             Node::Multipart((headers, nodes)) => {
                 let cd_name: Option<String> = {
-                    let cd: &ContentDisposition = match headers.get() {
+                    let cd = match headers.get(http::header::CONTENT_DISPOSITION) {
                         Some(cd) => cd,
                         None => return Err(Error::MissingDisposition),
                     };
@@ -129,18 +122,26 @@ fn fill_formdata(formdata: &mut FormData, nodes: Vec<Node>) -> Result<(), Error>
     Ok(())
 }
 
+//Disposition
 #[inline]
-pub fn get_content_disposition_name(cd: &ContentDisposition) -> Option<String> {
-    if let Some(&DispositionParam::Ext(_, ref value)) = cd.parameters.iter()
-        .find(|&x| match *x {
-            DispositionParam::Ext(ref token, _) => &*token == "name",
-            _ => false,
-        })
-    {
-        Some(value.clone())
-    } else {
-        None
+pub fn get_content_disposition_name(cd: &http::HeaderValue) -> Option<String> {
+
+    let vec:Vec<&str>= cd.to_str().unwrap_or_default().split(";").collect();
+    let mut idx =0;
+    for x in &vec {
+        if (*x).eq("name"){
+            return match vec.get(idx+1){
+                None => {
+                    None
+                }
+                Some(v) => {
+                    Some(v.to_string())
+                }
+            };
+        }
+        idx+=1;
     }
+    return None;
 }
 
 
