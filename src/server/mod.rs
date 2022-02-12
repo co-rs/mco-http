@@ -241,30 +241,27 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                 let mut stream = t_c!(stream);
                 let w = worker.clone();
                 runtime::spawn_stack_size(move || {
-                    #[cfg(unix)]
-                        {
+                    {
+                        #[cfg(unix)]
                             stream.set_nonblocking(true);
-                            stream.reset_io();
-                            let time_out = w.handle_connection(&mut stream);
-                            match time_out {
-                                Some(v) => {
-                                    let d = std::time::Instant::now();
-                                    loop {
-                                        stream.reset_io();
-                                        w.handle_connection(&mut stream);
-                                        stream.wait_io();
-                                        if d.elapsed() > v {
+                        #[cfg(unix)]
+                            {
+                                let mut count = 0;
+                                loop {
+                                    stream.reset_io();
+                                    let keep_alive = w.handle_connection(&mut stream);
+                                    stream.wait_io();
+                                    if keep_alive == false {
+                                        count+=1;
+                                        if count>=10{
                                             return;
                                         }
                                     }
                                 }
-                                None => {
-                                    return;
-                                }
                             }
-                        }
-                    #[cfg(not(unix))]
-                        w.handle_connection(&mut stream);
+                        #[cfg(not(unix))]
+                            w.handle_connection(&mut stream);
+                    }
                 }, stack_size);
             }
         }, stack_size);
@@ -316,7 +313,7 @@ impl<H: Handler + 'static> Worker<H> {
         }
     }
 
-    pub fn handle_connection<S>(&self, stream: &mut S) -> Option<Duration> where S: NetworkStream + Clone {
+    pub fn handle_connection<S>(&self, stream: &mut S) -> bool where S: NetworkStream + Clone {
         debug!("Incoming stream");
         self.handler.on_connection_start();
 
@@ -324,7 +321,7 @@ impl<H: Handler + 'static> Worker<H> {
             Ok(addr) => addr,
             Err(e) => {
                 info!("Peer Name error: {:?}", e);
-                return None;
+                return false;
             }
         };
         //safety will forget copy s
@@ -333,24 +330,19 @@ impl<H: Handler + 'static> Worker<H> {
         let mut rdr = BufReader::new(stream2);
         let mut wrt = BufWriter::new(stream);
 
-        let mut timeout = None;
+        let mut keep_alive = false;
         while self.keep_alive_loop(&mut rdr, &mut wrt, addr) {
             if let Err(e) = self.set_read_timeout(*rdr.get_ref(), self.timeouts.keep_alive) {
                 info!("set_read_timeout keep_alive {:?}", e);
                 break;
             }
-            match self.timeouts.keep_alive.as_ref() {
-                None => {}
-                Some(v) => {
-                    timeout = Some(v.clone());
-                }
-            }
+            keep_alive = true;
         }
         self.handler.on_connection_end();
         debug!("keep_alive loop ending for {}", addr);
 
         std::mem::forget(s);
-        timeout
+        keep_alive
     }
 
     fn set_read_timeout(&self, s: &dyn NetworkStream, timeout: Option<Duration>) -> io::Result<()> {
