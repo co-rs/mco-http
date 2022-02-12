@@ -139,8 +139,8 @@ mod listener;
 /// incoming connection, and hand them to the provided handler.
 #[derive(Debug)]
 pub struct Server<L = HttpListener> {
-    listener: L,
-    timeouts: Timeouts,
+    pub listener: L,
+    pub timeouts: Timeouts,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -186,20 +186,29 @@ impl<L: NetworkListener> Server<L> {
     ///
     /// Default is enabled with a 5 second timeout.
     #[inline]
-    pub fn keep_alive(&mut self, timeout: Option<Duration>) {
+    pub fn keep_alive(mut self, timeout: Option<Duration>) -> Self {
         self.timeouts.keep_alive = timeout;
         self.timeouts.keep_alive_type = KeepAliveType::WaitTime(timeout.unwrap_or(Duration::from_secs(5)));
+        self
     }
 
     /// Sets the read timeout for all Request reads.
-    pub fn set_read_timeout(&mut self, dur: Option<Duration>) {
+    pub fn set_read_timeout(mut self, dur: Option<Duration>) -> Self {
         self.listener.set_read_timeout(dur);
         self.timeouts.read = dur;
+        self
     }
 
     /// Sets the write timeout for all Response writes.
-    pub fn set_write_timeout(&mut self, dur: Option<Duration>) {
+    pub fn set_write_timeout(mut self, dur: Option<Duration>) -> Self {
         self.listener.set_write_timeout(dur);
+        self
+    }
+
+    /// set set_keep_alive_type
+    pub fn set_keep_alive_type(mut self, t: KeepAliveType) -> Self {
+        self.timeouts.keep_alive_type = t;
+        self
     }
 
     /// Get the address that the server is listening on.
