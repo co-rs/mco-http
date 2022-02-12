@@ -19,6 +19,9 @@ use crate::net::{Fresh, Streaming};
 use crate::version;
 
 
+pub type  ResponseNew<'a> = http::Response<HttpWriter<&'a mut (dyn Write + 'a)>>;
+
+
 /// The outgoing half for a Tcp connection, created by a `Server` and given to a `Handler`.
 ///
 /// The default `StatusCode` for a `Response` is `200 OK`.

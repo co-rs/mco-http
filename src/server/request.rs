@@ -15,6 +15,10 @@ use crate::http::h1::{self, Incoming, HttpReader};
 use crate::http::h1::HttpReader::{SizedReader, ChunkedReader, EmptyReader};
 use crate::uri::RequestUri;
 
+
+pub type RequestNew<'a, 'b: 'a> = http::Request<HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>>;
+
+
 /// A request bundles several parts of an incoming `NetworkStream`, given to a `Handler`.
 pub struct Request<'a, 'b: 'a> {
     /// The IP address of the remote connection.
@@ -27,7 +31,7 @@ pub struct Request<'a, 'b: 'a> {
     pub uri: RequestUri,
     /// The version of HTTP for this request.
     pub version: HttpVersion,
-    pub body: HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>
+    pub body: HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>,
 }
 
 
@@ -35,8 +39,7 @@ impl<'a, 'b: 'a> Request<'a, 'b> {
     /// Create a new Request, reading the StartLine and Headers so they are
     /// immediately useful.
     pub fn new(stream: &'a mut BufReader<&'b mut dyn NetworkStream>, addr: SocketAddr)
-        -> crate::Result<Request<'a, 'b>> {
-
+               -> crate::Result<Request<'a, 'b>> {
         let Incoming { version, subject: (method, uri), headers } = r#try!(h1::parse_request(stream));
         debug!("Request Line: {:?} {:?} {:?}", method, uri, version);
         debug!("{:?}", headers);
@@ -59,7 +62,7 @@ impl<'a, 'b: 'a> Request<'a, 'b> {
             uri: uri,
             headers: headers,
             version: version,
-            body: body
+            body: body,
         })
     }
 
@@ -218,7 +221,7 @@ mod tests {
         match req.headers.get::<Host>() {
             Some(host) => {
                 assert_eq!("example.domain", host.hostname);
-            },
+            }
             None => panic!("Host header expected!"),
         };
         match req.headers.get::<TransferEncoding>() {
@@ -303,5 +306,4 @@ mod tests {
 
         assert_eq!(read_to_string(req).unwrap(), "1".to_owned());
     }
-
 }
