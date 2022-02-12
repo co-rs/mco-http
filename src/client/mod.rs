@@ -314,7 +314,10 @@ impl<'a> RequestBuilder<'a> {
                     message.set_proxied(true);
                 }
 
-                let mut h = Headers::new();
+                let mut h = Headers::with_capacity({match headers.as_ref() {
+                    None => {1}
+                    Some(n) => {n.len()}
+                }});
                 h.set(Host {
                     hostname: host.to_owned(),
                     port: Some(port),

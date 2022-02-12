@@ -420,7 +420,7 @@ impl<H: Handler + 'static> Worker<H> {
         let mut keep_alive = self.timeouts.keep_alive.is_some() &&
             http::should_keep_alive(req.version, &req.headers);
         let version = req.version;
-        let mut res_headers = Headers::new();
+        let mut res_headers = Headers::with_capacity(1);
         if !keep_alive {
             res_headers.set(Connection::close());
         }

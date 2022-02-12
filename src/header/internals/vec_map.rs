@@ -10,6 +10,12 @@ impl<K: PartialEq, V> VecMap<K, V> {
         }
     }
 
+    pub fn with_capacity(capacity: usize) -> VecMap<K, V> {
+        VecMap {
+            vec: Vec::with_capacity(capacity)
+        }
+    }
+
     pub fn insert(&mut self, key: K, value: V) {
         match self.find(&key) {
             Some(pos) => self.vec[pos] = (key, value),

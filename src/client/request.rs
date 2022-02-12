@@ -61,7 +61,7 @@ impl Request<Fresh> {
     /// properly initialized by the caller (e.g. a TCP connection's already established).
     pub fn with_message(method: Method, url: Url, message: Box<dyn HttpMessage>)
             -> crate::Result<Request<Fresh>> {
-        let mut headers = Headers::new();
+        let mut headers = Headers::with_capacity(1);
         {
             let (host, port) = r#try!(get_host_and_port(&url));
             headers.set(Host {

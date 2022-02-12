@@ -282,19 +282,21 @@ impl Headers {
         }
     }
 
-    #[doc(hidden)]
+    pub fn with_capacity(capacity: usize) -> Headers {
+        Headers {
+            data: VecMap::with_capacity(capacity)
+        }
+    }
+
     pub fn from_raw(raw: &[httparse::Header]) -> crate::Result<Headers> {
         let mut headers = Headers::new();
         for header in raw {
-            trace!("raw header: {:?}={:?}", header.name, &header.value[..]);
             let name = UniCase(CowStr(Cow::Owned(header.name.to_owned())));
             let item = match headers.data.entry(name) {
                 Entry::Vacant(entry) => entry.insert(Item::new_raw(vec![])),
                 Entry::Occupied(entry) => entry.into_mut()
             };
-            let trim = header.value.iter().rev().take_while(|&&x| x == b' ').count();
-            let value = &header.value[.. header.value.len() - trim];
-            item.raw_mut().push(value.to_vec());
+            item.raw_mut().push(header.value.to_vec());
         }
         Ok(headers)
     }
