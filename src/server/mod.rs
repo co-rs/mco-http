@@ -152,9 +152,9 @@ pub struct Timeouts {
 
 #[derive(Clone, Copy, Debug)]
 pub enum KeepAliveType {
-    WaitTime,
+    WaitTime(Duration),
     //wait time close
-    WaitError,//wait error close
+    WaitError(i32),//wait error close
 }
 
 impl Default for Timeouts {
@@ -162,7 +162,7 @@ impl Default for Timeouts {
         Timeouts {
             read: None,
             keep_alive: Some(Duration::from_secs(5)),
-            keep_alive_type: KeepAliveType::WaitTime,
+            keep_alive_type: KeepAliveType::WaitTime(Duration::from_secs(5)),
         }
     }
 }
@@ -188,6 +188,7 @@ impl<L: NetworkListener> Server<L> {
     #[inline]
     pub fn keep_alive(&mut self, timeout: Option<Duration>) {
         self.timeouts.keep_alive = timeout;
+        self.timeouts.keep_alive_type = KeepAliveType::WaitTime(timeout.unwrap_or(Duration::from_secs(5)));
     }
 
     /// Sets the read timeout for all Request reads.
@@ -256,9 +257,8 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                         #[cfg(unix)]
                             {
                                 match w.timeouts.keep_alive_type {
-                                    KeepAliveType::WaitTime => {
+                                    KeepAliveType::WaitTime(timeout) => {
                                         let mut now = std::time::Instant::now();
-                                        let timeout = w.timeouts.keep_alive.clone().unwrap_or(Duration::from_secs(5));
                                         loop {
                                             stream.reset_io();
                                             let keep_alive = w.handle_connection(&mut stream);
@@ -271,10 +271,9 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                                                     continue;
                                                 }
                                             }
-                                            now = std::time::Instant::now();
                                         }
                                     }
-                                    KeepAliveType::WaitError => {
+                                    KeepAliveType::WaitError(total) => {
                                         let mut count = 0;
                                         loop {
                                             stream.reset_io();
@@ -282,7 +281,7 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                                             stream.wait_io();
                                             if keep_alive == false {
                                                 count += 1;
-                                                if count >= 10 {
+                                                if count >= total {
                                                     return;
                                                 }
                                                 yield_now();
