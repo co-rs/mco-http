@@ -353,7 +353,7 @@ impl<H: Handler + 'static> Worker<H> {
         }
     }
 
-    pub fn handle_connection<S>(&self, stream: &mut S) -> bool where S: NetworkStream + Clone {
+    pub fn handle_connection<S>(&self, stream: &mut S) -> bool where S: NetworkStream {
         debug!("Incoming stream");
         self.handler.on_connection_start();
 
