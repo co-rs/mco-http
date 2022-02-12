@@ -303,7 +303,7 @@ mod tests {
 
     #[test]
     fn test_fresh_start() {
-        let mut headers = Headers::new();
+        let mut headers = http::HeaderMap::new();
         let mut stream = MockStream::new();
         {
             let res = Response::new(&mut stream, &mut headers);
@@ -320,7 +320,7 @@ mod tests {
 
     #[test]
     fn test_streaming_end() {
-        let mut headers = Headers::new();
+        let mut headers = http::HeaderMap::new();
         let mut stream = MockStream::new();
         {
             let res = Response::new(&mut stream, &mut headers);
@@ -340,7 +340,7 @@ mod tests {
     #[test]
     fn test_fresh_drop() {
         use crate::status::StatusCode;
-        let mut headers = Headers::new();
+        let mut headers =  http::HeaderMap::new();
         let mut stream = MockStream::new();
         {
             let mut res = Response::new(&mut stream, &mut headers);
@@ -371,7 +371,7 @@ mod tests {
         let stream = Arc::new(Mutex::new(stream));
         let inner_stream = stream.clone();
         let join_handle = runtime::spawn(move || {
-            let mut headers = Headers::new();
+            let mut headers =  http::HeaderMap::new();
             let mut stream = inner_stream.lock().unwrap();
             let mut res = Response::new(&mut *stream, &mut headers);
             *res.status_mut() = StatusCode::NotFound;
@@ -401,7 +401,7 @@ mod tests {
     fn test_streaming_drop() {
         use std::io::Write;
         use crate::status::StatusCode;
-        let mut headers = Headers::new();
+        let mut headers =  http::HeaderMap::new();
         let mut stream = MockStream::new();
         {
             let mut res = Response::new(&mut stream, &mut headers);
@@ -424,7 +424,7 @@ mod tests {
 
     #[test]
     fn test_no_content() {
-        let mut headers = Headers::new();
+        let mut headers =  http::HeaderMap::new();
         let mut stream = MockStream::new();
         {
             let mut res = Response::new(&mut stream, &mut headers);

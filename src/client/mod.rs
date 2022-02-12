@@ -338,8 +338,7 @@ impl<'a> RequestBuilder<'a> {
                 for x in &headers {
                     h.extend(x.clone());
                 }
-                let headers = h;
-                Request::with_headers_and_message(method.clone(), url.clone(), headers, message)
+                Request::with_headers_and_message(method.clone(), url.clone(), h, message)
             };
 
             r#try!(req.set_write_timeout(client.write_timeout));

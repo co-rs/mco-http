@@ -243,16 +243,16 @@ mod tests {
         let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();
 
         // The headers are correct?
-        match req.headers.get::<Host>() {
+        match req.headers().get(http::header::HOST) {
             Some(host) => {
-                assert_eq!("example.domain", host.hostname);
+                assert_eq!("example.domain", host.to_str().unwrap_or_default());
             }
             None => panic!("Host header expected!"),
         };
-        match req.headers.get::<TransferEncoding>() {
+        match req.headers().get(http::header::TRANSFER_ENCODING) {
             Some(encodings) => {
                 assert_eq!(1, encodings.len());
-                assert_eq!(Encoding::Chunked, encodings[0]);
+                assert_eq!("chunked", encodings.to_str().unwrap_or_default());
             }
             None => panic!("Transfer-Encoding: chunked expected!"),
         };

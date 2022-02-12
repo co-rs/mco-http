@@ -1,6 +1,6 @@
 //! Pieces pertaining to the HTTP message protocol.
 use std::borrow::Cow;
-use crate::proto;
+use crate::{header_value, proto};
 use crate::version::HttpVersion;
 use crate::version::HttpVersion::{Http10, Http11};
 
@@ -29,16 +29,16 @@ pub fn should_keep_alive(version: http::Version, headers: &http::HeaderMap) -> b
 
 #[test]
 fn test_should_keep_alive() {
-    let mut headers = Headers::new();
+    let mut headers = http::HeaderMap::new();
 
-    assert!(!should_keep_alive(Http10, &headers));
-    assert!(should_keep_alive(Http11, &headers));
+    assert!(!should_keep_alive(http::Version::HTTP_10, &headers));
+    assert!(should_keep_alive(http::Version::HTTP_11, &headers));
 
-    headers.set(Connection::close());
-    assert!(!should_keep_alive(Http10, &headers));
-    assert!(!should_keep_alive(Http11, &headers));
+    headers.insert(http::header::CONNECTION,header_value!("close"));
+    assert!(!should_keep_alive(http::Version::HTTP_10, &headers));
+    assert!(!should_keep_alive(http::Version::HTTP_11, &headers));
 
-    headers.set(Connection::keep_alive());
-    assert!(should_keep_alive(Http10, &headers));
-    assert!(should_keep_alive(Http11, &headers));
+    headers.insert(http::header::CONNECTION,header_value!("keep_alive"));
+    assert!(should_keep_alive(http::Version::HTTP_10, &headers));
+    assert!(should_keep_alive(http::Version::HTTP_11, &headers));
 }
