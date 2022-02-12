@@ -85,7 +85,6 @@ use std::borrow::{Cow, ToOwned};
 use std::iter::{FromIterator, IntoIterator};
 use std::ops::{Deref, DerefMut};
 use std::{mem, fmt};
-
 use {httparse, traitobject};
 use typeable::Typeable;
 use unicase::UniCase;
@@ -107,7 +106,7 @@ type HeaderName = UniCase<CowStr>;
 ///
 /// This trait represents the construction and identification of headers,
 /// and contains trait-object unsafe methods.
-pub trait Header: Clone + Any + Send + Sync {
+pub trait Header:  Clone + Any + Send + Sync {
     /// Returns the name of the header field this belongs to.
     ///
     /// This will become an associated constant once available.
@@ -121,6 +120,22 @@ pub trait Header: Clone + Any + Send + Sync {
     /// if `raw.len() > 1`.
     fn parse_header(raw: &[Vec<u8>]) -> crate::Result<Self>;
 
+    fn parse_header_slice(raw: &[&[u8]]) -> crate::Result<Self>{
+        let mut data =vec![];
+        for x in raw {
+            data.push(x.to_vec());
+        }
+        Self::parse_header(&data)
+    }
+
+    /// parse raw string array
+    fn parse_header_strs(raw: &[&str]) -> crate::Result<Self>{
+        let mut data =vec![];
+        for x in raw {
+            data.push(x.as_bytes().to_vec());
+        }
+        Self::parse_header(&data)
+    }
 }
 
 /// A trait for any object that will represent a header field and value.

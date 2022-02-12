@@ -4,7 +4,9 @@ use std::cmp::min;
 use std::fmt;
 use std::io::{self, Write, BufWriter, BufRead, Read};
 use std::net::Shutdown;
+use std::str::FromStr;
 use std::time::Duration;
+use http::HeaderValue;
 
 use httparse;
 use url::Position as UrlPosition;
@@ -23,7 +25,7 @@ use crate::uri::RequestUri;
 use self::HttpReader::{SizedReader, ChunkedReader, EofReader, EmptyReader};
 use self::HttpWriter::{ChunkedWriter, SizedWriter, EmptyWriter, ThroughWriter};
 
-use crate::http::{
+use crate::proto::{
     RawStatus,
     Protocol,
     HttpMessage,
@@ -34,6 +36,11 @@ use crate::header;
 use crate::version;
 
 const MAX_INVALID_RESPONSE_BYTES: usize = 1024 * 128;
+
+fn empty_header() -> http::HeaderValue {
+    http::HeaderValue::from_str("").unwrap()
+}
+
 
 #[derive(Debug)]
 struct Wrapper<T> {
@@ -101,7 +108,7 @@ impl Write for Http11Message {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match self.stream.as_mut().writer_mut() {
             None => Err(io::Error::new(io::ErrorKind::Other,
-                                          "Not in a writable state")),
+                                       "Not in a writable state")),
             Some(ref mut writer) => writer.write(buf),
         }
     }
@@ -109,7 +116,7 @@ impl Write for Http11Message {
     fn flush(&mut self) -> io::Result<()> {
         match self.stream.as_mut().writer_mut() {
             None => Err(io::Error::new(io::ErrorKind::Other,
-                                          "Not in a writable state")),
+                                       "Not in a writable state")),
             Some(ref mut writer) => writer.flush(),
         }
     }
@@ -120,7 +127,7 @@ impl Read for Http11Message {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match self.stream.as_mut().reader_mut() {
             None => Err(io::Error::new(io::ErrorKind::Other,
-                                          "Not in a readable state")),
+                                       "Not in a readable state")),
             Some(ref mut reader) => reader.read(buf),
         }
     }
@@ -129,8 +136,8 @@ impl Read for Http11Message {
 impl HttpMessage for Http11Message {
     fn set_outgoing(&mut self, mut head: RequestHead) -> crate::Result<RequestHead> {
         let mut res = Err(Error::from(io::Error::new(
-                            io::ErrorKind::Other,
-                            "")));
+            io::ErrorKind::Other,
+            "")));
         let mut method = None;
         let is_proxied = self.is_proxied;
         self.stream.map_in_place(|stream: Stream| -> Stream {
@@ -138,10 +145,10 @@ impl HttpMessage for Http11Message {
                 Stream::Idle(stream) => stream,
                 _ => {
                     res = Err(Error::from(io::Error::new(
-                                io::ErrorKind::Other,
-                                "Message not idle, cannot start new outgoing")));
+                        io::ErrorKind::Other,
+                        "Message not idle, cannot start new outgoing")));
                     return stream;
-                },
+                }
             };
             let mut stream = BufWriter::new(stream);
 
@@ -156,14 +163,14 @@ impl HttpMessage for Http11Message {
                 debug!("request line: {:?} {:?} {:?}", head.method, uri, version);
                 match write!(&mut stream, "{} {} {}{}",
                              head.method, uri, version, LINE_ENDING) {
-                                 Err(e) => {
-                                     res = Err(From::from(e));
-                                     // TODO What should we do if the BufWriter doesn't wanna
-                                     // relinquish the stream?
-                                     return Stream::Idle(stream.into_inner().ok().unwrap());
-                                 },
-                                 Ok(_) => {},
-                             };
+                    Err(e) => {
+                        res = Err(From::from(e));
+                        // TODO What should we do if the BufWriter doesn't wanna
+                        // relinquish the stream?
+                        return Stream::Idle(stream.into_inner().ok().unwrap());
+                    }
+                    Ok(_) => {}
+                };
             }
 
             let stream = {
@@ -186,7 +193,7 @@ impl HttpMessage for Http11Message {
                             }
                         };
                         EmptyWriter(writer)
-                    },
+                    }
                     _ => {
                         let mut chunked = true;
                         let mut len = 0;
@@ -195,7 +202,7 @@ impl HttpMessage for Http11Message {
                             Some(cl) => {
                                 chunked = false;
                                 len = **cl;
-                            },
+                            }
                             None => ()
                         };
 
@@ -206,7 +213,7 @@ impl HttpMessage for Http11Message {
                                     //TODO: check if chunked is already in encodings. use HashSet?
                                     encodings.push(header::Encoding::Chunked);
                                     false
-                                },
+                                }
                                 None => true
                             };
 
@@ -221,7 +228,7 @@ impl HttpMessage for Http11Message {
                             Err(e) => {
                                 res = Err(From::from(e.0));
                                 return Stream::Idle(e.1);
-                            },
+                            }
                         };
 
                         if chunked {
@@ -246,8 +253,8 @@ impl HttpMessage for Http11Message {
         r#try!(self.flush_outgoing());
         let method = self.method.take().unwrap_or(Method::Get);
         let mut res = Err(From::from(
-                        io::Error::new(io::ErrorKind::Other,
-                        "Read already in progress")));
+            io::Error::new(io::ErrorKind::Other,
+                           "Read already in progress")));
         self.stream.map_in_place(|stream| {
             let stream = match stream {
                 Stream::Idle(stream) => stream,
@@ -255,8 +262,8 @@ impl HttpMessage for Http11Message {
                     // The message was already in the reading state...
                     // TODO Decide what happens in case we try to get a new incoming at that point
                     res = Err(From::from(
-                            io::Error::new(io::ErrorKind::Other,
-                                           "Read already in progress")));
+                        io::Error::new(io::ErrorKind::Other,
+                                       "Read already in progress")));
                     return stream;
                 }
             };
@@ -272,12 +279,12 @@ impl HttpMessage for Http11Message {
                 head = match parse_response(&mut stream) {
                     Ok(head) => head,
                     Err(crate::Error::Version)
-                        if expected_no_content && invalid_bytes_read < MAX_INVALID_RESPONSE_BYTES => {
-                            trace!("expected_no_content, found content");
-                            invalid_bytes_read += 1;
-                            stream.consume(1);
-                            continue;
-                        }
+                    if expected_no_content && invalid_bytes_read < MAX_INVALID_RESPONSE_BYTES => {
+                        trace!("expected_no_content, found content");
+                        invalid_bytes_read += 1;
+                        stream.consume(1);
+                        continue;
+                    }
                     Err(e) => {
                         res = Err(e);
                         return Stream::Idle(stream.into_inner());
@@ -289,7 +296,7 @@ impl HttpMessage for Http11Message {
             let raw_status = head.subject;
             let headers = head.headers;
 
-            let is_empty = !should_have_response_body(&method, raw_status.0);
+            let is_empty = !should_have_response_body(&method, raw_status);
             stream.get_mut().set_previous_response_expected_no_content(is_empty);
             // According to https://tools.ietf.org/html/rfc7230#section-3.3.3
             // 1. HEAD reponses, and Status 1xx, 204, and 304 cannot have a body.
@@ -302,17 +309,17 @@ impl HttpMessage for Http11Message {
             let reader = if is_empty {
                 EmptyReader(stream)
             } else {
-                if let Some(&TransferEncoding(ref codings)) = headers.get() {
-                    if codings.last() == Some(&Chunked) {
+                if let Some(codings) = headers.get("Transfer-Encoding") {
+                    if codings.to_str().unwrap_or_default().contains("chunked") {
                         ChunkedReader(stream, None)
                     } else {
                         trace!("not chuncked. read till eof");
                         EofReader(stream)
                     }
-                } else if let Some(&ContentLength(len)) =  headers.get() {
-                    SizedReader(stream, len)
-                } else if headers.has::<ContentLength>() {
-                    trace!("illegal Content-Length: {:?}", headers.get_raw("Content-Length"));
+                } else if let Some(len) = headers.get("Content-Length") {
+                    SizedReader(stream, len.to_str().unwrap_or_default().parse().unwrap_or_default())
+                } else if headers.contains_key("Content-Length") {
+                    trace!("illegal Content-Length: {:?}", headers.get("Content-Length"));
                     res = Err(Error::Header);
                     return Stream::Idle(stream.into_inner());
                 } else {
@@ -418,7 +425,7 @@ impl Http11Message {
                 _ => {
                     res = Ok(());
                     return stream;
-                },
+                }
             };
             // end() already flushes
             let raw = match writer.end() {
@@ -451,8 +458,8 @@ impl Http11Protocol {
     /// Creates a new `Http11Protocol` instance that will use the given `NetworkConnector` for
     /// establishing HTTP connections.
     pub fn with_connector<C, S>(c: C) -> Http11Protocol
-            where C: NetworkConnector<Stream=S> + Send + Sync + 'static,
-                  S: NetworkStream + Send {
+        where C: NetworkConnector<Stream=S> + Send + Sync + 'static,
+              S: NetworkStream + Send {
         Http11Protocol {
             connector: Connector(Box::new(ConnAdapter(c))),
         }
@@ -462,11 +469,11 @@ impl Http11Protocol {
 struct ConnAdapter<C: NetworkConnector + Send + Sync>(C);
 
 impl<C: NetworkConnector<Stream=S> + Send + Sync, S: NetworkStream + Send>
-        NetworkConnector for ConnAdapter<C> {
+NetworkConnector for ConnAdapter<C> {
     type Stream = Box<dyn NetworkStream + Send>;
     #[inline]
     fn connect(&self, host: &str, port: u16, scheme: &str)
-        -> crate::Result<Box<dyn NetworkStream + Send>> {
+               -> crate::Result<Box<dyn NetworkStream + Send>> {
         Ok(r#try!(self.0.connect(host, port, scheme)).into())
     }
 }
@@ -477,7 +484,7 @@ impl NetworkConnector for Connector {
     type Stream = Box<dyn NetworkStream + Send>;
     #[inline]
     fn connect(&self, host: &str, port: u16, scheme: &str)
-        -> crate::Result<Box<dyn NetworkStream + Send>> {
+               -> crate::Result<Box<dyn NetworkStream + Send>> {
         Ok(r#try!(self.0.connect(host, port, scheme)).into())
     }
 }
@@ -514,7 +521,6 @@ pub enum HttpReader<R> {
 }
 
 impl<R: Read> HttpReader<R> {
-
     /// Unwraps this HttpReader and returns the underlying Reader.
     pub fn into_inner(self) -> R {
         match self {
@@ -549,7 +555,7 @@ impl<R: Read> HttpReader<R> {
 impl<R> fmt::Debug for HttpReader<R> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            SizedReader(_,rem) => write!(fmt, "SizedReader(remaining={:?})", rem),
+            SizedReader(_, rem) => write!(fmt, "SizedReader(remaining={:?})", rem),
             ChunkedReader(_, None) => write!(fmt, "ChunkedReader(chunk_remaining=unknown)"),
             ChunkedReader(_, Some(rem)) => write!(fmt, "ChunkedReader(chunk_remaining={:?})", rem),
             EofReader(_) => write!(fmt, "EofReader"),
@@ -581,7 +587,7 @@ impl<R: Read> Read for HttpReader<R> {
                     }
                     Ok(num as usize)
                 }
-            },
+            }
             ChunkedReader(ref mut body, ref mut opt_remaining) => {
                 let mut rem = match *opt_remaining {
                     Some(ref rem) => *rem,
@@ -602,7 +608,7 @@ impl<R: Read> Read for HttpReader<R> {
                     // be an InvalidInput error instead.
                     trace!("end of chunked");
 
-                    return Ok(0)
+                    return Ok(0);
                 }
 
                 let to_read = min(rem as usize, buf.len());
@@ -621,12 +627,12 @@ impl<R: Read> Read for HttpReader<R> {
                     None
                 };
                 Ok(count as usize)
-            },
+            }
             EofReader(ref mut body) => {
                 let r = body.read(buf);
                 trace!("eofread: {:?}", r);
                 r
-            },
+            }
             EmptyReader(_) => Ok(0)
         }
     }
@@ -638,7 +644,7 @@ fn eat<R: Read>(rdr: &mut R, bytes: &[u8]) -> io::Result<()> {
         match r#try!(rdr.read(&mut buf)) {
             1 if buf[0] == b => (),
             _ => return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                          "Invalid characters found")),
+                                           "Invalid characters found")),
         }
     }
     Ok(())
@@ -663,34 +669,33 @@ fn read_chunk_size<R: Read>(rdr: &mut R) -> io::Result<u64> {
     let mut in_chunk_size = true;
     loop {
         match byte!(rdr) {
-            b@b'0'..=b'9' if in_chunk_size => {
+            b @ b'0'..=b'9' if in_chunk_size => {
                 size *= radix;
                 size += (b - b'0') as u64;
-            },
-            b@b'a'..=b'f' if in_chunk_size => {
+            }
+            b @ b'a'..=b'f' if in_chunk_size => {
                 size *= radix;
                 size += (b + 10 - b'a') as u64;
-            },
-            b@b'A'..=b'F' if in_chunk_size => {
+            }
+            b @ b'A'..=b'F' if in_chunk_size => {
                 size *= radix;
                 size += (b + 10 - b'A') as u64;
-            },
+            }
             CR => {
                 match byte!(rdr) {
                     LF => break,
                     _ => return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                                  "Invalid chunk size line"))
-
+                                                   "Invalid chunk size line"))
                 }
-            },
+            }
             // If we weren't in the extension yet, the ";" signals its start
             b';' if !in_ext => {
                 in_ext = true;
                 in_chunk_size = false;
-            },
+            }
             // "Linear white space" is ignored between the chunk size and the
             // extension separator token (";") due to the "implied *LWS rule".
-            b'\t' | b' ' if !in_ext & !in_chunk_size => {},
+            b'\t' | b' ' if !in_ext & !in_chunk_size => {}
             // LWS can follow the chunk size, but no more digits can come
             b'\t' | b' ' if in_chunk_size => in_chunk_size = false,
             // We allow any arbitrary octet once we are in the extension, since
@@ -700,12 +705,12 @@ fn read_chunk_size<R: Read>(rdr: &mut R) -> io::Result<u64> {
             // but we gain nothing by rejecting an otherwise valid chunk size.
             ext if in_ext => {
                 todo!("chunk extension byte={}", ext);
-            },
+            }
             // Finally, if we aren't in the extension and we're reading any
             // other octet, the chunk size line is invalid!
             _ => {
                 return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                         "Invalid chunk size line"));
+                                          "Invalid chunk size line"));
             }
         }
     }
@@ -713,9 +718,9 @@ fn read_chunk_size<R: Read>(rdr: &mut R) -> io::Result<u64> {
     Ok(size)
 }
 
-fn should_have_response_body(method: &Method, status: u16) -> bool {
+fn should_have_response_body(method: &Method, status: http::StatusCode) -> bool {
     trace!("should_have_response_body({:?}, {})", method, status);
-    match (method, status) {
+    match (method, status.as_u16()) {
         (&Method::Head, _) |
         (_, 100..=199) |
         (_, 204) |
@@ -815,7 +820,7 @@ impl<W: Write> Write for HttpWriter<W> {
                 r#try!(w.write_all(msg));
                 r#try!(w.write_all(LINE_ENDING.as_bytes()));
                 Ok(msg.len())
-            },
+            }
             SizedWriter(ref mut w, ref mut remaining) => {
                 let len = msg.len() as u64;
                 if len > *remaining {
@@ -828,7 +833,7 @@ impl<W: Write> Write for HttpWriter<W> {
                     *remaining -= len;
                     Ok(len as usize)
                 }
-            },
+            }
             EmptyWriter(..) => {
                 if !msg.is_empty() {
                     error!("Cannot include a body with this kind of message");
@@ -841,9 +846,9 @@ impl<W: Write> Write for HttpWriter<W> {
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         #[cfg(unix)]
-        return Ok(());
+            return Ok(());
         #[cfg(not(unix))]
-        return match *self {
+            return match *self {
             ThroughWriter(ref mut w) => w.flush(),
             ChunkedWriter(ref mut w) => w.flush(),
             SizedWriter(ref mut w, _) => w.flush(),
@@ -867,14 +872,14 @@ const MAX_HEADERS: usize = 100;
 
 /// Parses a request into an Incoming message head.
 #[inline]
-pub fn parse_request<R: Read>(buf: &mut BufReader<R>) -> crate::Result<Incoming<(Method, RequestUri)>> {
-    parse::<R, httparse::Request, (Method, RequestUri)>(buf)
+pub fn parse_request<R: Read>(buf: &mut BufReader<R>) -> crate::Result<Incoming<(http::Method, http::Uri)>> {
+    parse::<R, httparse::Request, (http::Method, http::Uri)>(buf)
 }
 
 /// Parses a response into an Incoming message head.
 #[inline]
-pub fn parse_response<R: Read>(buf: &mut BufReader<R>) -> crate::Result<Incoming<RawStatus>> {
-    parse::<R, httparse::Response, RawStatus>(buf)
+pub fn parse_response<R: Read>(buf: &mut BufReader<R>) -> crate::Result<Incoming<http::StatusCode>> {
+    parse::<R, httparse::Response, http::StatusCode>(buf)
 }
 
 fn parse<R: Read, T: TryParse<Subject=I>, I>(rdr: &mut BufReader<R>) -> crate::Result<Incoming<I>> {
@@ -883,7 +888,7 @@ fn parse<R: Read, T: TryParse<Subject=I>, I>(rdr: &mut BufReader<R>) -> crate::R
             httparse::Status::Complete((inc, len)) => {
                 rdr.consume(len);
                 return Ok(inc);
-            },
+            }
             _partial => ()
         }
         let n = r#try!(rdr.read_into_buf());
@@ -894,7 +899,7 @@ fn parse<R: Read, T: TryParse<Subject=I>, I>(rdr: &mut BufReader<R>) -> crate::R
             } else {
                 return Err(Error::Io(io::Error::new(
                     io::ErrorKind::UnexpectedEof,
-                    "end of stream before headers finished"
+                    "end of stream before headers finished",
                 )));
             }
         }
@@ -902,69 +907,103 @@ fn parse<R: Read, T: TryParse<Subject=I>, I>(rdr: &mut BufReader<R>) -> crate::R
 }
 
 fn try_parse<R: Read, T: TryParse<Subject=I>, I>(rdr: &mut BufReader<R>) -> TryParseResult<I> {
-    let mut headers = [httparse::EMPTY_HEADER; MAX_HEADERS];
     let buf = rdr.get_buf();
     if buf.len() == 0 {
         return Ok(httparse::Status::Partial);
     }
     trace!("try_parse({:?})", buf);
-    <T as TryParse>::try_parse(&mut headers, buf)
+    <T as TryParse>::try_parse(buf)
 }
 
 #[doc(hidden)]
 trait TryParse {
     type Subject;
-    fn try_parse<'a>(headers: &'a mut [httparse::Header<'a>], buf: &'a [u8]) ->
-        TryParseResult<Self::Subject>;
+    fn try_parse(buf: &[u8]) ->
+    TryParseResult<Self::Subject>;
 }
 
 type TryParseResult<T> = Result<httparse::Status<(Incoming<T>, usize)>, Error>;
 
 impl<'a> TryParse for httparse::Request<'a, 'a> {
-    type Subject = (Method, RequestUri);
+    type Subject = (http::Method, http::Uri);
 
-    fn try_parse<'b>(headers: &'b mut [httparse::Header<'b>], buf: &'b [u8]) ->
-            TryParseResult<(Method, RequestUri)> {
+    fn try_parse(buf: &[u8]) ->
+    TryParseResult<(http::Method, http::Uri)> {
+        let mut headers = [httparse::EMPTY_HEADER; MAX_HEADERS];
         trace!("Request.try_parse([Header; {}], [u8; {}])", headers.len(), buf.len());
-        let mut req = httparse::Request::new(headers);
+        let mut req = httparse::Request::new(&mut headers);
         Ok(match r#try!(req.parse(buf)) {
             httparse::Status::Complete(len) => {
                 trace!("Request.try_parse Complete({})", len);
+                let version = match req.version.as_ref().unwrap() {
+                    1 => {
+                        http::Version::HTTP_11
+                    }
+                    2 => {
+                        http::Version::HTTP_2
+                    }
+                    3 => {
+                        http::Version::HTTP_3
+                    }
+                    _ => {
+                        http::Version::HTTP_10
+                    }
+                };
+                let mut m = http::HeaderMap::new();
+                for x in req.headers.as_ref() {
+                    m.insert(http::header::HeaderName::from_str(x.name).unwrap(), http::HeaderValue::from_bytes(x.value).unwrap_or(empty_header()));
+                }
                 httparse::Status::Complete((Incoming {
-                    version: if req.version.unwrap() == 1 { Http11 } else { Http10 },
+                    version: version,
                     subject: (
-                        r#try!(req.method.unwrap().parse()),
-                        r#try!(req.path.unwrap().parse())
+                        r#try!(http::Method::from_str((&req.method).unwrap_or_default())),
+                        r#try!(http::Uri::from_str((&req.path).unwrap_or_default()))
                     ),
-                    headers: r#try!(Headers::from_raw(req.headers))
+                    headers: m,
                 }, len))
-            },
+            }
             httparse::Status::Partial => httparse::Status::Partial
         })
     }
 }
 
 impl<'a> TryParse for httparse::Response<'a, 'a> {
-    type Subject = RawStatus;
+    type Subject = http::StatusCode;
 
-    fn try_parse<'b>(headers: &'b mut [httparse::Header<'b>], buf: &'b [u8]) ->
-            TryParseResult<RawStatus> {
+    fn try_parse(buf: &[u8]) ->
+    TryParseResult<RawStatus> {
+        let mut headers = [httparse::EMPTY_HEADER; MAX_HEADERS];
         trace!("Response.try_parse([Header; {}], [u8; {}])", headers.len(), buf.len());
-        let mut res = httparse::Response::new(headers);
+        let mut res = httparse::Response::new(&mut headers);
+
         Ok(match r#try!(res.parse(buf)) {
             httparse::Status::Complete(len) => {
                 trace!("Response.try_parse Complete({})", len);
                 let code = res.code.unwrap();
-                let reason = match StatusCode::from_u16(code).canonical_reason() {
-                    Some(reason) if reason == res.reason.unwrap() => Cow::Borrowed(reason),
-                    _ => Cow::Owned(res.reason.unwrap().to_owned())
+                let version = match res.version.unwrap() {
+                    1 => {
+                        http::Version::HTTP_11
+                    }
+                    2 => {
+                        http::Version::HTTP_2
+                    }
+                    3 => {
+                        http::Version::HTTP_3
+                    }
+                    _ => {
+                        http::Version::HTTP_10
+                    }
                 };
+                let mut m = http::HeaderMap::new();
+                for x in res.headers {
+                    m.insert(http::header::HeaderName::from_str(x.name).unwrap(), http::HeaderValue::from_bytes(x.value).unwrap_or(empty_header()));
+                }
                 httparse::Status::Complete((Incoming {
-                    version: if res.version.unwrap() == 1 { Http11 } else { Http10 },
-                    subject: RawStatus(code, reason),
-                    headers: r#try!(Headers::from_raw(res.headers))
+                    version: version,
+                    subject: http::StatusCode::from_u16(code).unwrap_or(http::StatusCode::GONE),
+                    headers: m,
                 }, len))
-            },
+            }
             httparse::Status::Partial => httparse::Status::Partial
         })
     }
@@ -974,11 +1013,11 @@ impl<'a> TryParse for httparse::Response<'a, 'a> {
 #[derive(Debug)]
 pub struct Incoming<S> {
     /// HTTP version of the message.
-    pub version: HttpVersion,
+    pub version: http::Version,
     /// Subject (request line or status line) of Incoming message.
     pub subject: S,
     /// Headers of the Incoming message.
-    pub headers: Headers
+    pub headers: http::HeaderMap,
 }
 
 /// The `\r` byte.
@@ -1031,7 +1070,7 @@ mod tests {
 
         fn read_err(s: &str) {
             assert_eq!(read_chunk_size(&mut s.as_bytes()).unwrap_err().kind(),
-                io::ErrorKind::InvalidInput);
+                       io::ErrorKind::InvalidInput);
         }
 
         read("1\r\n", 1);

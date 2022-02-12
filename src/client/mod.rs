@@ -88,8 +88,8 @@ pub mod pool;
 pub mod request;
 pub mod response;
 
-use crate::http::Protocol;
-use crate::http::h1::Http11Protocol;
+use crate::proto::Protocol;
+use crate::proto::h1::Http11Protocol;
 
 
 /// A Client to use additional features with Requests.
@@ -352,9 +352,9 @@ impl<'a> RequestBuilder<'a> {
 
             let loc = {
                 // punching borrowck here
-                let loc = match res.headers.get::<Location>() {
-                    Some(&Location(ref loc)) => {
-                        Some(url.join(loc))
+                let loc = match res.headers.get("Location") {
+                    Some(loc) => {
+                        Some(url.join(loc.to_str().unwrap_or_default()))
                     }
                     None => {
                         debug!("no Location header");

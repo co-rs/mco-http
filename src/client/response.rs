@@ -5,8 +5,8 @@ use url::Url;
 
 use crate::header;
 use crate::net::NetworkStream;
-use crate::http::{self, RawStatus, ResponseHead, HttpMessage};
-use crate::http::h1::Http11Message;
+use crate::proto::{self, RawStatus, ResponseHead, HttpMessage};
+use crate::proto::h1::Http11Message;
 use crate::status;
 use crate::version;
 
@@ -14,14 +14,13 @@ use crate::version;
 #[derive(Debug)]
 pub struct Response {
     /// The status from the server.
-    pub status: status::StatusCode,
+    pub status: http::StatusCode,
     /// The headers from the server.
-    pub headers: header::Headers,
+    pub headers: http::HeaderMap,
     /// The HTTP version of this response from the server.
-    pub version: version::HttpVersion,
+    pub version: http::Version,
     /// The final URL of this response.
     pub url: Url,
-    status_raw: RawStatus,
     message: Box<dyn HttpMessage>,
 }
 
@@ -42,24 +41,22 @@ impl Response {
                 return Err(From::from(e));
             }
         };
-        let status = status::StatusCode::from_u16(raw_status.0);
-        debug!("version={:?}, status={:?}", version, status);
+        debug!("version={:?}, status={:?}", version, raw_status);
         debug!("headers={:?}", headers);
 
         Ok(Response {
-            status: status,
+            status: raw_status,
             version: version,
             headers: headers,
             url: url,
-            status_raw: raw_status,
             message: message,
         })
     }
 
     /// Get the raw status code and reason.
     #[inline]
-    pub fn status_raw(&self) -> &RawStatus {
-        &self.status_raw
+    pub fn status_raw(&self) -> &http::StatusCode {
+        &self.status
     }
 
     /// Gets a borrowed reference to the underlying `HttpMessage`.
@@ -92,7 +89,7 @@ impl Drop for Response {
         // server has agreed to keep the connection open
         let is_drained = !self.message.has_body();
         trace!("Response.drop is_drained={}", is_drained);
-        if !(is_drained && http::should_keep_alive(self.version, &self.headers)) {
+        if !(is_drained && proto::should_keep_alive(self.version, &self.headers)) {
             trace!("Response.drop closing connection");
             if let Err(e) = self.message.close_connection() {
                 info!("Response.drop error closing connection: {}", e);

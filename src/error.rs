@@ -2,6 +2,7 @@
 use std::error::Error as StdError;
 use std::fmt;
 use std::io::Error as IoError;
+use std::num::ParseIntError;
 use std::str::Utf8Error;
 use std::string::FromUtf8Error;
 
@@ -115,6 +116,24 @@ impl From<IoError> for Error {
 impl From<url::ParseError> for Error {
     fn from(err: url::ParseError) -> Error {
         Uri(err)
+    }
+}
+
+impl From<http::method::InvalidMethod> for Error {
+    fn from(arg: http::method::InvalidMethod) -> Self {
+        Error::Parse(arg.to_string())
+    }
+}
+
+impl From<http::uri::InvalidUri> for Error {
+    fn from(arg: http::uri::InvalidUri) -> Self {
+        Error::Parse(arg.to_string())
+    }
+}
+
+impl From<ParseIntError> for Error{
+    fn from(arg: ParseIntError) -> Self {
+        Error::Parse(arg.to_string())
     }
 }
 

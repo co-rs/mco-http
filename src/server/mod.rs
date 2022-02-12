@@ -113,13 +113,14 @@ use std::net::{SocketAddr, ToSocketAddrs, Shutdown};
 use std::sync::Arc;
 use std::time::Duration;
 use cogo::coroutine::yield_now;
+use http::{HeaderMap, HeaderValue};
 pub use self::request::Request;
 pub use self::response::Response;
 pub use crate::net::{Fresh, Streaming};
 use crate::{Error, runtime};
 use crate::buffer::BufReader;
-use crate::header::{Headers, Expect, Connection};
-use crate::http;
+use crate::header::{Headers, Expect, Connection, Header};
+use crate::proto;
 use crate::method::Method;
 use crate::net::{NetworkListener, NetworkStream, HttpListener, HttpsListener, SslServer};
 use crate::status::StatusCode;
@@ -418,11 +419,11 @@ impl<H: Handler + 'static> Worker<H> {
         }
 
         let mut keep_alive = self.timeouts.keep_alive.is_some() &&
-            http::should_keep_alive(req.version, &req.headers);
-        let version = req.version;
-        let mut res_headers = Headers::with_capacity(1);
+            proto::should_keep_alive(req.version(), req.headers());
+        let version = req.version();
+        let mut res_headers = http::HeaderMap::with_capacity(1);
         if !keep_alive {
-            res_headers.set(Connection::close());
+            res_headers.insert(http::header::CONNECTION,HeaderValue::from_static("close"));
         }
         {
             let mut res = Response::new(wrt, &mut res_headers);
@@ -433,7 +434,7 @@ impl<H: Handler + 'static> Worker<H> {
         // if the request was keep-alive, we need to check that the server agrees
         // if it wasn't, then the server cannot force it to be true anyways
         if keep_alive {
-            keep_alive = http::should_keep_alive(version, &res_headers);
+            keep_alive = proto::should_keep_alive(version, &res_headers);
         }
 
         debug!("keep_alive = {:?} for {}", keep_alive, addr);
@@ -441,8 +442,8 @@ impl<H: Handler + 'static> Worker<H> {
     }
 
     fn handle_expect<W: Write>(&self, req: &Request, wrt: &mut W) -> bool {
-        if req.version == Http11 && req.headers.get() == Some(&Expect::Continue) {
-            let status = self.handler.check_continue((&req.method, &req.uri, &req.headers));
+        if req.version() == http::Version::HTTP_11 && req.headers().get(Expect::header_name()) == Some(&HeaderValue::from_static("100-continue")) {
+            let status = self.handler.check_continue((req.method(), &req.uri(), &req.headers()));
             match write!(wrt, "{} {}\r\n\r\n", Http11, status).and_then(|_| wrt.flush()) {
                 Ok(..) => (),
                 Err(e) => {
@@ -503,7 +504,7 @@ pub trait Handler: Sync + Send {
     ///
     /// By default, this will always immediately response with a `StatusCode::Continue`,
     /// but can be overridden with custom behavior.
-    fn check_continue(&self, _: (&Method, &RequestUri, &Headers)) -> StatusCode {
+    fn check_continue(&self, _: (&http::Method, &http::Uri, &http::HeaderMap)) -> StatusCode {
         StatusCode::Continue
     }
 

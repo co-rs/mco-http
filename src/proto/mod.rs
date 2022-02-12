@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use crate::header::Connection;
 use crate::header::ConnectionOption::{KeepAlive, Close};
 use crate::header::Headers;
+use crate::proto;
 use crate::version::HttpVersion;
 use crate::version::HttpVersion::{Http10, Http11};
 
@@ -14,17 +15,18 @@ pub mod h1;
 pub mod message;
 
 /// The raw status code and reason-phrase.
-#[derive(Clone, PartialEq, Debug)]
-pub struct RawStatus(pub u16, pub Cow<'static, str>);
+
+// pub struct RawStatus(pub u16, pub Cow<'static, str>);
+pub type   RawStatus= http::StatusCode;
 
 /// Checks if a connection should be kept alive.
 #[inline]
-pub fn should_keep_alive(version: HttpVersion, headers: &Headers) -> bool {
-    trace!("should_keep_alive( {:?}, {:?} )", version, headers.get::<Connection>());
-    match (version, headers.get::<Connection>()) {
-        (Http10, None) => false,
-        (Http10, Some(conn)) if !conn.contains(&KeepAlive) => false,
-        (Http11, Some(conn)) if conn.contains(&Close)  => false,
+pub fn should_keep_alive(version: http::Version, headers: &http::HeaderMap) -> bool {
+    trace!("should_keep_alive( {:?}, {:?} )", version, headers.get("Connection"));
+    match (version, headers.get("Connection")) {
+        (http::Version::HTTP_10, None) => false,
+        (http::Version::HTTP_10, Some(conn)) if !conn.to_str().unwrap_or_default().contains("keep-alive") => false,
+        (http::Version::HTTP_11, Some(conn)) if conn.to_str().unwrap_or_default().contains("close")  => false,
         _ => true
     }
 }

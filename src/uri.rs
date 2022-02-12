@@ -50,6 +50,14 @@ pub enum RequestUri {
     Star,
 }
 
+
+impl From<RequestUri> for http::Uri{
+    fn from(arg: RequestUri) -> Self {
+        http::Uri::from_str(&arg.to_string()).unwrap()
+    }
+}
+
+
 impl FromStr for RequestUri {
     type Err = Error;
 

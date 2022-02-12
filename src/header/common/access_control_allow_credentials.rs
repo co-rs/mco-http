@@ -1,5 +1,7 @@
 use std::fmt::{self, Display};
 use std::str;
+use http::header::{AsHeaderName, Entry, InvalidHeaderName};
+use http::HeaderMap;
 use unicase::UniCase;
 use crate::header::{Header, HeaderFormat};
 

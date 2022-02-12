@@ -4,34 +4,37 @@
 //! target URI, headers, and message body.
 use std::io::{self, Read};
 use std::net::SocketAddr;
+use std::ops::{Deref, DerefMut};
 use std::time::Duration;
+use http::{Extensions, HeaderMap};
+use http::request::Parts;
 
 use crate::buffer::BufReader;
 use crate::net::NetworkStream;
 use crate::version::{HttpVersion};
 use crate::method::Method;
-use crate::header::{Headers, ContentLength, TransferEncoding};
-use crate::http::h1::{self, Incoming, HttpReader};
-use crate::http::h1::HttpReader::{SizedReader, ChunkedReader, EmptyReader};
+use crate::header::{Headers, ContentLength, TransferEncoding, Header};
+use crate::proto::h1::{self, Incoming, HttpReader};
+use crate::proto::h1::HttpReader::{SizedReader, ChunkedReader, EmptyReader};
 use crate::uri::RequestUri;
-
-
-pub type RequestNew<'a, 'b: 'a> = http::Request<HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>>;
-
 
 /// A request bundles several parts of an incoming `NetworkStream`, given to a `Handler`.
 pub struct Request<'a, 'b: 'a> {
-    /// The IP address of the remote connection.
-    pub remote_addr: SocketAddr,
-    /// The `Method`, such as `Get`, `Post`, etc.
-    pub method: Method,
-    /// The headers of the incoming request.
-    pub headers: Headers,
-    /// The target request-uri for this request.
-    pub uri: RequestUri,
-    /// The version of HTTP for this request.
-    pub version: HttpVersion,
-    pub body: HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>,
+    pub inner: http::Request<HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>>,
+}
+
+impl<'a, 'b: 'a> Deref for Request<'a, 'b> {
+    type Target = http::Request<HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<'a, 'b: 'a> DerefMut for Request<'a, 'b> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
 }
 
 
@@ -44,38 +47,51 @@ impl<'a, 'b: 'a> Request<'a, 'b> {
         debug!("Request Line: {:?} {:?} {:?}", method, uri, version);
         debug!("{:?}", headers);
 
-        let body = if headers.has::<ContentLength>() {
-            match headers.get::<ContentLength>() {
-                Some(&ContentLength(len)) => SizedReader(stream, len),
-                None => unreachable!()
-            }
-        } else if headers.has::<TransferEncoding>() {
+        let body = if let Some(content_len) = headers.get(http::header::CONTENT_LENGTH) {
+            let cl = content_len.to_str().unwrap_or_default().parse()?;
+            SizedReader(stream, cl)
+        } else if let Some(v) = headers.get(TransferEncoding::header_name()) {
             todo!("check for Transfer-Encoding: chunked");
             ChunkedReader(stream, None)
         } else {
             EmptyReader(stream)
         };
 
-        Ok(Request {
-            remote_addr: addr,
-            method: method,
-            uri: uri,
-            headers: headers,
-            version: version,
-            body: body,
+
+        let mut ext = Extensions::new();
+        ext.insert(addr);
+        let mut req = http::Request::builder()
+            .extension(ext)
+            .method(method.as_ref())
+            .uri(uri)
+            .version(version.into())
+            .body(body)
+            .unwrap();
+        *req.headers_mut() = headers;
+        Ok(Self {
+            inner: req
         })
+    }
+
+
+    pub fn body(&self) -> &HttpReader<&mut BufReader<&'b mut (dyn NetworkStream + 'static)>> {
+        self.inner.body()
+    }
+
+    pub fn body_mut(&mut self) -> &mut HttpReader<&'a mut BufReader<&'b mut (dyn NetworkStream + 'static)>> {
+        self.inner.body_mut()
     }
 
     /// Set the read timeout of the underlying NetworkStream.
     #[inline]
     pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
-        self.body.get_ref().get_ref().set_read_timeout(timeout)
+        self.body().get_ref().get_ref().set_read_timeout(timeout)
     }
 
     /// Get a reference to the underlying `NetworkStream`.
     #[inline]
     pub fn downcast_ref<T: NetworkStream>(&self) -> Option<&T> {
-        self.body.get_ref().get_ref().downcast_ref()
+        self.body().get_ref().get_ref().downcast_ref()
     }
 
     /// Get a reference to the underlying Ssl stream, if connected
@@ -89,18 +105,29 @@ impl<'a, 'b: 'a> Request<'a, 'b> {
 
     /// Deconstruct a Request into its constituent parts.
     #[inline]
-    pub fn deconstruct(self) -> (SocketAddr, Method, Headers,
-                                 RequestUri, HttpVersion,
+    pub fn deconstruct(self) -> (SocketAddr, http::Method, http::HeaderMap,
+                                 http::Uri, http::Version,
                                  HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>) {
-        (self.remote_addr, self.method, self.headers,
-         self.uri, self.version, self.body)
+        let mut p = self.inner.into_parts();
+        (p.0.extensions.get::<SocketAddr>().unwrap().clone(), p.0.method, p.0.headers,
+         p.0.uri, p.0.version, p.1)
+    }
+
+    fn remote_addr(&self) -> &SocketAddr {
+        self.inner.extensions().get::<SocketAddr>().unwrap()
+    }
+
+    fn set_remote_addr(&mut self, arg: SocketAddr) {
+        // let mut ext = Extensions::new();
+        // ext.insert(arg);
+        self.inner.extensions_mut().insert(arg);
     }
 }
 
 impl<'a, 'b> Read for Request<'a, 'b> {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.body.read(buf)
+        self.body_mut().read(buf)
     }
 }
 

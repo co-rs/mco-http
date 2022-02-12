@@ -89,13 +89,13 @@ impl Handler for Route {
                 return;
             }
         }
-        match &req.uri {
-            AbsolutePath(p) => {
+        match req.uri().path() {
+            p => {
                 let path = &p[0..p.find("?").unwrap_or(p.len())];
                 match self.handlers.get(path) {
                     None => {
                         //404
-                        res.status = StatusCode::NotFound;
+                        res.status = http::StatusCode::NOT_FOUND;
                         return;
                     }
                     Some(h) => {
@@ -105,9 +105,6 @@ impl Handler for Route {
                     }
                 }
             }
-            RequestUri::AbsoluteUri(_) => {}
-            RequestUri::Authority(_) => {}
-            RequestUri::Star => {}
         }
     }
 }
