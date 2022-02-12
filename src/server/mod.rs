@@ -147,6 +147,14 @@ pub struct Server<L = HttpListener> {
 pub struct Timeouts {
     read: Option<Duration>,
     keep_alive: Option<Duration>,
+    keep_alive_type: KeepAliveType,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum KeepAliveType {
+    WaitTime,
+    //wait time close
+    WaitError,//wait error close
 }
 
 impl Default for Timeouts {
@@ -154,6 +162,7 @@ impl Default for Timeouts {
         Timeouts {
             read: None,
             keep_alive: Some(Duration::from_secs(5)),
+            keep_alive_type: KeepAliveType::WaitTime,
         }
     }
 }
@@ -246,26 +255,40 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                             stream.set_nonblocking(true);
                         #[cfg(unix)]
                             {
-                                let mut now = std::time::Instant::now();
-                                let timeout = w.timeouts.keep_alive.clone().unwrap_or(Duration::from_secs(5));
-                                //let mut count = 0;
-                                loop {
-                                    stream.reset_io();
-                                    let keep_alive = w.handle_connection(&mut stream);
-                                    stream.wait_io();
-                                    if keep_alive == false {
-                                        // count += 1;
-                                        // if count >= 10 {
-                                        //     return;
-                                        // }
-                                        //yield_now();
-                                        if now.elapsed()>=timeout{
-                                            return;
-                                        }else{
-                                            continue;
+                                match w.timeouts.keep_alive_type {
+                                    KeepAliveType::WaitTime => {
+                                        let mut now = std::time::Instant::now();
+                                        let timeout = w.timeouts.keep_alive.clone().unwrap_or(Duration::from_secs(5));
+                                        loop {
+                                            stream.reset_io();
+                                            let keep_alive = w.handle_connection(&mut stream);
+                                            stream.wait_io();
+                                            if keep_alive == false {
+                                                if now.elapsed() >= timeout {
+                                                    return;
+                                                } else {
+                                                    yield_now();
+                                                    continue;
+                                                }
+                                            }
+                                            now = std::time::Instant::now();
                                         }
                                     }
-                                    now = std::time::Instant::now();
+                                    KeepAliveType::WaitError => {
+                                        let mut count = 0;
+                                        loop {
+                                            stream.reset_io();
+                                            let keep_alive = w.handle_connection(&mut stream);
+                                            stream.wait_io();
+                                            if keep_alive == false {
+                                                count += 1;
+                                                if count >= 10 {
+                                                    return;
+                                                }
+                                                yield_now();
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         #[cfg(not(unix))]
