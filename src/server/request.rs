@@ -49,7 +49,7 @@ impl<'a, 'b: 'a> Request<'a, 'b> {
         let body = if let Some(content_len) = headers.get(http::header::CONTENT_LENGTH) {
             let cl = content_len.to_str().unwrap_or_default().parse()?;
             SizedReader(stream, cl)
-        } else if let Some(v) = headers.get("Transfer-Encoding") {
+        } else if let Some(v) = headers.get(http::header::TRANSFER_ENCODING) {
             todo!("check for Transfer-Encoding: chunked");
             ChunkedReader(stream, None)
         } else {

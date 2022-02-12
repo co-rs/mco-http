@@ -103,7 +103,7 @@ impl<'a, W: Any> Response<'a, W> {
 
         // can't do in match above, thanks borrowck
         if body_type == Body::Chunked {
-            let encodings = match self.headers.get_mut("Transfer-Encoding") {
+            let encodings = match self.headers.get_mut(http::header::TRANSFER_ENCODING) {
                 Some(encodings) => {
                     //check if chunked is already in encodings. use HashSet?
                     let estr= encodings.to_str().unwrap_or_default();

@@ -310,17 +310,17 @@ impl HttpMessage for Http11Message {
             let reader = if is_empty {
                 EmptyReader(stream)
             } else {
-                if let Some(codings) = headers.get("Transfer-Encoding") {
+                if let Some(codings) = headers.get(http::header::TRANSFER_ENCODING) {
                     if codings.to_str().unwrap_or_default().contains("chunked") {
                         ChunkedReader(stream, None)
                     } else {
                         trace!("not chuncked. read till eof");
                         EofReader(stream)
                     }
-                } else if let Some(len) = headers.get("Content-Length") {
+                } else if let Some(len) = headers.get( http::header::CONTENT_LENGTH) {
                     SizedReader(stream, len.to_str().unwrap_or_default().parse().unwrap_or_default())
                 } else if headers.contains_key("Content-Length") {
-                    trace!("illegal Content-Length: {:?}", headers.get("Content-Length"));
+                    trace!("illegal Content-Length: {:?}", headers.get(http::header::CONTENT_LENGTH));
                     res = Err(Error::Header);
                     return Stream::Idle(stream.into_inner());
                 } else {
