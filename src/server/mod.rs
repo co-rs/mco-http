@@ -246,17 +246,26 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                             stream.set_nonblocking(true);
                         #[cfg(unix)]
                             {
-                                let mut count = 0;
+                                let mut now = std::time::Instant::now();
+                                let timeout = w.timeouts.keep_alive.clone().unwrap_or(Duration::from_secs(5));
+                                //let mut count = 0;
                                 loop {
                                     stream.reset_io();
                                     let keep_alive = w.handle_connection(&mut stream);
                                     stream.wait_io();
                                     if keep_alive == false {
-                                        count+=1;
-                                        if count>=10{
+                                        // count += 1;
+                                        // if count >= 10 {
+                                        //     return;
+                                        // }
+                                        //yield_now();
+                                        if now.elapsed()>=timeout{
                                             return;
+                                        }else{
+                                            continue;
                                         }
                                     }
+                                    now = std::time::Instant::now();
                                 }
                             }
                         #[cfg(not(unix))]
