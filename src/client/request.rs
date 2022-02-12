@@ -9,12 +9,12 @@ use url::Url;
 
 use crate::method::Method;
 use crate::net::{NetworkStream, NetworkConnector, DefaultConnector, Fresh, Streaming};
-use crate::version;
+use crate::{header_value, version};
 use crate::client::{Response, get_host_and_port};
 
 use crate::proto::{HttpMessage, RequestHead};
 use crate::proto::h1::Http11Message;
-
+use http::HeaderValue;
 
 /// A client request to a remote server.
 /// The W type tracks the state of the request, Fresh vs Streaming.
@@ -63,7 +63,11 @@ impl Request<Fresh> {
         let mut headers = http::HeaderMap::with_capacity(1);
         {
             let (host, port) = r#try!(get_host_and_port(&url));
-            headers.insert("Host", http::header::HeaderValue::from_str(&format!("{}:{}", host.to_owned(), port)).unwrap());
+            if port == 0 || port == 80 || port == 443 {
+                headers.insert(http::header::HOST, header_value!(&format!("{}:{}",host,port)));
+            } else {
+                headers.insert(http::header::HOST, header_value!(host));
+            }
         }
 
         Ok(Request::with_headers_and_message(method, url, headers, message))
@@ -93,7 +97,6 @@ impl Request<Fresh> {
                                 -> crate::Result<Request<Fresh>> where
         C: NetworkConnector<Stream=S>,
         S: Into<Box<dyn NetworkStream + Send>> {
-
         let stream = {
             let (host, port) = r#try!(get_host_and_port(&url));
             r#try!(connector.connect(host, port, { match url.scheme().as_ref(){
@@ -284,7 +287,7 @@ mod tests {
         let mut req = Request::with_connector(
             http::Method::POST, url, &mut MockConnector,
         ).unwrap();
-        req.headers_mut().insert(http::header::TRANSFER_ENCODING,header_value!("chunked"));
+        req.headers_mut().insert(http::header::TRANSFER_ENCODING, header_value!("chunked"));
         let bytes = run_request(req);
         let s = from_utf8(&bytes[..]).unwrap();
         assert!(!s.contains("Content-Length:"));

@@ -219,7 +219,7 @@ impl HttpMessage for Http11Message {
                             };
 
                             if encodings {
-                                head.headers.insert("Transfer-Encoding",HeaderValue::from_static("chunked"));
+                                head.headers.insert(http::header::TRANSFER_ENCODING,HeaderValue::from_static("chunked"));
                             }
                         }
 

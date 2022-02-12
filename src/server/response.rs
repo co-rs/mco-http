@@ -88,7 +88,7 @@ impl<'a, W: Any> Response<'a, W> {
 
         if !self.headers.contains_key("Date") {
             let date = httpdate::HttpDate::from(std::time::SystemTime::now()).to_string();
-            self.headers.insert("Date", http::HeaderValue::from_bytes(date.as_bytes()).unwrap());
+            self.headers.insert(http::header::DATE, http::HeaderValue::from_bytes(date.as_bytes()).unwrap());
         }
 
         let body_type = match self.status {
@@ -116,7 +116,7 @@ impl<'a, W: Any> Response<'a, W> {
             };
 
             if encodings {
-                self.headers.insert("Transfer-Encoding", HeaderValue::from_static("chunked"));
+                self.headers.insert(http::header::TRANSFER_ENCODING , HeaderValue::from_static("chunked"));
             }
         }
 

@@ -69,7 +69,7 @@ use std::str::FromStr;
 
 use std::time::Duration;
 use http::{HeaderValue, Uri};
-use http::uri::InvalidUri;
+use http::uri::{InvalidUri, Port};
 
 use url::Url;
 use url::ParseError as UrlError;
@@ -322,13 +322,19 @@ impl<'a> RequestBuilder<'a> {
                 if scheme == "http" && client.proxy.is_some() {
                     message.set_proxied(true);
                 }
-                let mut h = http::HeaderMap::with_capacity({
-                    match headers.as_ref() {
-                        None => { 1 }
-                        Some(n) => { n.len() }
+                let mut h = http::HeaderMap::new();
+                match url.port(){
+                    None => {
+                        h.insert(http::header::HOST, header_value!(&url.host().unwrap_or_default()));
                     }
-                });
-                h.insert("Host", header_value!(&url.host().unwrap_or_default()));
+                    Some(v) => {
+                        if v.as_u16() == 80|| v.as_u16() == 443|| v.as_u16() == 0{
+                            h.insert(http::header::HOST, header_value!(&url.host().unwrap_or_default()));
+                        }else{
+                            h.insert(http::header::HOST, header_value!(&format!("{}:{}",url.host().unwrap_or_default(),v.as_u16())));
+                        }
+                    }
+                }
                 for x in &headers {
                     h.extend(x.clone());
                 }
