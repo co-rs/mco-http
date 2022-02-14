@@ -1,22 +1,17 @@
 #[deny(unused_variables)]
 extern crate cogo_http;
 extern crate env_logger;
+#[macro_use]
 extern crate serde_json;
 
-use std::io::Read;
+use cogo_http::json::read_json;
 use cogo_http::server::{Request, Response};
-
 
 // request header Content-Type: json
 fn hello(mut req: Request, res: Response) {
-    println!("---------req----------\n {} \n-----------", req.headers);
-
-    let mut json_data = String::new();
-    req.read_to_string(&mut json_data);
-
-    let result:serde_json::Value = serde_json::from_str(&json_data).unwrap_or_default();
-
-    res.send(result.to_string().as_bytes()).unwrap();
+    let json_data: serde_json::Value = read_json(&mut req).unwrap();
+    println!("req:{:?}",json_data);
+    res.send(json_data.to_string().as_bytes()).unwrap();
 }
 
 fn main() {

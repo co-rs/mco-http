@@ -279,6 +279,10 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                                                     yield_now();
                                                     continue;
                                                 }
+                                            }else{
+                                                if now.elapsed() <= timeout {
+                                                    now = std::time::Instant::now();
+                                                }
                                             }
                                         }
                                     }

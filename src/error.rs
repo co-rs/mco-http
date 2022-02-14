@@ -2,10 +2,8 @@
 use std::error::Error as StdError;
 use std::fmt;
 use std::io::Error as IoError;
-use std::num::ParseIntError;
 use std::str::Utf8Error;
 use std::string::FromUtf8Error;
-use http::header::InvalidHeaderName;
 
 use httparse;
 use url;
@@ -26,8 +24,7 @@ use self::Error::{
 };
 
 pub use url::ParseError;
-use crate::Error::Parse;
-use crate::multipart;
+use crate::Error::{Parse, ParseJson};
 
 /// Result type often returned from methods that can have hyper `Error`s.
 pub type Result<T> = ::std::result::Result<T, Error>;
@@ -118,36 +115,6 @@ impl From<IoError> for Error {
 impl From<url::ParseError> for Error {
     fn from(err: url::ParseError) -> Error {
         Uri(err)
-    }
-}
-
-impl From<http::method::InvalidMethod> for Error {
-    fn from(arg: http::method::InvalidMethod) -> Self {
-        Error::Parse(arg.to_string())
-    }
-}
-
-impl From<http::uri::InvalidUri> for Error {
-    fn from(arg: http::uri::InvalidUri) -> Self {
-        Error::Parse(arg.to_string())
-    }
-}
-
-impl From<ParseIntError> for Error{
-    fn from(arg: ParseIntError) -> Self {
-        Error::Parse(arg.to_string())
-    }
-}
-
-impl From<multipart::error::Error> for Error {
-    fn from(arg: multipart::error::Error) -> Self {
-        Self::Parse(arg.to_string())
-    }
-}
-
-impl From<InvalidHeaderName> for Error{
-    fn from(arg: InvalidHeaderName) -> Self {
-        Self::Parse(arg.to_string())
     }
 }
 

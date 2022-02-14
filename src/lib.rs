@@ -188,6 +188,7 @@ pub mod query;
 pub mod path;
 pub mod route;
 pub mod runtime;
+pub mod json;
 
 
 /// Re-exporting the mime crate, for convenience.
