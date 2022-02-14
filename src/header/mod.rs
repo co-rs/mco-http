@@ -270,7 +270,7 @@ fn header_name<T: Header>() -> &'static str {
 #[derive(Clone)]
 pub struct Headers {
     //data: HashMap<HeaderName, Item>
-    data: VecMap<HeaderName, Item>,
+    pub data: VecMap<HeaderName, Item>,
 }
 
 impl Headers {
