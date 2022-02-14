@@ -27,7 +27,7 @@ impl Path {
         }
     }
 
-    pub fn read_path_data(&self, url: &str) -> BTreeMap<String, String> {
+    pub fn read_path(&self, url: &str) -> BTreeMap<String, String> {
         let url = &url[0..url.find("?").unwrap_or(url.len())];
         let args: Vec<&str> = url.split("/").collect();
         let mut params = BTreeMap::new();
