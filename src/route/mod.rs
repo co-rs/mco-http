@@ -47,6 +47,26 @@ impl Route {
             handlers: SyncHashMap::new(),
         }
     }
+    /// handle a fn
+    /// for example:
+    /// ```rust
+    /// use cogo_http::route::Route;
+    /// use cogo_http::server::{Request, Response};
+    ///
+    /// let mut route = Route::new();
+    /// //Common way
+    /// route.handle_fn("/", |req: Request, res: Response| {
+    ///         res.send(b"Hello World!").unwrap();
+    ///     });
+    ///
+    /// //or you can use method. It can even nest calls to Handle
+    /// fn hello(req: Request, res: Response) {
+    ///     res.send(b"Hello World!").unwrap();
+    /// }
+    /// route.handle_fn("/",hello);
+    ///
+    ///
+    /// ```
     pub fn handle_fn<H: Handler + 'static>(&self, url: &str, h: H) {
         self.handlers.insert(url.to_string(), HandleBox {
             url: url.to_string(),
