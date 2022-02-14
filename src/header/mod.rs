@@ -101,7 +101,7 @@ mod internals;
 mod shared;
 pub mod parsing;
 
-type HeaderName = UniCase<CowStr>;
+pub type HeaderName = UniCase<CowStr>;
 
 /// A trait for any object that will represent a header field and value.
 ///
