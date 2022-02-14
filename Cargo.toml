@@ -21,7 +21,7 @@ include = [
 ]
 
 [features]
-default = ["runtime_cogo"]
+default = ["runtime_cogo","serde_json"]
 runtime_thread = ["dashmap"]
 runtime_cogo = ["cogo"]
 nightly = []
@@ -46,7 +46,8 @@ textnonce="1"
 buf-read-ext = "0.4.0"
 serde_urlencoded = "0.7"
 httpdate ="1"
-
+serde = "1"
+serde_json = {version = "1", optional = true }
 
 #only runtime_thread
 dashmap = {version = "4.0.2" , optional = true }

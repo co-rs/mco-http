@@ -24,7 +24,7 @@ use self::Error::{
 };
 
 pub use url::ParseError;
-use crate::Error::Parse;
+use crate::Error::{Parse, ParseJson};
 
 /// Result type often returned from methods that can have hyper `Error`s.
 pub type Result<T> = ::std::result::Result<T, Error>;
@@ -54,7 +54,9 @@ pub enum Error {
     #[doc(hidden)]
     __Nonexhaustive(Void),
 
-    Parse(String)
+    Parse(String),
+
+    ParseJson(String)
 }
 
 #[doc(hidden)]
@@ -91,6 +93,7 @@ impl StdError for Error {
             Ssl(ref e) => e.description(),
             Utf8(ref e) => e.description(),
             Parse(ref e) => e,
+            ParseJson(ref e) => e,
             Error::__Nonexhaustive(..) =>  unreachable!(),
         }
     }
@@ -157,6 +160,12 @@ impl From<httparse::Error> for Error {
 impl From<serde_urlencoded::de::Error> for Error {
     fn from(err: serde_urlencoded::de::Error) -> Error {
         Error::Parse(err.to_string())
+    }
+}
+
+impl From<serde_json::Error> for Error{
+    fn from(arg: serde_json::Error) -> Self {
+        Error::ParseJson(arg.to_string())
     }
 }
 
