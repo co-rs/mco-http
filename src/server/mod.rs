@@ -262,49 +262,46 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                 runtime::spawn_stack_size(move || {
                     {
                         #[cfg(unix)]
-                            stream.set_nonblocking(true);
-                        #[cfg(unix)]
-                            {
-                                match w.timeouts.keep_alive_type {
-                                    KeepAliveType::WaitTime(timeout) => {
-                                        let mut now = std::time::Instant::now();
-                                        loop {
-                                            stream.reset_io();
-                                            let keep_alive = w.handle_connection(&mut stream);
-                                            stream.wait_io();
-                                            if keep_alive == false {
-                                                if now.elapsed() >= timeout {
-                                                    return;
-                                                } else {
-                                                    yield_now();
-                                                    continue;
-                                                }
-                                            }else{
-                                                if now.elapsed() <= timeout {
-                                                    now = std::time::Instant::now();
-                                                }
-                                            }
-                                        }
-                                    }
-                                    KeepAliveType::WaitError(total) => {
-                                        let mut count = 0;
-                                        loop {
-                                            stream.reset_io();
-                                            let keep_alive = w.handle_connection(&mut stream);
-                                            stream.wait_io();
-                                            if keep_alive == false {
-                                                count += 1;
-                                                if count >= total {
-                                                    return;
-                                                }
+                        stream.set_nonblocking(true);
+                        {
+                            match w.timeouts.keep_alive_type {
+                                KeepAliveType::WaitTime(timeout) => {
+                                    let mut now = std::time::Instant::now();
+                                    loop {
+                                        stream.reset_io();
+                                        let keep_alive = w.handle_connection(&mut stream);
+                                        stream.wait_io();
+                                        if keep_alive == false {
+                                            if now.elapsed() >= timeout {
+                                                return;
+                                            } else {
                                                 yield_now();
+                                                continue;
+                                            }
+                                        } else {
+                                            if now.elapsed() <= timeout {
+                                                now = std::time::Instant::now();
                                             }
                                         }
                                     }
                                 }
+                                KeepAliveType::WaitError(total) => {
+                                    let mut count = 0;
+                                    loop {
+                                        stream.reset_io();
+                                        let keep_alive = w.handle_connection(&mut stream);
+                                        stream.wait_io();
+                                        if keep_alive == false {
+                                            count += 1;
+                                            if count >= total {
+                                                return;
+                                            }
+                                            yield_now();
+                                        }
+                                    }
+                                }
                             }
-                        #[cfg(not(unix))]
-                            w.handle_connection(&mut stream);
+                        }
                     }
                 }, stack_size);
             }
