@@ -30,6 +30,7 @@ use std::time::Duration;
 use crate::net::NetworkStream;
 
 pub struct MockStream {
+    pub peer_addr:String,
     pub read: Cursor<Vec<u8>>,
     pub write: Vec<u8>,
 }
@@ -37,6 +38,7 @@ pub struct MockStream {
 impl Clone for MockStream {
     fn clone(&self) -> MockStream {
         MockStream {
+            peer_addr: "127.0.0.1:1337".to_string(),
             read: Cursor::new(self.read.get_ref().clone()),
             write: self.write.clone(),
         }
@@ -59,6 +61,7 @@ impl MockStream {
     #[allow(dead_code)]
     pub fn with_input(input: &[u8]) -> MockStream {
         MockStream {
+            peer_addr: "".to_string(),
             read: Cursor::new(input.to_vec()),
             write: vec![],
         }
@@ -83,7 +86,7 @@ impl Write for MockStream {
 
 impl NetworkStream for MockStream {
     fn peer_addr(&mut self) -> io::Result<SocketAddr> {
-        Ok("127.0.0.1:1337".parse().unwrap())
+        Ok(self.peer_addr.parse().unwrap())
     }
 
     fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> {
@@ -92,5 +95,17 @@ impl NetworkStream for MockStream {
 
     fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> {
         Ok(())
+    }
+
+    fn set_nonblocking(&self, b: bool) {
+
+    }
+
+    fn reset_io(&self) {
+
+    }
+
+    fn wait_io(&self) {
+
     }
 }
