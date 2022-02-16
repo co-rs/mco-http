@@ -1,11 +1,11 @@
 #![deny(warnings)]
 #![feature(test)]
-extern crate cogo_http;
+extern crate mco_http;
 extern crate test;
 
 
-use cogo_http::mock::MockStream;
-use cogo_http::server::{Request, Response, Worker};
+use mco_http::mock::MockStream;
+use mco_http::server::{Request, Response, Worker};
 
 #[bench]
 fn bench_mock_handle_connection(b: &mut test::Bencher) {

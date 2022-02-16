@@ -1,4 +1,4 @@
-# cogo-http
+# mco-http
 
 * Coroutine HTTP framework for Cogo, Original code fork from Hyper，We improved the underlying logic
 * support http server
@@ -13,17 +13,17 @@
 ## example-server
 ```rust
 #[deny(unused_variables)]
-extern crate cogo_http;
+extern crate mco_http;
 
-use cogo_http::route::Route;
-use cogo_http::server::{Request, Response};
+use mco_http::route::Route;
+use mco_http::server::{Request, Response};
 
 fn hello(req: Request, res: Response) {
     res.send(b"Hello World!").unwrap();
 }
 
 fn main() {
-    let _listening = cogo_http::Server::http("0.0.0.0:3000").unwrap()
+    let _listening = mco_http::Server::http("0.0.0.0:3000").unwrap()
         .handle(hello);
     println!("Listening on http://127.0.0.1:3000");
 }
@@ -32,11 +32,11 @@ fn main() {
 
 ## example-client
 ```rust
-extern crate cogo_http;
+extern crate mco_http;
 
 use std::io;
-use cogo_http::Client;
-use cogo_http::header::Connection;
+use mco_http::Client;
+use mco_http::header::Connection;
 
 fn main() {
     let mut url = "http://www.baidu.com".to_string();

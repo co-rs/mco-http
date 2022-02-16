@@ -1,6 +1,6 @@
 #![deny(warnings)]
 #![feature(test)]
-extern crate cogo_http;
+extern crate mco_http;
 
 extern crate test;
 
@@ -9,7 +9,7 @@ use std::io::{self, Read, Write, Cursor};
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use cogo_http::net;
+use mco_http::net;
 
 static README: &'static [u8] = include_bytes!("../README.md");
 
@@ -55,16 +55,16 @@ impl Write for MockStream {
 #[derive(Clone, Debug)]
 struct Foo;
 
-impl cogo_http::header::Header for Foo {
+impl mco_http::header::Header for Foo {
     fn header_name() -> &'static str {
         "x-foo"
     }
-    fn parse_header(_: &[Vec<u8>]) -> cogo_http::Result<Foo> {
-        Err(cogo_http::Error::Header)
+    fn parse_header(_: &[Vec<u8>]) -> mco_http::Result<Foo> {
+        Err(mco_http::Error::Header)
     }
 }
 
-impl cogo_http::header::HeaderFormat for Foo {
+impl mco_http::header::HeaderFormat for Foo {
     fn fmt_header(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.write_str("Bar")
     }
@@ -88,17 +88,17 @@ struct MockConnector;
 
 impl net::NetworkConnector for MockConnector {
     type Stream = MockStream;
-    fn connect(&self, _: &str, _: u16, _: &str) -> cogo_http::Result<MockStream> {
+    fn connect(&self, _: &str, _: u16, _: &str) -> mco_http::Result<MockStream> {
         Ok(MockStream::new())
     }
 }
 
 #[bench]
-fn bench_mock_cogo_http(b: &mut test::Bencher) {
+fn bench_mock_mco_http(b: &mut test::Bencher) {
     let url = "http://127.0.0.1:1337/";
     b.iter(|| {
-        let mut req = cogo_http::client::Request::with_connector(
-            cogo_http::Get, cogo_http::Url::parse(url).unwrap(), &MockConnector
+        let mut req = mco_http::client::Request::with_connector(
+            mco_http::Get, mco_http::Url::parse(url).unwrap(), &MockConnector
         ).unwrap();
         req.headers_mut().set(Foo);
 

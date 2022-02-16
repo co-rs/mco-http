@@ -1,5 +1,5 @@
 #[deny(unused_variables)]
-extern crate cogo_http;
+extern crate mco_http;
 extern crate env_logger;
 
 use std::fs::File;
@@ -7,8 +7,8 @@ use std::ops::Deref;
 use std::sync::Arc;
 use cdbc::Executor;
 use cdbc_sqlite::SqlitePool;
-use cogo_http::route::Route;
-use cogo_http::server::{Request, Response};
+use mco_http::route::Route;
+use mco_http::server::{Request, Response};
 
 /// table
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -65,7 +65,7 @@ fn main() {
     route.handle_fn("/", move |req: Request, res: Response| {
         route_clone.find_all(req, res);
     });
-    let _listening = cogo_http::Server::http("0.0.0.0:3000").unwrap()
+    let _listening = mco_http::Server::http("0.0.0.0:3000").unwrap()
         .handle(route);
     println!("Listening on http://127.0.0.1:3000");
 }
