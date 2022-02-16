@@ -22,13 +22,13 @@ header! {
     /// 
     /// # Examples
     /// ```
-    /// use cogo_http::header::{Headers, ContentEncoding, Encoding};
+    /// use mco_http::header::{Headers, ContentEncoding, Encoding};
     /// 
     /// let mut headers = Headers::new();
     /// headers.set(ContentEncoding(vec![Encoding::Chunked]));
     /// ```
     /// ```
-    /// use cogo_http::header::{Headers, ContentEncoding, Encoding};
+    /// use mco_http::header::{Headers, ContentEncoding, Encoding};
     /// 
     /// let mut headers = Headers::new();
     /// headers.set(

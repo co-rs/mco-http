@@ -21,7 +21,7 @@ use crate::header::parsing::{from_comma_delimited, fmt_comma_delimited};
 ///
 /// # Examples
 /// ```
-/// use cogo_http::header::{Headers, PreferenceApplied, Preference};
+/// use mco_http::header::{Headers, PreferenceApplied, Preference};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(
@@ -29,7 +29,7 @@ use crate::header::parsing::{from_comma_delimited, fmt_comma_delimited};
 /// );
 /// ```
 /// ```
-/// use cogo_http::header::{Headers, PreferenceApplied, Preference};
+/// use mco_http::header::{Headers, PreferenceApplied, Preference};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(

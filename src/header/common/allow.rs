@@ -20,8 +20,8 @@ header! {
     ///
     /// # Examples
     /// ```
-    /// use cogo_http::header::{Headers, Allow};
-    /// use cogo_http::method::Method;
+    /// use mco_http::header::{Headers, Allow};
+    /// use mco_http::method::Method;
     ///
     /// let mut headers = Headers::new();
     /// headers.set(
@@ -29,8 +29,8 @@ header! {
     /// );
     /// ```
     /// ```
-    /// use cogo_http::header::{Headers, Allow};
-    /// use cogo_http::method::Method;
+    /// use mco_http::header::{Headers, Allow};
+    /// use mco_http::method::Method;
     ///
     /// let mut headers = Headers::new();
     /// headers.set(

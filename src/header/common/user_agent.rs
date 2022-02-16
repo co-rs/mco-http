@@ -26,7 +26,7 @@ header! {
     ///
     /// # Example
     /// ```
-    /// use cogo_http::header::{Headers, UserAgent};
+    /// use mco_http::header::{Headers, UserAgent};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(UserAgent("hyper/0.5.2".to_owned()));

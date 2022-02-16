@@ -15,7 +15,7 @@ header! {
     ///
     /// # Examples
     /// ```
-    /// use cogo_http::header::{Headers, AccessControlMaxAge};
+    /// use mco_http::header::{Headers, AccessControlMaxAge};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(AccessControlMaxAge(1728000u32));

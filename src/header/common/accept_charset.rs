@@ -21,7 +21,7 @@ header! {
     ///
     /// # Examples
     /// ```
-    /// use cogo_http::header::{Headers, AcceptCharset, Charset, qitem};
+    /// use mco_http::header::{Headers, AcceptCharset, Charset, qitem};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(
@@ -29,7 +29,7 @@ header! {
     /// );
     /// ```
     /// ```
-    /// use cogo_http::header::{Headers, AcceptCharset, Charset, Quality, QualityItem};
+    /// use mco_http::header::{Headers, AcceptCharset, Charset, Quality, QualityItem};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(
@@ -40,7 +40,7 @@ header! {
     /// );
     /// ```
     /// ```
-    /// use cogo_http::header::{Headers, AcceptCharset, Charset, qitem};
+    /// use mco_http::header::{Headers, AcceptCharset, Charset, qitem};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(

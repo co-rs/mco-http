@@ -21,9 +21,9 @@ header! {
     /// 
     /// # Examples
     /// ```
-    /// # extern crate cogo_http;
+    /// # extern crate mco_http;
     /// # #[macro_use] extern crate language_tags;
-    /// # use cogo_http::header::{Headers, ContentLanguage, qitem};
+    /// # use mco_http::header::{Headers, ContentLanguage, qitem};
     /// # 
     /// # fn main() {
     /// let mut headers = Headers::new();
@@ -35,9 +35,9 @@ header! {
     /// # }
     /// ```
     /// ```
-    /// # extern crate cogo_http;
+    /// # extern crate mco_http;
     /// # #[macro_use] extern crate language_tags;
-    /// # use cogo_http::header::{Headers, ContentLanguage, qitem};
+    /// # use mco_http::header::{Headers, ContentLanguage, qitem};
     /// # 
     /// # fn main() {
     /// 

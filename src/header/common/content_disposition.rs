@@ -68,7 +68,7 @@ pub enum DispositionParam {
 ///
 /// # Example
 /// ```
-/// use cogo_http::header::{Headers, ContentDisposition, DispositionType, DispositionParam, Charset};
+/// use mco_http::header::{Headers, ContentDisposition, DispositionType, DispositionParam, Charset};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(ContentDisposition {

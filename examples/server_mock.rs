@@ -1,5 +1,5 @@
-use cogo_http::mock::MockStream;
-use cogo_http::server::{Request, Response, Worker};
+use mco_http::mock::MockStream;
+use mco_http::server::{Request, Response, Worker};
 
 fn main() {
     let mut mock = MockStream::with_input(b"\

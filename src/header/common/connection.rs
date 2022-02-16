@@ -71,18 +71,18 @@ header! {
     ///
     /// # Examples
     /// ```
-    /// use cogo_http::header::{Headers, Connection};
+    /// use mco_http::header::{Headers, Connection};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(Connection::keep_alive());
     /// ```
     /// ```
-    /// # extern crate cogo_http;
+    /// # extern crate mco_http;
     /// # extern crate unicase;
     /// # fn main() {
     /// // extern crate unicase;
     ///
-    /// use cogo_http::header::{Headers, Connection, ConnectionOption};
+    /// use mco_http::header::{Headers, Connection, ConnectionOption};
     /// use unicase::UniCase;
     ///
     /// let mut headers = Headers::new();

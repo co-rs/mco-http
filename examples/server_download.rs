@@ -1,5 +1,5 @@
 #[deny(unused_variables)]
-extern crate cogo_http;
+extern crate mco_http;
 extern crate env_logger;
 extern crate serde_json;
 
@@ -11,11 +11,11 @@ use std::path::PathBuf;
 use std::sync::mpsc::RecvError;
 use captcha::Captcha;
 use captcha::filters::{Dots, Noise, Wave};
-use cogo::{chan, defer, spawn_blocking};
-use cogo::std::lazy::sync::Lazy;
-use cogo::std::sync::{Receiver, Sender};
-use cogo_http::header::ContentType;
-use cogo_http::server::{Request, Response};
+use mco::{chan, defer, spawn_blocking};
+use mco::std::lazy::sync::Lazy;
+use mco::std::sync::{Receiver, Sender};
+use mco_http::header::ContentType;
+use mco_http::server::{Request, Response};
 
 /// Draw a captcha code and display it on the web
 fn download(mut req: Request, res: Response) {
@@ -41,7 +41,7 @@ fn download(mut req: Request, res: Response) {
 fn main() {
     env_logger::init().unwrap();
 
-    let _listening = cogo_http::Server::http("0.0.0.0:3000").unwrap()
+    let _listening = mco_http::Server::http("0.0.0.0:3000").unwrap()
         .handle(download).unwrap();
     println!("Listening on http://127.0.0.1:3000");
 }

@@ -1,11 +1,11 @@
 #[deny(unused_variables)]
-extern crate cogo_http;
+extern crate mco_http;
 extern crate env_logger;
 #[macro_use]
 extern crate serde_json;
 
-use cogo_http::json::read_json;
-use cogo_http::server::{Request, Response};
+use mco_http::json::read_json;
+use mco_http::server::{Request, Response};
 
 // request header Content-Type: json
 fn hello(mut req: Request, res: Response) {
@@ -16,7 +16,7 @@ fn hello(mut req: Request, res: Response) {
 
 fn main() {
     env_logger::init().unwrap();
-    let _listening = cogo_http::Server::http("0.0.0.0:3000").unwrap()
+    let _listening = mco_http::Server::http("0.0.0.0:3000").unwrap()
         .handle(hello).unwrap();
     println!("Listening on http://127.0.0.1:3000");
 }

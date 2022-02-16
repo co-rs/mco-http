@@ -18,13 +18,13 @@ header! {
     ///
     /// # Examples
     /// ```
-    /// use cogo_http::header::{Headers, Referer};
+    /// use mco_http::header::{Headers, Referer};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(Referer("/People.html#tim".to_owned()));
     /// ```
     /// ```
-    /// use cogo_http::header::{Headers, Referer};
+    /// use mco_http::header::{Headers, Referer};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(Referer("http://www.example.com/index.html".to_owned()));

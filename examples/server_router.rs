@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use cogo_http::route::Route;
-use cogo_http::server::{Request, Response};
-use cogo_http::route::MiddleWare;
+use mco_http::route::Route;
+use mco_http::server::{Request, Response};
+use mco_http::route::MiddleWare;
 
 fn main() {
     env_logger::init().unwrap();
@@ -19,7 +19,7 @@ fn main() {
     });
 
     let route = Arc::new(route);
-    let _listening = cogo_http::Server::http("0.0.0.0:3000").unwrap()
+    let _listening = mco_http::Server::http("0.0.0.0:3000").unwrap()
         .handle(route.clone());
     println!("Listening on http://127.0.0.1:3000");
 

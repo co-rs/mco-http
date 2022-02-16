@@ -14,7 +14,7 @@
 //!
 //!
 //! ```no_run
-//! use cogo_http::server::{Server, Request, Response};
+//! use mco_http::server::{Server, Request, Response};
 //!
 //! fn hello(req: Request, res: Response) {
 //!     // handle things here
@@ -29,7 +29,7 @@
 //! ```no_run
 //! use std::sync::Mutex;
 //! use std::sync::mpsc::{channel, Sender};
-//! use cogo_http::server::{Handler, Server, Request, Response};
+//! use mco_http::server::{Handler, Server, Request, Response};
 //!
 //! struct SenderHandler {
 //!     sender: Mutex<Sender<&'static str>>
@@ -53,7 +53,7 @@
 //!
 //! ```no_run
 //! use std::sync::atomic::{AtomicUsize, Ordering};
-//! use cogo_http::server::{Server, Request, Response};
+//! use mco_http::server::{Server, Request, Response};
 //!
 //! let counter = AtomicUsize::new(0);
 //! Server::http("0.0.0.0:0").unwrap().handle(move |req: Request, res: Response| {
@@ -73,12 +73,12 @@
 //!
 //! ```no_run
 //! use std::io;
-//! use cogo_http::server::{Server, Request, Response};
-//! use cogo_http::status::StatusCode;
+//! use mco_http::server::{Server, Request, Response};
+//! use mco_http::status::StatusCode;
 //!
 //! Server::http("0.0.0.0:0").unwrap().handle(|mut req: Request, mut res: Response| {
 //!     match req.method {
-//!         cogo_http::Post => {
+//!         mco_http::Post => {
 //!             io::copy(&mut req, &mut res.start().unwrap()).unwrap();
 //!         }
 //!         _ => *res.status_mut() = StatusCode::MethodNotAllowed
@@ -112,7 +112,7 @@ use std::io::{self, ErrorKind, BufWriter, Write};
 use std::net::{SocketAddr, ToSocketAddrs, Shutdown};
 use std::sync::Arc;
 use std::time::Duration;
-use cogo::coroutine::yield_now;
+use mco::coroutine::yield_now;
 pub use self::request::Request;
 pub use self::response::Response;
 pub use crate::net::{Fresh, Streaming};
@@ -227,7 +227,7 @@ impl Server<HttpListener> {
 impl<S: SslServer + Clone + Send> Server<HttpsListener<S>> {
     /// Creates a new server that will handle `HttpStream`s over SSL.
     ///
-    /// You can use any SSL implementation, as long as implements `cogo_http::net::Ssl`.
+    /// You can use any SSL implementation, as long as implements `mco_http::net::Ssl`.
     pub fn https<A: ToSocketAddrs>(addr: A, ssl: S) -> crate::Result<Server<HttpsListener<S>>> {
         HttpsListener::new(addr, ssl).map(Server::new)
     }

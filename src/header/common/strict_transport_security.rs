@@ -32,9 +32,9 @@ use crate::header::{Header, HeaderFormat, parsing};
 ///
 /// # Example
 /// ```
-/// # extern crate cogo_http;
+/// # extern crate mco_http;
 /// # fn main() {
-/// use cogo_http::header::{Headers, StrictTransportSecurity};
+/// use mco_http::header::{Headers, StrictTransportSecurity};
 ///
 /// let mut headers = Headers::new();
 ///

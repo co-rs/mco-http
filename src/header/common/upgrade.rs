@@ -29,13 +29,13 @@ header! {
     ///
     /// # Examples
     /// ```
-    /// use cogo_http::header::{Headers, Upgrade, Protocol, ProtocolName};
+    /// use mco_http::header::{Headers, Upgrade, Protocol, ProtocolName};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(Upgrade(vec![Protocol::new(ProtocolName::WebSocket, None)]));
     /// ```
     /// ```
-    /// use cogo_http::header::{Headers, Upgrade, Protocol, ProtocolName};
+    /// use mco_http::header::{Headers, Upgrade, Protocol, ProtocolName};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(

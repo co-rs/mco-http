@@ -1,11 +1,11 @@
-extern crate cogo_http;
+extern crate mco_http;
 extern crate env_logger;
 
 use std::env;
 use std::io;
 
-use cogo_http::Client;
-use cogo_http::header::Connection;
+use mco_http::Client;
+use mco_http::header::Connection;
 
 fn main() {
     env_logger::init().unwrap();

@@ -55,7 +55,7 @@ use std::str::from_utf8;
 ///
 /// # Example
 /// ```
-/// use cogo_http::header::{Headers, SetCookie};
+/// use mco_http::header::{Headers, SetCookie};
 ///
 /// let mut headers = Headers::new();
 ///

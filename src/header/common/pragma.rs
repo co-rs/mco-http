@@ -21,13 +21,13 @@ use crate::header::{Header, HeaderFormat, parsing};
 ///
 /// # Examples
 /// ```
-/// use cogo_http::header::{Headers, Pragma};
+/// use mco_http::header::{Headers, Pragma};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(Pragma::NoCache);
 /// ```
 /// ```
-/// use cogo_http::header::{Headers, Pragma};
+/// use mco_http::header::{Headers, Pragma};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(Pragma::Ext("foobar".to_owned()));

@@ -1,6 +1,6 @@
 //! Server Responses
 //!
-//! These are responses sent by a `cogo_http::Server` to clients, after
+//! These are responses sent by a `mco_http::Server` to clients, after
 //! receiving a request.
 use std::any::{Any, TypeId};
 use std::marker::PhantomData;
@@ -147,7 +147,7 @@ impl<'a> Response<'a, Fresh> {
     /// # Example
     ///
     /// ```
-    /// # use cogo_http::server::Response;
+    /// # use mco_http::server::Response;
     /// fn handler(res: Response) {
     ///     res.send(b"Hello World!").unwrap();
     /// }
@@ -156,9 +156,9 @@ impl<'a> Response<'a, Fresh> {
     /// The above is the same, but shorter, than the longer:
     ///
     /// ```
-    /// # use cogo_http::server::Response;
+    /// # use mco_http::server::Response;
     /// use std::io::Write;
-    /// use cogo_http::header::ContentLength;
+    /// use mco_http::header::ContentLength;
     /// fn handler(mut res: Response) {
     ///     let body = b"Hello World!";
     ///     res.headers_mut().set(ContentLength(body.len() as u64));

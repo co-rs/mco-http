@@ -27,18 +27,18 @@ use crate::header::{self, Header, HeaderFormat, EntityTag, HttpDate};
 ///
 /// # Examples
 /// ```
-/// use cogo_http::header::{Headers, IfRange, EntityTag};
+/// use mco_http::header::{Headers, IfRange, EntityTag};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(IfRange::EntityTag(EntityTag::new(false, "xyzzy".to_owned())));
 /// ```
 /// ```
-/// # extern crate cogo_http;
+/// # extern crate mco_http;
 /// # extern crate time;
 /// # fn main() {
 /// // extern crate time;
 ///
-/// use cogo_http::header::{Headers, IfRange, HttpDate};
+/// use mco_http::header::{Headers, IfRange, HttpDate};
 /// use time::{self, Duration};
 ///
 /// let mut headers = Headers::new();

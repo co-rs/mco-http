@@ -1,12 +1,12 @@
 [package]
-name = "cogo-http"
+name = "mco-http"
 version = "0.1.13"
 edition = "2021"
 description = "A modern HTTP library."
 readme = "README.md"
 license = "MIT/Apache-2.0"
 
-repository = "https://github.com/co-rs/cogo-http.git"
+repository = "https://github.com/co-rs/mco-http.git"
 homepage = "https://github.com/co-rs"
 
 authors = ["zhuxiujia <zhuxiujia@qq.com>",
@@ -21,9 +21,9 @@ include = [
 ]
 
 [features]
-default = ["runtime_cogo","serde_json"]
+default = ["runtime_mco","serde_json"]
 runtime_thread = ["dashmap"]
-runtime_cogo = ["cogo"]
+runtime_mco = ["mco"]
 nightly = []
 
 [dependencies]
@@ -37,7 +37,7 @@ traitobject = "0.1"
 typeable = "0.1"
 unicase = "1.0"
 url = "1.0"
-cogo = {version = "0.1", optional = true }
+mco = {version = "0.1", optional = true }
 
 crossbeam = "0.8"
 crossbeam-channel = "0.5"

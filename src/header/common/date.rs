@@ -17,11 +17,11 @@ header! {
     /// # Example
     /// ```
     /// # extern crate time;
-    /// # extern crate cogo_http;
+    /// # extern crate mco_http;
     /// # fn main() {
     /// // extern crate time;
     /// 
-    /// use cogo_http::header::{Headers, Date, HttpDate};
+    /// use mco_http::header::{Headers, Date, HttpDate};
     /// use time;
     /// 
     /// let mut headers = Headers::new();

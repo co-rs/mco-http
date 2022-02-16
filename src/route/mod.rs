@@ -50,8 +50,8 @@ impl Route {
     /// handle a fn
     /// for example:
     /// ```rust
-    /// use cogo_http::route::Route;
-    /// use cogo_http::server::{Request, Response};
+    /// use mco_http::route::Route;
+    /// use mco_http::server::{Request, Response};
     ///
     /// let mut route = Route::new();
     /// //Common way

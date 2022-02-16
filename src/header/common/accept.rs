@@ -29,8 +29,8 @@ header! {
     ///
     /// # Examples
     /// ```
-    /// use cogo_http::header::{Headers, Accept, qitem};
-    /// use cogo_http::mime::{Mime, TopLevel, SubLevel};
+    /// use mco_http::header::{Headers, Accept, qitem};
+    /// use mco_http::mime::{Mime, TopLevel, SubLevel};
     ///
     /// let mut headers = Headers::new();
     ///
@@ -41,8 +41,8 @@ header! {
     /// );
     /// ```
     /// ```
-    /// use cogo_http::header::{Headers, Accept, qitem};
-    /// use cogo_http::mime::{Mime, TopLevel, SubLevel, Attr, Value};
+    /// use mco_http::header::{Headers, Accept, qitem};
+    /// use mco_http::mime::{Mime, TopLevel, SubLevel, Attr, Value};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(
@@ -53,8 +53,8 @@ header! {
     /// );
     /// ```
     /// ```
-    /// use cogo_http::header::{Headers, Accept, QualityItem, Quality, qitem};
-    /// use cogo_http::mime::{Mime, TopLevel, SubLevel};
+    /// use mco_http::header::{Headers, Accept, QualityItem, Quality, qitem};
+    /// use mco_http::mime::{Mime, TopLevel, SubLevel};
     ///
     /// let mut headers = Headers::new();
     ///

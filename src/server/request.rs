@@ -1,6 +1,6 @@
 //! Server Requests
 //!
-//! These are requests that a `cogo_http::Server` receives, and include its method,
+//! These are requests that a `mco_http::Server` receives, and include its method,
 //! target URI, headers, and message body.
 use std::io::{self, Read};
 use std::net::SocketAddr;

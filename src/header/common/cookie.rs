@@ -17,7 +17,7 @@ use std::str::from_utf8;
 ///
 /// # Example
 /// ```
-/// use cogo_http::header::{Headers, Cookie};
+/// use mco_http::header::{Headers, Cookie};
 ///
 /// let mut headers = Headers::new();
 ///

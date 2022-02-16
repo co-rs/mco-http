@@ -20,7 +20,7 @@ header! {
     ///
     /// # Example
     /// ```
-    /// use cogo_http::header::{Headers, Vary};
+    /// use mco_http::header::{Headers, Vary};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(Vary::Any);
@@ -28,12 +28,12 @@ header! {
     ///
     /// # Example
     /// ```
-    /// # extern crate cogo_http;
+    /// # extern crate mco_http;
     /// # extern crate unicase;
     /// # fn main() {
     /// // extern crate unicase;
     ///
-    /// use cogo_http::header::{Headers, Vary};
+    /// use mco_http::header::{Headers, Vary};
     /// use unicase::UniCase;
     ///
     /// let mut headers = Headers::new();

@@ -14,7 +14,7 @@ header! {
     ///
     /// # Example
     /// ```
-    /// use cogo_http::header::{Headers, LastEventID};
+    /// use mco_http::header::{Headers, LastEventID};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(LastEventID("1".to_owned()));

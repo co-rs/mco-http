@@ -21,7 +21,7 @@ use crate::header::{Header, HeaderFormat};
 ///
 /// # Examples
 /// ```
-/// use cogo_http::header::{Headers, AccessControlAllowOrigin};
+/// use mco_http::header::{Headers, AccessControlAllowOrigin};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(
@@ -29,7 +29,7 @@ use crate::header::{Header, HeaderFormat};
 /// );
 /// ```
 /// ```
-/// use cogo_http::header::{Headers, AccessControlAllowOrigin};
+/// use mco_http::header::{Headers, AccessControlAllowOrigin};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(
@@ -37,7 +37,7 @@ use crate::header::{Header, HeaderFormat};
 /// );
 /// ```
 /// ```
-/// use cogo_http::header::{Headers, AccessControlAllowOrigin};
+/// use mco_http::header::{Headers, AccessControlAllowOrigin};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(

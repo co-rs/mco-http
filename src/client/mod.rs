@@ -8,11 +8,11 @@
 //! ## GET
 //!
 //! ```no_run
-//! # use cogo_http::Client;
+//! # use mco_http::Client;
 //! let client = Client::new();
 //!
 //! let res = client.get("http://example.domain").send().unwrap();
-//! assert_eq!(res.status, cogo_http::Ok);
+//! assert_eq!(res.status, mco_http::Ok);
 //! ```
 //!
 //! The returned value is a `Response`, which provides easy access to
@@ -22,14 +22,14 @@
 //! ## POST
 //!
 //! ```no_run
-//! # use cogo_http::Client;
+//! # use mco_http::Client;
 //! let client = Client::new();
 //!
 //! let res = client.post("http://example.domain")
 //!     .body("foo=bar")
 //!     .send()
 //!     .unwrap();
-//! assert_eq!(res.status, cogo_http::Ok);
+//! assert_eq!(res.status, mco_http::Ok);
 //! ```
 //!
 //! # Sync
@@ -38,7 +38,7 @@
 //! and make multiple requests simultaneously.
 //!
 //! ```no_run
-//! # use cogo_http::Client;
+//! # use mco_http::Client;
 //! use std::sync::Arc;
 //! use std::thread;
 //!
@@ -50,7 +50,7 @@
 //! let clone1 = client.clone();
 //! let clone2 = client.clone();
 //!
-//! cogo::go!(move ||{
+//! mco::co!(move ||{
 //!   clone0.get("http://example.domain").send().unwrap();
 //! });
 //!
@@ -251,7 +251,7 @@ pub struct RequestBuilder<'a> {
     // stops downstream crates having to remonomorphise and recompile
     // the code, which can take a while, since `send` is fairly large.
     // (For an extreme example, a tiny crate containing
-    // `cogo_http::Client::new().get("x").send().unwrap();` took ~4s to
+    // `mco_http::Client::new().get("x").send().unwrap();` took ~4s to
     // compile with a generic RequestBuilder, but 2s with this scheme,)
     url: Result<Url, UrlError>,
     headers: Option<Headers>,

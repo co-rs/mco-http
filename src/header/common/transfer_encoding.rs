@@ -19,7 +19,7 @@ header! {
     /// 
     /// # Example
     /// ```
-    /// use cogo_http::header::{Headers, TransferEncoding, Encoding};
+    /// use mco_http::header::{Headers, TransferEncoding, Encoding};
     /// 
     /// let mut headers = Headers::new();
     /// headers.set(

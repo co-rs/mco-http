@@ -36,7 +36,7 @@ use crate::header::parsing::{from_one_raw_str, from_comma_delimited};
 ///
 /// # Examples
 /// ```
-/// use cogo_http::header::{Headers, Range, ByteRangeSpec};
+/// use mco_http::header::{Headers, Range, ByteRangeSpec};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(Range::Bytes(
@@ -47,7 +47,7 @@ use crate::header::parsing::{from_one_raw_str, from_comma_delimited};
 /// headers.set(Range::Unregistered("letters".to_owned(), "a-f".to_owned()));
 /// ```
 /// ```
-/// use cogo_http::header::{Headers, Range};
+/// use mco_http::header::{Headers, Range};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(Range::bytes(1, 100));

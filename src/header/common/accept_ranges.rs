@@ -21,19 +21,19 @@ header! {
     ///
     /// # Examples
     /// ```
-    /// use cogo_http::header::{Headers, AcceptRanges, RangeUnit};
+    /// use mco_http::header::{Headers, AcceptRanges, RangeUnit};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(AcceptRanges(vec![RangeUnit::Bytes]));
     /// ```
     /// ```
-    /// use cogo_http::header::{Headers, AcceptRanges, RangeUnit};
+    /// use mco_http::header::{Headers, AcceptRanges, RangeUnit};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(AcceptRanges(vec![RangeUnit::None]));
     /// ```
     /// ```
-    /// use cogo_http::header::{Headers, AcceptRanges, RangeUnit};
+    /// use mco_http::header::{Headers, AcceptRanges, RangeUnit};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(

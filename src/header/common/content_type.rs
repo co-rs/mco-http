@@ -23,8 +23,8 @@ header! {
     /// 
     /// # Examples
     /// ```
-    /// use cogo_http::header::{Headers, ContentType};
-    /// use cogo_http::mime::{Mime, TopLevel, SubLevel};
+    /// use mco_http::header::{Headers, ContentType};
+    /// use mco_http::mime::{Mime, TopLevel, SubLevel};
     /// 
     /// let mut headers = Headers::new();
     /// 
@@ -33,8 +33,8 @@ header! {
     /// );
     /// ```
     /// ```
-    /// use cogo_http::header::{Headers, ContentType};
-    /// use cogo_http::mime::{Mime, TopLevel, SubLevel, Attr, Value};
+    /// use mco_http::header::{Headers, ContentType};
+    /// use mco_http::mime::{Mime, TopLevel, SubLevel, Attr, Value};
     /// 
     /// let mut headers = Headers::new();
     /// 

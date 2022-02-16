@@ -17,12 +17,12 @@ header! {
     ///
     /// # Examples
     /// ```
-    /// # extern crate cogo_http;
+    /// # extern crate mco_http;
     /// # extern crate unicase;
     /// # fn main() {
     /// // extern crate unicase;
     ///
-    /// use cogo_http::header::{Headers, AccessControlExposeHeaders};
+    /// use mco_http::header::{Headers, AccessControlExposeHeaders};
     /// use unicase::UniCase;
     ///
     /// let mut headers = Headers::new();
@@ -35,12 +35,12 @@ header! {
     /// # }
     /// ```
     /// ```
-    /// # extern crate cogo_http;
+    /// # extern crate mco_http;
     /// # extern crate unicase;
     /// # fn main() {
     /// // extern crate unicase;
     ///
-    /// use cogo_http::header::{Headers, AccessControlExposeHeaders};
+    /// use mco_http::header::{Headers, AccessControlExposeHeaders};
     /// use unicase::UniCase;
     ///
     /// let mut headers = Headers::new();

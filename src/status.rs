@@ -19,7 +19,7 @@ use std::cmp::Ordering;
 /// `self.class().default_code()`:
 ///
 /// ```rust
-/// # use cogo_http::status::StatusCode;
+/// # use mco_http::status::StatusCode;
 /// let status = StatusCode::Unregistered(123);
 /// assert_eq!(status.class().default_code(), StatusCode::Continue);
 /// ```
@@ -499,7 +499,7 @@ impl Copy for StatusCode {}
 /// Formats the status code, *including* the canonical reason.
 ///
 /// ```rust
-/// # use cogo_http::status::StatusCode::{ImATeapot, Unregistered};
+/// # use mco_http::status::StatusCode::{ImATeapot, Unregistered};
 /// assert_eq!(format!("{}", ImATeapot), "418 I'm a teapot");
 /// assert_eq!(format!("{}", Unregistered(123)),
 ///            "123 <unknown status code>");
@@ -600,8 +600,8 @@ impl StatusClass {
     /// example, this will produce `BadRequest` (400):
     ///
     /// ```rust
-    /// # use cogo_http::status::StatusClass::ClientError;
-    /// # use cogo_http::status::StatusCode::BadRequest;
+    /// # use mco_http::status::StatusClass::ClientError;
+    /// # use mco_http::status::StatusCode::BadRequest;
     /// assert_eq!(ClientError.default_code(), BadRequest);
     /// ```
     ///
@@ -625,7 +625,7 @@ impl StatusClass {
     /// This is demonstrated thusly:
     ///
     /// ```rust
-    /// # use cogo_http::status::StatusCode::{Unregistered, BadRequest};
+    /// # use mco_http::status::StatusCode::{Unregistered, BadRequest};
     /// // Suppose we have received this status code.
     /// // You will never directly create an unregistered status code.
     /// let status = Unregistered(471);

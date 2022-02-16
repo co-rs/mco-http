@@ -29,13 +29,13 @@ header! {
     ///
     /// # Examples
     /// ```
-    /// use cogo_http::header::{Headers, IfNoneMatch};
+    /// use mco_http::header::{Headers, IfNoneMatch};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(IfNoneMatch::Any);
     /// ```
     /// ```
-    /// use cogo_http::header::{Headers, IfNoneMatch, EntityTag};
+    /// use mco_http::header::{Headers, IfNoneMatch, EntityTag};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(

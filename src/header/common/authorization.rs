@@ -24,13 +24,13 @@ use crate::header::{Header, HeaderFormat};
 ///
 /// # Examples
 /// ```
-/// use cogo_http::header::{Headers, Authorization};
+/// use mco_http::header::{Headers, Authorization};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(Authorization("let me in".to_owned()));
 /// ```
 /// ```
-/// use cogo_http::header::{Headers, Authorization, Basic};
+/// use mco_http::header::{Headers, Authorization, Basic};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(
@@ -43,7 +43,7 @@ use crate::header::{Header, HeaderFormat};
 /// );
 /// ```
 /// ```
-/// use cogo_http::header::{Headers, Authorization, Bearer};
+/// use mco_http::header::{Headers, Authorization, Bearer};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(

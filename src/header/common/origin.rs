@@ -14,7 +14,7 @@ use crate::header::parsing::from_one_raw_str;
 ///
 /// # Examples
 /// ```
-/// use cogo_http::header::{Headers, Origin};
+/// use mco_http::header::{Headers, Origin};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(
@@ -22,7 +22,7 @@ use crate::header::parsing::from_one_raw_str;
 /// );
 /// ```
 /// ```
-/// use cogo_http::header::{Headers, Origin};
+/// use mco_http::header::{Headers, Origin};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(

@@ -27,7 +27,7 @@ use crate::header::{Header, HeaderFormat, parsing};
 ///
 /// # Example
 /// ```
-/// use cogo_http::header::{Headers, ReferrerPolicy};
+/// use mco_http::header::{Headers, ReferrerPolicy};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(ReferrerPolicy::NoReferrer);

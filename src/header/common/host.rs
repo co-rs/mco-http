@@ -14,7 +14,7 @@ use url::idna::domain_to_unicode;
 ///
 /// # Examples
 /// ```
-/// use cogo_http::header::{Headers, Host};
+/// use mco_http::header::{Headers, Host};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(
@@ -25,7 +25,7 @@ use url::idna::domain_to_unicode;
 /// );
 /// ```
 /// ```
-/// use cogo_http::header::{Headers, Host};
+/// use mco_http::header::{Headers, Host};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(

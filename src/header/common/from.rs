@@ -12,7 +12,7 @@ header! {
     ///
     /// # Example
     /// ```
-    /// use cogo_http::header::{Headers, From};
+    /// use mco_http::header::{Headers, From};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(From("webmaster@example.org".to_owned()));

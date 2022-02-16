@@ -21,8 +21,8 @@ header! {
     ///
     /// # Examples
     /// ```
-    /// use cogo_http::LanguageTag;
-    /// use cogo_http::header::{Headers, AcceptLanguage, qitem};
+    /// use mco_http::LanguageTag;
+    /// use mco_http::header::{Headers, AcceptLanguage, qitem};
     ///
     /// let mut headers = Headers::new();
     /// let mut langtag: LanguageTag = Default::default();
@@ -35,9 +35,9 @@ header! {
     /// );
     /// ```
     /// ```
-    /// # extern crate cogo_http;
+    /// # extern crate mco_http;
     /// # #[macro_use] extern crate language_tags;
-    /// # use cogo_http::header::{Headers, AcceptLanguage, QualityItem, Quality, qitem};
+    /// # use mco_http::header::{Headers, AcceptLanguage, QualityItem, Quality, qitem};
     /// #
     /// # fn main() {
     /// let mut headers = Headers::new();

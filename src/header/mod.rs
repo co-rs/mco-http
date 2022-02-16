@@ -14,14 +14,14 @@
 //!
 //! # Defining Custom Headers
 //!
-//! cogo-http provides many of the most commonly used headers in HTTP. If
+//! mco-http provides many of the most commonly used headers in HTTP. If
 //! you need to define a custom header, it's easy to do while still taking
-//! advantage of the type system. cogo-http includes a `header!` macro for defining
+//! advantage of the type system. mco-http includes a `header!` macro for defining
 //! many wrapper-style headers.
 //!
 //! ```
-//! #[macro_use] extern crate cogo_http;
-//! use cogo_http::header::Headers;
+//! #[macro_use] extern crate mco_http;
+//! use mco_http::header::Headers;
 //! header! { (XRequestGuid, "X-Request-Guid") => [String] }
 //!
 //! fn main () {
@@ -42,7 +42,7 @@
 //!
 //! ```
 //! use std::fmt;
-//! use cogo_http::header::{Header, HeaderFormat};
+//! use mco_http::header::{Header, HeaderFormat};
 //!
 //! #[derive(Debug, Clone, Copy)]
 //! struct Dnt(bool);
@@ -52,7 +52,7 @@
 //!         "DNT"
 //!     }
 //!
-//!     fn parse_header(raw: &[Vec<u8>]) -> cogo_http::Result<Dnt> {
+//!     fn parse_header(raw: &[Vec<u8>]) -> mco_http::Result<Dnt> {
 //!         if raw.len() == 1 {
 //!             let line = &raw[0];
 //!             if line.len() == 1 {
@@ -64,7 +64,7 @@
 //!                 }
 //!             }
 //!         }
-//!         Err(cogo_http::Error::Header)
+//!         Err(mco_http::Error::Header)
 //!     }
 //! }
 //!
@@ -317,7 +317,7 @@ impl Headers {
     /// Example:
     ///
     /// ```
-    /// # use cogo_http::header::Headers;
+    /// # use mco_http::header::Headers;
     /// # let mut headers = Headers::new();
     /// let raw_content_type = headers.get_raw("content-type");
     /// ```
@@ -335,7 +335,7 @@ impl Headers {
     /// Example:
     ///
     /// ```
-    /// # use cogo_http::header::Headers;
+    /// # use mco_http::header::Headers;
     /// # let mut headers = Headers::new();
     /// headers.set_raw("content-length", vec![b"5".to_vec()]);
     /// ```
@@ -356,7 +356,7 @@ impl Headers {
     /// Example:
     ///
     /// ```
-    /// # use cogo_http::header::Headers;
+    /// # use mco_http::header::Headers;
     /// # let mut headers = Headers::new();
     /// headers.append_raw("x-foo", b"bar".to_vec());
     /// headers.append_raw("x-foo", b"quux".to_vec());
@@ -397,8 +397,8 @@ impl Headers {
     /// Example:
     ///
     /// ```
-    /// # use cogo_http::header::Headers;
-    /// # use cogo_http::header::ContentType;
+    /// # use mco_http::header::Headers;
+    /// # use mco_http::header::ContentType;
     /// # let mut headers = Headers::new();
     /// let has_type = headers.has::<ContentType>();
     /// ```

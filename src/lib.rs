@@ -5,17 +5,17 @@
 
 //! # Hyper
 //!
-//! cogo-http is a fast, modern HTTP implementation written in and for Rust. It
+//! mco-http is a fast, modern HTTP implementation written in and for Rust. It
 //! is a low-level typesafe abstraction over raw HTTP, providing an elegant
 //! layer over "stringly-typed" HTTP.
 //!
-//! cogo-http offers both a [Client](client/index.html) and a
+//! mco-http offers both a [Client](client/index.html) and a
 //! [Server](server/index.html) which can be used to drive complex web
 //! applications written entirely in Rust.
 //!
 //! ## Internal Design
 //!
-//! cogo-http is designed as a relatively low-level wrapper over raw HTTP. It should
+//! mco-http is designed as a relatively low-level wrapper over raw HTTP. It should
 //! allow the implementation of higher-level abstractions with as little pain as
 //! possible, and should not irrevocably hide any information from its users.
 //!
@@ -46,7 +46,7 @@
 //! typesafe API for interacting with headers that does not rely on the use of
 //! "string-typing."
 //!
-//! Each HTTP header in cogo-http has an associated type and implementation of the
+//! Each HTTP header in mco-http has an associated type and implementation of the
 //! `Header` trait, which defines an HTTP headers name as a string, how to parse
 //! that header, and how to format that header.
 //!
@@ -68,7 +68,7 @@
 //!
 //! #### Handler + Server
 //!
-//! A `Handler` in cogo-http accepts a `Request` and `Response`. This is where
+//! A `Handler` in mco-http accepts a `Request` and `Response`. This is where
 //! user-code can handle each connection. The server accepts connections in a
 //! task pool with a customizable number of threads, and passes the Request /
 //! Response to the handler.
@@ -92,11 +92,11 @@
 //!
 //! One of the traditional problems with representing outgoing HTTP Responses is
 //! tracking the write-status of the Response - have we written the status-line,
-//! the headers, the body, etc.? cogo-http tracks this information statically using the
+//! the headers, the body, etc.? mco-http tracks this information statically using the
 //! type system and prevents you, using the type system, from writing headers after
 //! you have started writing to the body or vice versa.
 //!
-//! cogo-http does this through a phantom type parameter in the definition of Response,
+//! mco-http does this through a phantom type parameter in the definition of Response,
 //! which tracks whether you are allowed to write to the headers or the body. This
 //! phantom type can have two values `Fresh` or `Streaming`, with `Fresh`
 //! indicating that you can write the headers and `Streaming` indicating that you

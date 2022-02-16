@@ -19,7 +19,7 @@ header! {
     ///
     /// # Example
     /// ```
-    /// use cogo_http::header::{Headers, Server};
+    /// use mco_http::header::{Headers, Server};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(Server("hyper/0.5.2".to_owned()));

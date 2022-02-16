@@ -25,13 +25,13 @@ header! {
     ///
     /// # Examples
     /// ```
-    /// use cogo_http::header::{Headers, ETag, EntityTag};
+    /// use mco_http::header::{Headers, ETag, EntityTag};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(ETag(EntityTag::new(false, "xyzzy".to_owned())));
     /// ```
     /// ```
-    /// use cogo_http::header::{Headers, ETag, EntityTag};
+    /// use mco_http::header::{Headers, ETag, EntityTag};
     ///
     /// let mut headers = Headers::new();
     /// headers.set(ETag(EntityTag::new(true, "xyzzy".to_owned())));

@@ -26,10 +26,10 @@ use crate::header::{Header, HeaderFormat};
 ///
 /// # Examples
 /// ```
-/// # extern crate cogo_http;
+/// # extern crate mco_http;
 /// # fn main() {
 ///
-/// use cogo_http::header::{Headers, AccessControlAllowCredentials};
+/// use mco_http::header::{Headers, AccessControlAllowCredentials};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(AccessControlAllowCredentials);

@@ -402,14 +402,14 @@ impl NetworkStream for HttpStream {
 
     fn reset_io(&self) {
         #[cfg(unix)]
-        use cogo::io::WaitIo;
+        use mco::io::WaitIo;
         #[cfg(unix)]
         self.0.reset_io();
     }
 
     fn wait_io(&self) {
         #[cfg(unix)]
-        use cogo::io::WaitIo;
+        use mco::io::WaitIo;
         #[cfg(unix)]
         self.0.wait_io();
     }
