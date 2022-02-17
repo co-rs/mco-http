@@ -6,6 +6,7 @@ use std::io::{self, Write, BufWriter, BufRead, Read};
 use std::net::Shutdown;
 use std::str::FromStr;
 use std::time::Duration;
+use http::header::{CONTENT_LENGTH, TRANSFER_ENCODING};
 use http::HeaderValue;
 
 use httparse;
@@ -165,18 +166,18 @@ impl HttpMessage for Http11Message {
             }
 
             let stream = {
-                let write_headers = |stream: &mut BufWriter<Box<dyn NetworkStream + Send>>, head: &RequestHead| -> Result<(),Error> {
+                let write_headers = |stream: &mut BufWriter<Box<dyn NetworkStream + Send>>, head: &RequestHead| -> Result<(), Error> {
                     debug!("headers={:?}", head.headers);
-                    let mut ws= 0;
-                    for (name,value) in head.headers.iter() {
-                        let u1= stream.write(name.as_str().as_bytes())?;
-                        let u2= stream.write(":".as_bytes())?;
-                        let u3 =stream.write(value.as_bytes())?;
-                        let u4= stream.write("\r\n".as_bytes())?;
-                        ws+=u1;
-                        ws+=u2;
-                        ws+=u3;
-                        ws+=u4;
+                    let mut ws = 0;
+                    for (name, value) in head.headers.iter() {
+                        let u1 = stream.write(name.as_str().as_bytes())?;
+                        let u2 = stream.write(":".as_bytes())?;
+                        let u3 = stream.write(value.as_bytes())?;
+                        let u4 = stream.write("\r\n".as_bytes())?;
+                        ws += u1;
+                        ws += u2;
+                        ws += u3;
+                        ws += u4;
                     }
                     Ok(())
                 };
@@ -186,7 +187,7 @@ impl HttpMessage for Http11Message {
                             Ok(w) => stream,
                             Err(e) => {
                                 res = Err(e);
-                                let b=stream.into_inner().unwrap();
+                                let b = stream.into_inner().unwrap();
                                 return Stream::Idle(b);
                             }
                         };
@@ -209,17 +210,17 @@ impl HttpMessage for Http11Message {
                             let encodings = match head.headers.get_mut(http::header::TRANSFER_ENCODING) {
                                 Some(encodings) => {
                                     //check if chunked is already in encodings.
-                                    let estr=encodings.to_str().unwrap_or_default();
-                                    if !estr.contains("chunked"){
+                                    let estr = encodings.to_str().unwrap_or_default();
+                                    if !estr.contains("chunked") {
                                         *encodings = header_value!(&(estr.to_string()+";chunked"));
                                     }
-                                     false
+                                    false
                                 }
                                 None => true
                             };
 
                             if encodings {
-                                head.headers.insert(http::header::TRANSFER_ENCODING,HeaderValue::from_static("chunked"));
+                                head.headers.insert(http::header::TRANSFER_ENCODING, HeaderValue::from_static("chunked"));
                             }
                         }
 
@@ -310,17 +311,31 @@ impl HttpMessage for Http11Message {
             let reader = if is_empty {
                 EmptyReader(stream)
             } else {
-                if let Some(codings) = headers.get(http::header::TRANSFER_ENCODING) {
+                if let Some(codings) = headers.get(TRANSFER_ENCODING) {
                     if codings.to_str().unwrap_or_default().contains("chunked") {
                         ChunkedReader(stream, None)
                     } else {
                         trace!("not chuncked. read till eof");
                         EofReader(stream)
                     }
-                } else if let Some(len) = headers.get( http::header::CONTENT_LENGTH) {
-                    SizedReader(stream, len.to_str().unwrap_or_default().parse().unwrap_or_default())
-                } else if headers.contains_key("Content-Length") {
-                    trace!("illegal Content-Length: {:?}", headers.get(http::header::CONTENT_LENGTH));
+                } else if let Some(len) = headers.get(CONTENT_LENGTH) {
+                    match len.to_str().unwrap_or_default().parse() {
+                        Ok(len) => {
+                            SizedReader(stream, len)
+                        }
+                        Err(_) => {
+                            if headers.get(CONTENT_LENGTH).is_some() {
+                                trace!("illegal Content-Length: {:?}", headers.get(CONTENT_LENGTH));
+                                res = Err(Error::Header);
+                                return Stream::Idle(stream.into_inner());
+                            } else {
+                                trace!("neither Transfer-Encoding nor Content-Length");
+                                EofReader(stream)
+                            }
+                        }
+                    }
+                } else if headers.get(CONTENT_LENGTH).is_some() {
+                    trace!("illegal Content-Length: {:?}", headers.get(CONTENT_LENGTH));
                     res = Err(Error::Header);
                     return Stream::Idle(stream.into_inner());
                 } else {
@@ -847,9 +862,9 @@ impl<W: Write> Write for HttpWriter<W> {
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         #[cfg(unix)]
-            return Ok(());
+        return Ok(());
         #[cfg(not(unix))]
-            return match *self {
+        return match *self {
             ThroughWriter(ref mut w) => w.flush(),
             ChunkedWriter(ref mut w) => w.flush(),
             SizedWriter(ref mut w, _) => w.flush(),
@@ -1183,13 +1198,13 @@ mod tests {
         let mut buf = BufReader::new(&mut raw);
         let res = parse_response(&mut buf).unwrap();
 
-        assert_eq!(res.subject.to_string(), "OK");
+        assert_eq!(res.subject.to_string(), "200 OK");
 
         let mut raw = MockStream::with_input(b"HTTP/1.1 200 Howdy\r\n\r\n");
         let mut buf = BufReader::new(&mut raw);
         let res = parse_response(&mut buf).unwrap();
 
-        assert_eq!(res.subject.to_string(), "Howdy");
+        assert_eq!(res.subject.to_string(), "200 OK");
     }
 
 
