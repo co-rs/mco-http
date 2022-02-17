@@ -25,6 +25,14 @@ fn hello(req: Request, res: Response) {
 }
 
 fn main() {
+    let mut route = Route::new();
+    route.handle_fn("/", |req: Request, res: Response| {
+        res.send(b"Hello World!");
+    });
+    route.handle_fn("/js", |req: Request, res: Response| {
+        res.send("{\"name\":\"joe\"}".as_bytes());
+    });
+    route.handle_fn("/fn", hello);
     let _listening = mco_http::Server::http("0.0.0.0:3000").unwrap()
         .handle(hello);
     println!("Listening on http://127.0.0.1:3000");
