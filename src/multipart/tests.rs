@@ -52,7 +52,7 @@ fn parser() {
     let req = HyperRequest::new(&mut stream, sock).unwrap();
     let (_, _, headers, _, _, mut reader) = req.deconstruct();
 
-    match read_multipart_body(&mut reader, &headers, false,Some(|w|->std::io::Result<()>{
+    match read_multipart_body(reader.get_mut(), &headers, false,Some(|w|->std::io::Result<()>{
         w.set_write(File::create(w.filename().unwrap_or_default()).unwrap());
         w.path={
             let mut p =PathBuf::new();
@@ -136,7 +136,7 @@ fn mixed_parser() {
     let req = HyperRequest::new(&mut stream, sock).unwrap();
     let (_, _, headers, _, _, mut reader) = req.deconstruct();
 
-    match read_multipart_body(&mut reader, &headers, false,Some(|w|->std::io::Result<()>{
+    match read_multipart_body( reader.get_mut(), &headers, false,Some(|w|->std::io::Result<()>{
         w.set_write(File::create(w.filename().unwrap_or_default()).unwrap());
         w.path=PathBuf::new();
         w.path.push(w.filename().unwrap_or_default());
@@ -170,7 +170,7 @@ fn mixed_parser() {
                     assert!(filepart.path.exists());
                     assert!(filepart.path.is_file());
                 } else {
-                    panic!("1st subnode of wrong type");
+                    panic!("1st subnode of wrong type:{:?}",subnodes[0]);
                 }
 
                 if let Node::File(ref filepart) = subnodes[1] {
@@ -230,7 +230,7 @@ fn test_line_feed() {
     let req = HyperRequest::new(&mut stream, sock).unwrap();
     let (_, _, headers, _, _, mut reader) = req.deconstruct();
 
-    if let Err(e) = read_multipart_body(&mut reader, &headers, false,Some(|w|->std::io::Result<()>{
+    if let Err(e) = read_multipart_body(reader.get_mut(), &headers, false,Some(|w|->std::io::Result<()>{
         w.set_write(File::create(w.filename().unwrap_or_default()).unwrap());
         Ok(())
     })) {
@@ -241,19 +241,15 @@ fn test_line_feed() {
 #[inline]
 fn get_content_disposition_name(cd:&HeaderValue) -> Option<String> {
     let vec:Vec<&str>=cd.to_str().unwrap_or_default().split(";").collect();
-    let mut idx=0;
     for x in &vec {
-        if (*x).eq("name"){
-            match vec.get(idx+1){
-                None => {return None}
-                Some(v) => {
-                    return Some(v.to_string())
-                }
-            }
+        let x = x.trim();
+        if x.starts_with("name="){
+            return Some(x.trim_start_matches("name=\"").trim_right_matches("\"").to_string());
         }
     }
     return None;
 }
+
 //TODO
 // #[test]
 // fn test_output() {

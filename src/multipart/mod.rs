@@ -221,15 +221,14 @@ pub fn read_multipart<S: Read>(
 ///
 /// It is presumed that you have the `Headers` already and the stream starts at the body.
 /// If the headers are still in the stream, use `read_multipart()` instead.
-pub fn read_multipart_body<S: Read>(
-    stream:  S,
+pub fn read_multipart_body<S: BufRead>(
+    stream:  &mut S,
     headers: &http::HeaderMap,
     always_use_files: bool, f: Option<fn(name: &mut FilePart) -> std::io::Result<()>>)
     -> Result<Vec<Node>, Error>
 {
-    let mut reader = BufReader::with_capacity(4096, stream);
     let mut nodes: Vec<Node> = Vec::new();
-    inner(&mut reader, headers, &mut nodes, always_use_files, f)?;
+    inner( stream, headers, &mut nodes, always_use_files, f)?;
     Ok(nodes)
 }
 
@@ -339,13 +338,13 @@ fn inner<R: BufRead>(
         let is_file = always_use_files || {
             let cd = part_headers.get(http::header::CONTENT_DISPOSITION);
             if cd.is_some() {
-                if cd.unwrap().to_str().unwrap_or_default().contains("attachment") {
+                let v = cd.unwrap().to_str().unwrap_or_default();
+                if v.contains("attachment") {
                     true
                 } else {
-                    let v = cd.unwrap().to_str().unwrap_or_default();
                     let mut r = false;
                     for x in v.split(";") {
-                        if x.eq("filename") {
+                        if x.trim().starts_with("filename=") {
                             r = true;
                             break;
                         }
@@ -429,13 +428,9 @@ fn get_content_disposition_filename(cd: Option<&http::HeaderValue>) -> Result<Op
             let vec: Vec<&str> = v.to_str().unwrap_or_default().split(";").collect();
             let mut idx = 0;
             for x in &vec {
-                if (*x).eq("filename") {
-                    match vec.get(idx + 1) {
-                        None => { return Ok(None); }
-                        Some(v) => {
-                            return Ok(Some(v.to_string()));
-                        }
-                    }
+                let x = x.trim();
+                if x.starts_with("filename="){
+                    return Ok(Some(x.trim_start_matches("filename=\"").trim_end_matches("\"").to_string()));
                 }
                 idx += 1;
             }

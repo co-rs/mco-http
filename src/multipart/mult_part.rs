@@ -1,4 +1,4 @@
-use std::io::{ErrorKind, Read, Write};
+use std::io::{BufRead, ErrorKind, Read, Write};
 use http::{HeaderMap, HeaderValue};
 use crate::multipart::{Node, Part, FilePart};
 use mime::{Mime, TopLevel, SubLevel};
@@ -56,7 +56,7 @@ impl FormData {
 
 
 /// Parse MIME `multipart/form-data` information from a stream as a `FormData`.
-pub fn read_formdata<S: Read>(headers: &HeaderMap,stream:  S, f: Option<fn(name: &mut FilePart) -> std::io::Result<()>>) -> Result<FormData, Error>
+pub fn read_formdata<S: BufRead>(headers: &HeaderMap,stream:  &mut S, f: Option<fn(name: &mut FilePart) -> std::io::Result<()>>) -> Result<FormData, Error>
 {
     let nodes = crate::multipart::read_multipart_body(stream, headers, false, f)?;
     let mut formdata = FormData::new();
@@ -127,19 +127,11 @@ fn fill_formdata(formdata: &mut FormData, nodes: Vec<Node>) -> Result<(), Error>
 pub fn get_content_disposition_name(cd: &http::HeaderValue) -> Option<String> {
 
     let vec:Vec<&str>= cd.to_str().unwrap_or_default().split(";").collect();
-    let mut idx =0;
     for x in &vec {
-        if (*x).eq("name"){
-            return match vec.get(idx+1){
-                None => {
-                    None
-                }
-                Some(v) => {
-                    Some(v.to_string())
-                }
-            };
+        let x = x.trim();
+        if x.starts_with("name="){
+            return Some(x.trim_start_matches("name=\"").trim_end_matches("\"").to_string());
         }
-        idx+=1;
     }
     return None;
 }
