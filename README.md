@@ -21,7 +21,7 @@ use mco_http::route::Route;
 use mco_http::server::{Request, Response};
 
 fn hello(req: Request, res: Response) {
-    res.send(b"Hello World!").unwrap();
+    res.send(b"Hello World!");
 }
 
 fn main() {
