@@ -146,8 +146,8 @@ mod tests {
         let res = Response::new(url, Box::new(stream)).unwrap();
 
         // The status line is correct?
-        assert_eq!(res.status, status::StatusCode::Ok);
-        assert_eq!(res.version, version::HttpVersion::Http11);
+        assert_eq!(res.status, http::StatusCode::OK);
+        assert_eq!(res.version, http::version::Version::HTTP_11);
         // The header is correct?
         match res.headers.get(http::header::TRANSFER_ENCODING) {
             Some(encodings) => {
@@ -174,7 +174,7 @@ mod tests {
             \r\n"
         );
 
-        let url = Url::parse("http://hyper.rs").unwrap();
+        let url = http::Uri::from_str("http://hyper.rs").unwrap();
         let res = Response::new(url, Box::new(stream)).unwrap();
 
         assert!(read_to_string(res).is_err());
@@ -194,7 +194,7 @@ mod tests {
             \r\n"
         );
 
-        let url = Url::parse("http://hyper.rs").unwrap();
+        let url = http::Uri::from_str("http://hyper.rs").unwrap();
         let res = Response::new(url, Box::new(stream)).unwrap();
 
         assert!(read_to_string(res).is_err());
@@ -214,7 +214,7 @@ mod tests {
             \r\n"
         );
 
-        let url = Url::parse("http://hyper.rs").unwrap();
+        let url = http::Uri::from_str("http://hyper.rs").unwrap();
         let res = Response::new(url, Box::new(stream)).unwrap();
 
         assert_eq!(read_to_string(res).unwrap(), "1".to_owned());
@@ -222,7 +222,7 @@ mod tests {
 
     #[test]
     fn test_parse_error_closes() {
-        let url = Url::parse("http://hyper.rs").unwrap();
+        let url = http::Uri::from_str("http://hyper.rs").unwrap();
         let stream = MockStream::with_input(b"\
             definitely not http
         ");

@@ -34,11 +34,11 @@ fn test_should_keep_alive() {
     assert!(!should_keep_alive(http::Version::HTTP_10, &headers));
     assert!(should_keep_alive(http::Version::HTTP_11, &headers));
 
-    headers.insert(http::header::CONNECTION,header_value!("close"));
+    headers.insert(http::header::CONNECTION,"close".parse().unwrap());
     assert!(!should_keep_alive(http::Version::HTTP_10, &headers));
     assert!(!should_keep_alive(http::Version::HTTP_11, &headers));
 
-    headers.insert(http::header::CONNECTION,header_value!("keep_alive"));
+    headers.insert(http::header::CONNECTION,"keep_alive".parse().unwrap());
     assert!(should_keep_alive(http::Version::HTTP_10, &headers));
     assert!(should_keep_alive(http::Version::HTTP_11, &headers));
 }

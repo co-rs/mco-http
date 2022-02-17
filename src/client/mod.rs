@@ -640,6 +640,7 @@ mod scheme {
 #[cfg(test)]
 mod tests {
     use std::io::Read;
+    use http::header::SERVER;
     use crate::proto::h1::Http11Message;
     use crate::mock::{MockStream, MockSsl};
     use super::{Client, RedirectPolicy};
@@ -732,7 +733,7 @@ mod tests {
         client.set_redirect_policy(RedirectPolicy::FollowAll);
 
         let res = client.get("http://127.0.0.1").send().unwrap();
-        assert_eq!(res.headers.get(), Some(&Server("mock3".to_owned())));
+        assert_eq!(res.headers.get(SERVER), Some(&"mock3".parse().unwrap()));
     }
 
     #[test]
@@ -740,18 +741,18 @@ mod tests {
         let mut client = Client::with_connector(MockRedirectPolicy);
         client.set_redirect_policy(RedirectPolicy::FollowNone);
         let res = client.get("http://127.0.0.1").send().unwrap();
-        assert_eq!(res.headers.get(), Some(&Server("mock1".to_owned())));
+        assert_eq!(res.headers.get(SERVER), Some(&"mock1".parse().unwrap()));
     }
 
     #[test]
     fn test_redirect_followif() {
-        fn follow_if(url: &Url) -> bool {
-            !url.as_str().contains("127.0.0.3")
+        fn follow_if(url: &http::Uri) -> bool {
+            !url.to_string().contains("127.0.0.3")
         }
         let mut client = Client::with_connector(MockRedirectPolicy);
         client.set_redirect_policy(RedirectPolicy::FollowIf(follow_if));
         let res = client.get("http://127.0.0.1").send().unwrap();
-        assert_eq!(res.headers.get(), Some(&Server("mock2".to_owned())));
+        assert_eq!(res.headers.get(SERVER), Some(&"mock2".to_owned().parse().unwrap()));
     }
 
     mock_connector!(Issue640Connector {

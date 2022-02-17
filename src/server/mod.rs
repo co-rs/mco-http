@@ -563,7 +563,7 @@ mod tests {
                 res.start().unwrap().end().unwrap();
             }
 
-            fn check_continue(&self, _: (&Method, &RequestUri, &Headers)) -> StatusCode {
+            fn check_continue(&self, _: (&http::Method, &http::Uri, &http::HeaderMap)) -> StatusCode {
                 StatusCode::ExpectationFailed
             }
         }

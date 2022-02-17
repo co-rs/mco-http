@@ -176,6 +176,7 @@ impl Write for Request<Streaming> {
 mod tests {
     use std::io::Write;
     use std::str::{from_utf8, FromStr};
+    use http::header::CONTENT_LENGTH;
     use http::Uri;
     use crate::method::Method::{Get, Head, Post};
     use crate::mock::{MockStream, MockConnector};
@@ -213,7 +214,7 @@ mod tests {
     #[test]
     fn test_head_empty_body() {
         let req = Request::with_connector(
-            http::Method::Head, http::uri::Uri::from_str("http://example.dom").unwrap(), &mut MockConnector,
+            http::Method::HEAD, http::uri::Uri::from_str("http://example.dom").unwrap(), &mut MockConnector,
         ).unwrap();
         let bytes = run_request(req);
         let s = from_utf8(&bytes[..]).unwrap();
@@ -239,7 +240,7 @@ mod tests {
         ).unwrap();
         let mut body = String::new();
         form_urlencoded::Serializer::new(&mut body).append_pair("q", "value");
-        req.headers_mut().set(ContentLength(body.len() as u64));
+        req.headers_mut().insert(CONTENT_LENGTH,body.len().to_string().parse().unwrap());//.set(ContentLength(body.len() as u64));
         let bytes = run_request(req);
         let s = from_utf8(&bytes[..]).unwrap();
         assert!(s.contains("Content-Length:"));
@@ -287,7 +288,7 @@ mod tests {
         let mut req = Request::with_connector(
             http::Method::POST, url, &mut MockConnector,
         ).unwrap();
-        req.headers_mut().insert(http::header::TRANSFER_ENCODING, header_value!("chunked"));
+        req.headers_mut().insert(http::header::TRANSFER_ENCODING, "chunked".parse().unwrap());
         let bytes = run_request(req);
         let s = from_utf8(&bytes[..]).unwrap();
         assert!(!s.contains("Content-Length:"));

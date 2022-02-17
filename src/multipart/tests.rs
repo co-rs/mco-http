@@ -8,6 +8,7 @@
 use super::*;
 
 use std::net::SocketAddr;
+use http::header::CONTENT_DISPOSITION;
 
 use crate::buffer::BufReader;
 use crate::net::NetworkStream;
@@ -155,7 +156,7 @@ fn mixed_parser() {
             }
 
             if let Node::Multipart((ref headers, ref subnodes)) = nodes[1] {
-                let cd: &ContentDisposition = headers.get().unwrap();
+                let cd = headers.get(CONTENT_DISPOSITION).unwrap();
                 let cd_name: String = get_content_disposition_name(&cd).unwrap();
                 assert_eq!(&*cd_name, "files");
 
