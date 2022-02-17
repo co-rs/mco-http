@@ -10,10 +10,12 @@ use std::io;
 use std::time::Duration;
 
 use typeable::Typeable;
-use crate::proto::RawStatus;
+
+use crate::header::Headers;
+use crate::http::RawStatus;
 use crate::url::Url;
 
-use crate::{method, proto};
+use crate::method;
 use crate::version;
 use crate::traitobject;
 
@@ -28,22 +30,22 @@ pub trait Protocol {
 #[derive(Clone, Debug)]
 pub struct RequestHead {
     /// The headers of the request
-    pub headers: http::HeaderMap,
+    pub headers: Headers,
     /// The method of the request
-    pub method: http::Method,
+    pub method: method::Method,
     /// The URL of the request
-    pub url: http::Uri,
+    pub url: Url,
 }
 
 /// Describes a response.
 #[derive(Clone, Debug)]
 pub struct ResponseHead {
     /// The headers of the reponse
-    pub headers: http::HeaderMap,
+    pub headers: Headers,
     /// The raw status line of the response
-    pub raw_status: http::StatusCode,
+    pub raw_status: RawStatus,
     /// The HTTP/2 version which generated the response
-    pub version: http::Version,
+    pub version: version::HttpVersion,
 }
 
 /// The trait provides an API for sending an receiving HTTP messages.

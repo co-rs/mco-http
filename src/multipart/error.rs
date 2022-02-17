@@ -10,7 +10,6 @@ use std::error::Error as StdError;
 use std::fmt::{self, Debug, Display};
 use std::io;
 use std::string::FromUtf8Error;
-use http::header::InvalidHeaderName;
 use httparse;
 
 /// An error type for the `mime-multipart` crate.
@@ -41,8 +40,7 @@ pub enum Error {
     Decoding(Cow<'static, str>),
 
     MissingDisposition,
-    NoName,
-    ParseHeader(String)
+    NoName
 }
 
 impl From<io::Error> for Error {
@@ -119,10 +117,6 @@ impl Display for Error {
             Error::NoName => {
                 f.write_str("NoName")
             }
-            Error::ParseHeader(s) => {
-                f.write_str("ParseHeader:");
-                f.write_str(s)
-            }
         }
     }
 }
@@ -139,7 +133,7 @@ impl fmt::Debug for Error {
 
 impl StdError for Error {
     fn description(&self) -> &str{
-        match self {
+        match *self {
             Error::NoRequestContentType => "The mco-http request did not have a Content-Type header.",
             Error::NotMultipart =>
                 "The mco-http request Content-Type top-level Mime was not multipart.",
@@ -167,13 +161,6 @@ impl StdError for Error {
             Error::Decoding(_) => "A decoding error occurred.",
             Error::MissingDisposition => "MissingDisposition",
             Error::NoName => "no name",
-            Error::ParseHeader(s) => "parse header error",
         }
-    }
-}
-
-impl From<InvalidHeaderName> for Error{
-    fn from(arg: InvalidHeaderName) -> Self {
-        Self::ParseHeader(arg.to_string())
     }
 }

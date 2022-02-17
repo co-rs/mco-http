@@ -2,38 +2,38 @@
 //!
 //! These are requests that a `mco_http::Server` receives, and include its method,
 //! target URI, headers, and message body.
+use std::any::Any;
+use std::collections::HashMap;
 use std::io::{self, Read};
 use std::net::SocketAddr;
-use std::ops::{Deref, DerefMut};
 use std::time::Duration;
-use http::{Extensions, HeaderMap};
-use http::request::Parts;
 
 use crate::buffer::BufReader;
 use crate::net::NetworkStream;
 use crate::version::{HttpVersion};
 use crate::method::Method;
-use crate::proto::h1::{self, Incoming, HttpReader};
-use crate::proto::h1::HttpReader::{SizedReader, ChunkedReader, EmptyReader};
+use crate::header::{Headers, ContentLength, TransferEncoding};
+use crate::http::h1::{self, Incoming, HttpReader};
+use crate::http::h1::HttpReader::{SizedReader, ChunkedReader, EmptyReader};
+use crate::server::extensions::Extensions;
 use crate::uri::RequestUri;
 
 /// A request bundles several parts of an incoming `NetworkStream`, given to a `Handler`.
 pub struct Request<'a, 'b: 'a> {
-    pub inner: http::Request<HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>>,
-}
-
-impl<'a, 'b: 'a> Deref for Request<'a, 'b> {
-    type Target = http::Request<HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl<'a, 'b: 'a> DerefMut for Request<'a, 'b> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
-    }
+    /// The IP address of the remote connection.
+    pub remote_addr: SocketAddr,
+    /// The `Method`, such as `Get`, `Post`, etc.
+    pub method: Method,
+    /// The headers of the incoming request.
+    pub headers: Headers,
+    /// The target request-uri for this request.
+    pub uri: RequestUri,
+    /// The version of HTTP for this request.
+    pub version: HttpVersion,
+    /// http body
+    pub body: HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>,
+    /// The extra User defined data
+    pub extra: Extensions,
 }
 
 
@@ -46,48 +46,39 @@ impl<'a, 'b: 'a> Request<'a, 'b> {
         debug!("Request Line: {:?} {:?} {:?}", method, uri, version);
         debug!("{:?}", headers);
 
-        let body = if let Some(content_len) = headers.get(http::header::CONTENT_LENGTH) {
-            let cl = content_len.to_str().unwrap_or_default().parse()?;
-            SizedReader(stream, cl)
-        } else if let Some(v) = headers.get(http::header::TRANSFER_ENCODING) {
+        let body = if headers.has::<ContentLength>() {
+            match headers.get::<ContentLength>() {
+                Some(&ContentLength(len)) => SizedReader(stream, len),
+                None => unreachable!()
+            }
+        } else if headers.has::<TransferEncoding>() {
             todo!("check for Transfer-Encoding: chunked");
             ChunkedReader(stream, None)
         } else {
             EmptyReader(stream)
         };
 
-        let mut req = http::Request::builder()
-            .extension(addr)
-            .method(method.as_ref())
-            .uri(uri)
-            .version(version.into())
-            .body(body)
-            .unwrap();
-        *req.headers_mut() = headers;
-        Ok(Self {
-            inner: req
+        Ok(Request {
+            remote_addr: addr,
+            method: method,
+            uri: uri,
+            headers: headers,
+            version: version,
+            body: body,
+            extra: Default::default(),
         })
-    }
-
-
-    pub fn body(&self) -> &HttpReader<&mut BufReader<&'b mut (dyn NetworkStream + 'static)>> {
-        self.inner.body()
-    }
-
-    pub fn body_mut(&mut self) -> &mut HttpReader<&'a mut BufReader<&'b mut (dyn NetworkStream + 'static)>> {
-        self.inner.body_mut()
     }
 
     /// Set the read timeout of the underlying NetworkStream.
     #[inline]
     pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
-        self.body().get_ref().get_ref().set_read_timeout(timeout)
+        self.body.get_ref().get_ref().set_read_timeout(timeout)
     }
 
     /// Get a reference to the underlying `NetworkStream`.
     #[inline]
     pub fn downcast_ref<T: NetworkStream>(&self) -> Option<&T> {
-        self.body().get_ref().get_ref().downcast_ref()
+        self.body.get_ref().get_ref().downcast_ref()
     }
 
     /// Get a reference to the underlying Ssl stream, if connected
@@ -101,35 +92,25 @@ impl<'a, 'b: 'a> Request<'a, 'b> {
 
     /// Deconstruct a Request into its constituent parts.
     #[inline]
-    pub fn deconstruct(self) -> (SocketAddr, http::Method, http::HeaderMap,
-                                 http::Uri, http::Version,
+    pub fn deconstruct(self) -> (SocketAddr, Method, Headers,
+                                 RequestUri, HttpVersion,
                                  HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>) {
-        let mut p = self.inner.into_parts();
-        (p.0.extensions.get::<SocketAddr>().unwrap().clone(), p.0.method, p.0.headers,
-         p.0.uri, p.0.version, p.1)
-    }
-
-    fn remote_addr(&self) -> &SocketAddr {
-        self.inner.extensions().get::<SocketAddr>().unwrap()
-    }
-
-    fn set_remote_addr(&mut self, arg: SocketAddr) {
-        // let mut ext = Extensions::new();
-        // ext.insert(arg);
-        self.inner.extensions_mut().insert(arg);
+        (self.remote_addr, self.method, self.headers,
+         self.uri, self.version, self.body)
     }
 }
 
 impl<'a, 'b> Read for Request<'a, 'b> {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.body_mut().read(buf)
+        self.body.read(buf)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::buffer::BufReader;
+    use crate::header::{Host, TransferEncoding, Encoding};
     use crate::net::NetworkStream;
     use crate::mock::MockStream;
     use super::Request;
@@ -240,16 +221,16 @@ mod tests {
         let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();
 
         // The headers are correct?
-        match req.headers().get(http::header::HOST) {
+        match req.headers.get::<Host>() {
             Some(host) => {
-                assert_eq!("example.domain", host.to_str().unwrap_or_default());
+                assert_eq!("example.domain", host.hostname);
             }
             None => panic!("Host header expected!"),
         };
-        match req.headers().get(http::header::TRANSFER_ENCODING) {
+        match req.headers.get::<TransferEncoding>() {
             Some(encodings) => {
                 assert_eq!(1, encodings.len());
-                assert_eq!("chunked", encodings.to_str().unwrap_or_default());
+                assert_eq!(Encoding::Chunked, encodings[0]);
             }
             None => panic!("Transfer-Encoding: chunked expected!"),
         };

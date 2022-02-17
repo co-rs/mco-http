@@ -2,9 +2,11 @@
 use std::io::{self, Read};
 
 use url::Url;
+
+use crate::header;
 use crate::net::NetworkStream;
-use crate::proto::{self, RawStatus, ResponseHead, HttpMessage};
-use crate::proto::h1::Http11Message;
+use crate::http::{self, RawStatus, ResponseHead, HttpMessage};
+use crate::http::h1::Http11Message;
 use crate::status;
 use crate::version;
 
@@ -12,25 +14,26 @@ use crate::version;
 #[derive(Debug)]
 pub struct Response {
     /// The status from the server.
-    pub status: http::StatusCode,
+    pub status: status::StatusCode,
     /// The headers from the server.
-    pub headers: http::HeaderMap,
+    pub headers: header::Headers,
     /// The HTTP version of this response from the server.
-    pub version: http::Version,
+    pub version: version::HttpVersion,
     /// The final URL of this response.
-    pub url: http::Uri,
+    pub url: Url,
+    status_raw: RawStatus,
     message: Box<dyn HttpMessage>,
 }
 
 impl Response {
     /// Creates a new response from a server.
-    pub fn new(url: http::Uri, stream: Box<dyn NetworkStream + Send>) -> crate::Result<Response> {
+    pub fn new(url: Url, stream: Box<dyn NetworkStream + Send>) -> crate::Result<Response> {
         trace!("Response::new");
         Response::with_message(url, Box::new(Http11Message::with_stream(stream)))
     }
 
     /// Creates a new response received from the server on the given `HttpMessage`.
-    pub fn with_message(url: http::Uri, mut message: Box<dyn HttpMessage>) -> crate::Result<Response> {
+    pub fn with_message(url: Url, mut message: Box<dyn HttpMessage>) -> crate::Result<Response> {
         trace!("Response::with_message");
         let ResponseHead { headers, raw_status, version } = match message.get_incoming() {
             Ok(head) => head,
@@ -39,22 +42,24 @@ impl Response {
                 return Err(From::from(e));
             }
         };
-        debug!("version={:?}, status={:?}", version, raw_status);
+        let status = status::StatusCode::from_u16(raw_status.0);
+        debug!("version={:?}, status={:?}", version, status);
         debug!("headers={:?}", headers);
 
         Ok(Response {
-            status: raw_status,
+            status: status,
             version: version,
             headers: headers,
             url: url,
+            status_raw: raw_status,
             message: message,
         })
     }
 
     /// Get the raw status code and reason.
     #[inline]
-    pub fn status_raw(&self) -> &http::StatusCode {
-        &self.status
+    pub fn status_raw(&self) -> &RawStatus {
+        &self.status_raw
     }
 
     /// Gets a borrowed reference to the underlying `HttpMessage`.
@@ -87,7 +92,7 @@ impl Drop for Response {
         // server has agreed to keep the connection open
         let is_drained = !self.message.has_body();
         trace!("Response.drop is_drained={}", is_drained);
-        if !(is_drained && proto::should_keep_alive(self.version, &self.headers)) {
+        if !(is_drained && http::should_keep_alive(self.version, &self.headers)) {
             trace!("Response.drop closing connection");
             if let Err(e) = self.message.close_connection() {
                 info!("Response.drop error closing connection: {}", e);
@@ -99,14 +104,16 @@ impl Drop for Response {
 #[cfg(test)]
 mod tests {
     use std::io::{self, Read};
-    use std::str::FromStr;
-    use http::Uri;
+
     use url::Url;
-    use crate::proto::HttpMessage;
+
+    use crate::header::TransferEncoding;
+    use crate::header::Encoding;
+    use crate::http::HttpMessage;
     use crate::mock::MockStream;
     use crate::status;
     use crate::version;
-    use crate::proto::h1::Http11Message;
+    use crate::http::h1::Http11Message;
 
     use super::Response;
 
@@ -142,17 +149,17 @@ mod tests {
             \r\n"
         );
 
-        let url = Uri::from_str("http://hyper.rs").unwrap();
+        let url = Url::parse("http://hyper.rs").unwrap();
         let res = Response::new(url, Box::new(stream)).unwrap();
 
         // The status line is correct?
-        assert_eq!(res.status, http::StatusCode::OK);
-        assert_eq!(res.version, http::version::Version::HTTP_11);
+        assert_eq!(res.status, status::StatusCode::Ok);
+        assert_eq!(res.version, version::HttpVersion::Http11);
         // The header is correct?
-        match res.headers.get(http::header::TRANSFER_ENCODING) {
+        match res.headers.get::<TransferEncoding>() {
             Some(encodings) => {
-                assert_eq!("chunked".len(), encodings.len());
-                assert_eq!("chunked", encodings.to_str().unwrap_or_default());
+                assert_eq!(1, encodings.len());
+                assert_eq!(Encoding::Chunked, encodings[0]);
             },
             None => panic!("Transfer-Encoding: chunked expected!"),
         };
@@ -174,7 +181,7 @@ mod tests {
             \r\n"
         );
 
-        let url = http::Uri::from_str("http://hyper.rs").unwrap();
+        let url = Url::parse("http://hyper.rs").unwrap();
         let res = Response::new(url, Box::new(stream)).unwrap();
 
         assert!(read_to_string(res).is_err());
@@ -194,7 +201,7 @@ mod tests {
             \r\n"
         );
 
-        let url = http::Uri::from_str("http://hyper.rs").unwrap();
+        let url = Url::parse("http://hyper.rs").unwrap();
         let res = Response::new(url, Box::new(stream)).unwrap();
 
         assert!(read_to_string(res).is_err());
@@ -214,7 +221,7 @@ mod tests {
             \r\n"
         );
 
-        let url = http::Uri::from_str("http://hyper.rs").unwrap();
+        let url = Url::parse("http://hyper.rs").unwrap();
         let res = Response::new(url, Box::new(stream)).unwrap();
 
         assert_eq!(read_to_string(res).unwrap(), "1".to_owned());
@@ -222,7 +229,7 @@ mod tests {
 
     #[test]
     fn test_parse_error_closes() {
-        let url = http::Uri::from_str("http://hyper.rs").unwrap();
+        let url = Url::parse("http://hyper.rs").unwrap();
         let stream = MockStream::with_input(b"\
             definitely not http
         ");

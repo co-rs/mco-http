@@ -21,18 +21,6 @@ pub enum HttpVersion {
     Http20,
 }
 
-impl From<HttpVersion> for http::Version {
-    fn from(arg: HttpVersion) -> Self {
-        match arg{
-            Http09 => {http::Version::HTTP_09}
-            Http10 => {http::Version::HTTP_10}
-            Http11 => {http::Version::HTTP_11}
-            Http20 => {http::Version::HTTP_2}
-        }
-    }
-}
-
-
 impl fmt::Display for HttpVersion {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.write_str(self.as_ref())

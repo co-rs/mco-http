@@ -9,7 +9,7 @@ use mco_http::server::{Request, Response};
 // http://127.0.0.1:3000/1/2/3
 fn hello(req: Request, res: Response) {
     let p = Path::new("/{a}/{b}/");
-    let param =  p.read_path(&req.uri().to_string());
+    let param =  p.read_path(&req.uri.to_string());
     res.send(format!("{:?}",param).as_bytes()).unwrap();
 }
 

@@ -2,11 +2,8 @@
 use std::error::Error as StdError;
 use std::fmt;
 use std::io::Error as IoError;
-use std::num::ParseIntError;
 use std::str::Utf8Error;
 use std::string::FromUtf8Error;
-use http::method::InvalidMethod;
-use http::uri::InvalidUri;
 
 use httparse;
 use url;
@@ -27,7 +24,7 @@ use self::Error::{
 };
 
 pub use url::ParseError;
-use crate::Error::{Parse};
+use crate::Error::{Parse, ParseJson};
 
 /// Result type often returned from methods that can have hyper `Error`s.
 pub type Result<T> = ::std::result::Result<T, Error>;
@@ -57,7 +54,9 @@ pub enum Error {
     #[doc(hidden)]
     __Nonexhaustive(Void),
 
-    Parse(String)
+    Parse(String),
+
+    ParseJson(String)
 }
 
 #[doc(hidden)]
@@ -94,6 +93,7 @@ impl StdError for Error {
             Ssl(ref e) => e.description(),
             Utf8(ref e) => e.description(),
             Parse(ref e) => e,
+            ParseJson(ref e) => e,
             Error::__Nonexhaustive(..) =>  unreachable!(),
         }
     }
@@ -163,27 +163,9 @@ impl From<serde_urlencoded::de::Error> for Error {
     }
 }
 
-impl From<InvalidMethod> for Error{
-    fn from(arg: InvalidMethod) -> Self {
-        Error::Parse(arg.to_string())
-    }
-}
-
-impl From<InvalidUri>  for Error{
-    fn from(arg: InvalidUri) -> Self {
-        Error::Parse(arg.to_string())
-    }
-}
-
-impl From<ParseIntError> for Error{
-    fn from(arg: ParseIntError) -> Self {
-        Error::Parse(arg.to_string())
-    }
-}
-
 impl From<serde_json::Error> for Error{
     fn from(arg: serde_json::Error) -> Self {
-        Error::Parse(arg.to_string())
+        Error::ParseJson(arg.to_string())
     }
 }
 

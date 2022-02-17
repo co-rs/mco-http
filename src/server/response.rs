@@ -8,17 +8,15 @@ use std::mem;
 use std::io::{self, Write};
 use std::ptr;
 use std::thread;
-use http::HeaderValue;
 
 use time::now_utc;
-use crate::proto::h1::{LINE_ENDING, HttpWriter};
-use crate::proto::h1::HttpWriter::{ThroughWriter, ChunkedWriter, SizedWriter, EmptyWriter};
-use crate::{header_value, status};
+
+use crate::header;
+use crate::http::h1::{LINE_ENDING, HttpWriter};
+use crate::http::h1::HttpWriter::{ThroughWriter, ChunkedWriter, SizedWriter, EmptyWriter};
+use crate::status;
 use crate::net::{Fresh, Streaming};
 use crate::version;
-
-
-pub type ResponseNew<'a> = http::Response<HttpWriter<&'a mut (dyn Write + 'a)>>;
 
 
 /// The outgoing half for a Tcp connection, created by a `Server` and given to a `Handler`.
@@ -31,32 +29,32 @@ pub type ResponseNew<'a> = http::Response<HttpWriter<&'a mut (dyn Write + 'a)>>;
 #[derive(Debug)]
 pub struct Response<'a, W: Any = Fresh> {
     /// The HTTP version of this response.
-    pub version: http::Version,
+    pub version: version::HttpVersion,
     // Stream the Response is writing to, not accessible through UnwrittenResponse
     pub body: HttpWriter<&'a mut (dyn Write + 'a)>,
     // The status code for the request.
-    pub status: http::StatusCode,
+    pub status: status::StatusCode,
     // The outgoing headers on this response.
-    pub headers: &'a mut http::HeaderMap,
+    pub headers: &'a mut header::Headers,
 
-    _writing: PhantomData<W>,
+    _writing: PhantomData<W>
 }
 
 impl<'a, W: Any> Response<'a, W> {
     /// The status of this response.
     #[inline]
-    pub fn status(&self) -> http::StatusCode { self.status }
+    pub fn status(&self) -> status::StatusCode { self.status }
 
     /// The headers of this response.
     #[inline]
-    pub fn headers(&self) -> &http::HeaderMap { &*self.headers }
+    pub fn headers(&self) -> &header::Headers { &*self.headers }
 
     /// Construct a Response from its constituent parts.
     #[inline]
-    pub fn construct(version: http::Version,
+    pub fn construct(version: version::HttpVersion,
                      body: HttpWriter<&'a mut (dyn Write + 'a)>,
-                     status: http::StatusCode,
-                     headers: &'a mut http::HeaderMap) -> Response<'a, Fresh> {
+                     status: status::StatusCode,
+                     headers: &'a mut header::Headers) -> Response<'a, Fresh> {
         Response {
             status: status,
             version: version,
@@ -68,8 +66,8 @@ impl<'a, W: Any> Response<'a, W> {
 
     /// Deconstruct this Response into its constituent parts.
     #[inline]
-    pub fn deconstruct(self) -> (http::Version, HttpWriter<&'a mut (dyn Write + 'a)>,
-                                 http::StatusCode, &'a mut http::HeaderMap) {
+    pub fn deconstruct(self) -> (version::HttpVersion, HttpWriter<&'a mut (dyn Write + 'a)>,
+                                 status::StatusCode, &'a mut header::Headers) {
         unsafe {
             let parts = (
                 self.version,
@@ -84,18 +82,18 @@ impl<'a, W: Any> Response<'a, W> {
 
     fn write_head(&mut self) -> io::Result<Body> {
         debug!("writing head: {:?} {:?}", self.version, self.status);
-        r#try!(write!(&mut self.body, "{:?} {}\r\n", self.version, self.status));
+        r#try!(write!(&mut self.body, "{} {}\r\n", self.version, self.status));
 
-        if !self.headers.contains_key("Date") {
+        if !self.headers.has::<header::Date>() {
             let date = httpdate::HttpDate::from(std::time::SystemTime::now()).to_string();
-            self.headers.insert(http::header::DATE, http::HeaderValue::from_bytes(date.as_bytes()).unwrap());
+            self.headers.set_raw("Date",vec![date.into_bytes()]);
         }
 
         let body_type = match self.status {
-            http::StatusCode::NO_CONTENT | http::StatusCode::NOT_MODIFIED => Body::Empty,
-            c if c.as_u16() < 200 => Body::Empty,
-            _ => if let Some(cl) = self.headers.get(http::header::CONTENT_LENGTH) {
-                Body::Sized(cl.to_str().unwrap_or_default().parse().unwrap_or_default())
+            status::StatusCode::NoContent | status::StatusCode::NotModified => Body::Empty,
+            c if c.class() == status::StatusClass::Informational => Body::Empty,
+            _ => if let Some(cl) = self.headers.get::<header::ContentLength>() {
+                Body::Sized(**cl)
             } else {
                 Body::Chunked
             }
@@ -103,32 +101,24 @@ impl<'a, W: Any> Response<'a, W> {
 
         // can't do in match above, thanks borrowck
         if body_type == Body::Chunked {
-            let encodings = match self.headers.get_mut(http::header::TRANSFER_ENCODING) {
-                Some(encodings) => {
-                    //check if chunked is already in encodings. use HashSet?
-                    let estr= encodings.to_str().unwrap_or_default();
-                    if !estr.contains("chunked"){
-                        *encodings = header_value!(&(estr.to_string()+";chunked"));
-                    }
+            let encodings = match self.headers.get_mut::<header::TransferEncoding>() {
+                Some(&mut header::TransferEncoding(ref mut encodings)) => {
+                    //TODO: check if chunked is already in encodings. use HashSet?
+                    encodings.push(header::Encoding::Chunked);
                     false
-                }
+                },
                 None => true
             };
 
             if encodings {
-                self.headers.insert(http::header::TRANSFER_ENCODING , HeaderValue::from_static("chunked"));
+                self.headers.set::<header::TransferEncoding>(
+                    header::TransferEncoding(vec![header::Encoding::Chunked]))
             }
         }
 
+
         debug!("headers [\n{:?}]", self.headers);
-
-        for (name, value) in self.headers.iter() {
-            self.body.write(name.as_str().as_bytes())?;
-            self.body.write(":".as_bytes())?;
-            self.body.write(value.as_bytes())?;
-            self.body.write("\r\n".as_bytes())?;
-        }
-
+        r#try!(write!(&mut self.body, "{}", self.headers));
         r#try!(write!(&mut self.body, "{}", LINE_ENDING));
 
         Ok(body_type)
@@ -138,11 +128,11 @@ impl<'a, W: Any> Response<'a, W> {
 impl<'a> Response<'a, Fresh> {
     /// Creates a new Response that can be used to write to a network stream.
     #[inline]
-    pub fn new(stream: &'a mut (dyn Write + 'a), headers: &'a mut http::HeaderMap) ->
+    pub fn new(stream: &'a mut (dyn Write + 'a), headers: &'a mut header::Headers) ->
     Response<'a, Fresh> {
         Response {
-            status: http::StatusCode::OK,
-            version: http::Version::HTTP_11,
+            status: status::StatusCode::Ok,
+            version: version::HttpVersion::Http11,
             headers: headers,
             body: ThroughWriter(stream),
             _writing: PhantomData,
@@ -178,7 +168,7 @@ impl<'a> Response<'a, Fresh> {
     /// ```
     #[inline]
     pub fn send(self, body: &[u8]) -> io::Result<()> {
-        self.headers.insert(http::header::CONTENT_LENGTH, http::HeaderValue::from_str(&body.len().to_string()).unwrap());
+        self.headers.set(header::ContentLength(body.len() as u64));
         let mut stream = r#try!(self.start());
         r#try!(stream.write_all(body));
         stream.end()
@@ -194,6 +184,7 @@ impl<'a> Response<'a, Fresh> {
             Body::Sized(len) => SizedWriter(body.into_inner(), len),
             Body::Empty => EmptyWriter(body.into_inner()),
         };
+
         // "copy" to change the phantom type
         Ok(Response {
             version: version,
@@ -205,11 +196,11 @@ impl<'a> Response<'a, Fresh> {
     }
     /// Get a mutable reference to the status.
     #[inline]
-    pub fn status_mut(&mut self) -> &mut http::StatusCode { &mut self.status }
+    pub fn status_mut(&mut self) -> &mut status::StatusCode { &mut self.status }
 
     /// Get a mutable reference to the Headers.
     #[inline]
-    pub fn headers_mut(&mut self) -> &mut http::HeaderMap { self.headers }
+    pub fn headers_mut(&mut self) -> &mut header::Headers { self.headers }
 }
 
 
@@ -248,8 +239,9 @@ impl<'a, T: Any> Drop for Response<'a, T> {
     fn drop(&mut self) {
         if TypeId::of::<T>() == TypeId::of::<Fresh>() {
             if thread::panicking() {
-                self.status = http::StatusCode::INTERNAL_SERVER_ERROR;
+                self.status = status::StatusCode::InternalServerError;
             }
+
             let mut body = match self.write_head() {
                 Ok(Body::Chunked) => ChunkedWriter(self.body.get_mut()),
                 Ok(Body::Sized(len)) => SizedWriter(self.body.get_mut(), len),
@@ -280,6 +272,7 @@ impl<'a, T: Any> Drop for Response<'a, T> {
 
 #[cfg(test)]
 mod tests {
+    use crate::header::Headers;
     use crate::mock::MockStream;
     use crate::runtime;
     use crate::status::StatusCode;
@@ -303,7 +296,7 @@ mod tests {
 
     #[test]
     fn test_fresh_start() {
-        let mut headers = http::HeaderMap::new();
+        let mut headers = Headers::new();
         let mut stream = MockStream::new();
         {
             let res = Response::new(&mut stream, &mut headers);
@@ -320,7 +313,7 @@ mod tests {
 
     #[test]
     fn test_streaming_end() {
-        let mut headers = http::HeaderMap::new();
+        let mut headers = Headers::new();
         let mut stream = MockStream::new();
         {
             let res = Response::new(&mut stream, &mut headers);
@@ -339,11 +332,12 @@ mod tests {
 
     #[test]
     fn test_fresh_drop() {
-        let mut headers =  http::HeaderMap::new();
+        use crate::status::StatusCode;
+        let mut headers = Headers::new();
         let mut stream = MockStream::new();
         {
             let mut res = Response::new(&mut stream, &mut headers);
-            *res.status_mut() = http::StatusCode::NOT_FOUND;
+            *res.status_mut() = StatusCode::NotFound;
         }
 
         lines! { stream =
@@ -358,7 +352,7 @@ mod tests {
 
     // x86 windows msvc does not support unwinding
     // See https://github.com/rust-lang/rust/issues/25869
-    #[cfg(not(all(windows, target_arch = "x86", target_env = "msvc")))]
+    #[cfg(not(all(windows, target_arch="x86", target_env="msvc")))]
     #[test]
     fn test_fresh_drop_panicing() {
         use std::thread;
@@ -370,10 +364,10 @@ mod tests {
         let stream = Arc::new(Mutex::new(stream));
         let inner_stream = stream.clone();
         let join_handle = runtime::spawn(move || {
-            let mut headers =  http::HeaderMap::new();
+            let mut headers = Headers::new();
             let mut stream = inner_stream.lock().unwrap();
             let mut res = Response::new(&mut *stream, &mut headers);
-            *res.status_mut() = http::StatusCode::NOT_FOUND;
+            *res.status_mut() = StatusCode::NotFound;
 
             panic!("inside")
         });
@@ -400,11 +394,11 @@ mod tests {
     fn test_streaming_drop() {
         use std::io::Write;
         use crate::status::StatusCode;
-        let mut headers =  http::HeaderMap::new();
+        let mut headers = Headers::new();
         let mut stream = MockStream::new();
         {
             let mut res = Response::new(&mut stream, &mut headers);
-            *res.status_mut() = http::StatusCode::NOT_FOUND;
+            *res.status_mut() = StatusCode::NotFound;
             let mut stream = res.start().unwrap();
             stream.write_all(b"foo").unwrap();
         }
@@ -423,11 +417,11 @@ mod tests {
 
     #[test]
     fn test_no_content() {
-        let mut headers =  http::HeaderMap::new();
+        let mut headers = Headers::new();
         let mut stream = MockStream::new();
         {
             let mut res = Response::new(&mut stream, &mut headers);
-            *res.status_mut() = http::StatusCode::NO_CONTENT;
+            *res.status_mut() = StatusCode::NoContent;
             res.start().unwrap();
         }
 

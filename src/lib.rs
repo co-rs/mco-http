@@ -128,14 +128,9 @@
 //! implement `Reader` and can be read to get the data out of a `Response`.
 //!
 
-
-#[macro_use]
-pub extern crate http;
-
 extern crate base64;
 extern crate time;
-#[macro_use]
-extern crate url;
+#[macro_use] extern crate url;
 extern crate unicase;
 extern crate httparse;
 extern crate traitobject;
@@ -143,6 +138,7 @@ extern crate typeable;
 
 #[cfg_attr(test, macro_use)]
 extern crate language_tags;
+
 #[macro_use]
 extern crate mime as mime_crate;
 
@@ -153,8 +149,6 @@ extern crate log;
 extern crate test;
 
 
-use std::hash::Hasher;
-use std::io::Write;
 pub use url::Url;
 pub use client::Client;
 pub use error::{Result, Error};
@@ -163,7 +157,7 @@ pub use status::StatusCode::{Ok, BadRequest, NotFound};
 pub use server::Server;
 pub use language_tags::LanguageTag;
 
-macro_rules! todo (
+macro_rules! todo(
     ($($arg:tt)*) => (if cfg!(not(ndebug)) {
         trace!("TODO: {:?}", format_args!($($arg)*))
     })
@@ -177,7 +171,8 @@ pub mod buffer;
 pub mod client;
 pub mod error;
 pub mod method;
-pub mod proto;
+pub mod header;
+pub mod http;
 pub mod net;
 pub mod server;
 pub mod status;
@@ -189,7 +184,6 @@ pub mod path;
 pub mod route;
 pub mod runtime;
 pub mod json;
-
 
 /// Re-exporting the mime crate, for convenience.
 pub mod mime {
@@ -210,15 +204,4 @@ fn _assert_types() {
     _assert_sync::<Client>();
     _assert_sync::<error::Error>();
     _assert_sync::<crate::client::pool::Pool<crate::net::DefaultConnector>>();
-}
-
-
-#[macro_export]
-macro_rules! header_value {
-    ($v:expr) => { HeaderValue::from_str($v).unwrap() };
-}
-
-#[macro_export]
-macro_rules! header_name {
-    ($v:expr) => { http::header::HeaderName::from_str($v)};
 }

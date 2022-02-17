@@ -8,7 +8,6 @@
 use super::*;
 
 use std::net::SocketAddr;
-use http::header::CONTENT_DISPOSITION;
 
 use crate::buffer::BufReader;
 use crate::net::NetworkStream;
@@ -16,6 +15,8 @@ use crate::server::Request as HyperRequest;
 
 use mock::MockStream;
 
+use crate::header::{Headers, ContentDisposition, DispositionParam, ContentType,
+                    DispositionType};
 // This is required to import the old style macros
 use mime::*;
 
@@ -52,7 +53,7 @@ fn parser() {
     let req = HyperRequest::new(&mut stream, sock).unwrap();
     let (_, _, headers, _, _, mut reader) = req.deconstruct();
 
-    match read_multipart_body(reader.get_mut(), &headers, false,Some(|w|->std::io::Result<()>{
+    match read_multipart_body(&mut reader, &headers, false,Some(|w|->std::io::Result<()>{
         w.set_write(File::create(w.filename().unwrap_or_default()).unwrap());
         w.path={
             let mut p =PathBuf::new();
@@ -136,7 +137,7 @@ fn mixed_parser() {
     let req = HyperRequest::new(&mut stream, sock).unwrap();
     let (_, _, headers, _, _, mut reader) = req.deconstruct();
 
-    match read_multipart_body( reader.get_mut(), &headers, false,Some(|w|->std::io::Result<()>{
+    match read_multipart_body(&mut reader, &headers, false,Some(|w|->std::io::Result<()>{
         w.set_write(File::create(w.filename().unwrap_or_default()).unwrap());
         w.path=PathBuf::new();
         w.path.push(w.filename().unwrap_or_default());
@@ -147,7 +148,7 @@ fn mixed_parser() {
             assert_eq!(nodes.len(), 2);
 
             if let Node::Part(ref part) = nodes[0] {
-                let cd = part.headers.get(http::header::CONTENT_DISPOSITION).unwrap();
+                let cd: &ContentDisposition = part.headers.get().unwrap();
                 let cd_name: String = get_content_disposition_name(&cd).unwrap();
                 assert_eq!(&*cd_name, "submit-name");
                 assert_eq!(::std::str::from_utf8(&*part.body).unwrap(), "Larry");
@@ -156,7 +157,7 @@ fn mixed_parser() {
             }
 
             if let Node::Multipart((ref headers, ref subnodes)) = nodes[1] {
-                let cd = headers.get(CONTENT_DISPOSITION).unwrap();
+                let cd: &ContentDisposition = headers.get().unwrap();
                 let cd_name: String = get_content_disposition_name(&cd).unwrap();
                 assert_eq!(&*cd_name, "files");
 
@@ -170,7 +171,7 @@ fn mixed_parser() {
                     assert!(filepart.path.exists());
                     assert!(filepart.path.is_file());
                 } else {
-                    panic!("1st subnode of wrong type:{:?}",subnodes[0]);
+                    panic!("1st subnode of wrong type");
                 }
 
                 if let Node::File(ref filepart) = subnodes[1] {
@@ -230,7 +231,7 @@ fn test_line_feed() {
     let req = HyperRequest::new(&mut stream, sock).unwrap();
     let (_, _, headers, _, _, mut reader) = req.deconstruct();
 
-    if let Err(e) = read_multipart_body(reader.get_mut(), &headers, false,Some(|w|->std::io::Result<()>{
+    if let Err(e) = read_multipart_body(&mut reader, &headers, false,Some(|w|->std::io::Result<()>{
         w.set_write(File::create(w.filename().unwrap_or_default()).unwrap());
         Ok(())
     })) {
@@ -239,108 +240,109 @@ fn test_line_feed() {
 }
 
 #[inline]
-fn get_content_disposition_name(cd:&HeaderValue) -> Option<String> {
-    let vec:Vec<&str>=cd.to_str().unwrap_or_default().split(";").collect();
-    for x in &vec {
-        let x = x.trim();
-        if x.starts_with("name="){
-            return Some(x.trim_start_matches("name=\"").trim_right_matches("\"").to_string());
-        }
+fn get_content_disposition_name(cd: &ContentDisposition) -> Option<String> {
+    if let Some(&DispositionParam::Ext(_, ref value)) = cd.parameters.iter()
+        .find(|&x| match *x {
+            DispositionParam::Ext(ref token,_) => &*token == "name",
+            _ => false,
+        })
+    {
+        Some(value.clone())
+    } else {
+        None
     }
-    return None;
 }
 
-//TODO
-// #[test]
-// fn test_output() {
-//     let mut output: Vec<u8> = Vec::new();
-//     let boundary = generate_boundary();
-//
-//     let first_name = Part {
-//         headers: {
-//             let mut h = http::HeaderMap::new();
-//             h.set(ContentType(Mime(TopLevel::Text, SubLevel::Plain, vec![])));
-//             h.set(ContentDisposition {
-//                 disposition: DispositionType::Ext("form-data".to_owned()),
-//                 parameters: vec![DispositionParam::Ext("name".to_owned(), "first_name".to_owned())],
-//             });
-//             h
-//         },
-//         body: b"Michael".to_vec(),
-//     };
-//
-//     let last_name = Part {
-//         headers: {
-//             let mut h = http::HeaderMap::new();
-//             h.set(ContentType(Mime(TopLevel::Text, SubLevel::Plain, vec![])));
-//             h.set(ContentDisposition {
-//                 disposition: DispositionType::Ext("form-data".to_owned()),
-//                 parameters: vec![DispositionParam::Ext("name".to_owned(), "last_name".to_owned())],
-//             });
-//             h
-//         },
-//         body: b"Dilger".to_vec(),
-//     };
-//
-//     let mut nodes: Vec<Node> = Vec::new();
-//     nodes.push(Node::Part(first_name));
-//     nodes.push(Node::Part(last_name));
-//
-//     let count = match write_multipart(&mut output, &boundary, &mut nodes,None) {
-//         Ok(c) => c,
-//         Err(e) => panic!("{:?}", e),
-//     };
-//     assert_eq!(count, output.len());
-//
-//     let string = String::from_utf8_lossy(&output);
-//
-//     // Hard to compare programmatically since the headers could come in any order.
-//     println!("{}", string);
-//
-//     assert_eq!(output.len(), 390);
-// }
-//
-// #[test]
-// fn test_chunked() {
-//     let mut output: Vec<u8> = Vec::new();
-//     let boundary = generate_boundary();
-//
-//     let first_name = Part {
-//         headers: {
-//             let mut h = http::HeaderMap::new();
-//             h.set(ContentType(Mime(TopLevel::Text, SubLevel::Plain, vec![])));
-//             h.set(ContentDisposition {
-//                 disposition: DispositionType::Ext("form-data".to_owned()),
-//                 parameters: vec![DispositionParam::Ext("name".to_owned(), "first_name".to_owned())],
-//             });
-//             h
-//         },
-//         body: b"Michael".to_vec(),
-//     };
-//
-//     let last_name = Part {
-//         headers: {
-//             let mut h = http::HeaderMap::new();
-//             h.set(ContentType(Mime(TopLevel::Text, SubLevel::Plain, vec![])));
-//             h.set(ContentDisposition {
-//                 disposition: DispositionType::Ext("form-data".to_owned()),
-//                 parameters: vec![DispositionParam::Ext("name".to_owned(), "last_name".to_owned())],
-//             });
-//             h
-//         },
-//         body: b"Dilger".to_vec(),
-//     };
-//
-//     let mut nodes: Vec<Node> = Vec::new();
-//     nodes.push(Node::Part(first_name));
-//     nodes.push(Node::Part(last_name));
-//
-//     assert!(write_multipart_chunked(&mut output, &boundary, &nodes).is_ok());
-//
-//     let string = String::from_utf8_lossy(&output);
-//
-//     // Hard to compare programmatically since the headers could come in any order.
-//     println!("{}", string);
-//
-//     assert_eq!(output.len(), 557);
-// }
+#[test]
+fn test_output() {
+    let mut output: Vec<u8> = Vec::new();
+    let boundary = generate_boundary();
+
+    let first_name = Part {
+        headers: {
+            let mut h = Headers::new();
+            h.set(ContentType(Mime(TopLevel::Text, SubLevel::Plain, vec![])));
+            h.set(ContentDisposition {
+                disposition: DispositionType::Ext("form-data".to_owned()),
+                parameters: vec![DispositionParam::Ext("name".to_owned(), "first_name".to_owned())],
+            });
+            h
+        },
+        body: b"Michael".to_vec(),
+    };
+
+    let last_name = Part {
+        headers: {
+            let mut h = Headers::new();
+            h.set(ContentType(Mime(TopLevel::Text, SubLevel::Plain, vec![])));
+            h.set(ContentDisposition {
+                disposition: DispositionType::Ext("form-data".to_owned()),
+                parameters: vec![DispositionParam::Ext("name".to_owned(), "last_name".to_owned())],
+            });
+            h
+        },
+        body: b"Dilger".to_vec(),
+    };
+
+    let mut nodes: Vec<Node> = Vec::new();
+    nodes.push(Node::Part(first_name));
+    nodes.push(Node::Part(last_name));
+
+    let count = match write_multipart(&mut output, &boundary, &mut nodes,None) {
+        Ok(c) => c,
+        Err(e) => panic!("{:?}", e),
+    };
+    assert_eq!(count, output.len());
+
+    let string = String::from_utf8_lossy(&output);
+
+    // Hard to compare programmatically since the headers could come in any order.
+    println!("{}", string);
+
+    assert_eq!(output.len(), 390);
+}
+
+#[test]
+fn test_chunked() {
+    let mut output: Vec<u8> = Vec::new();
+    let boundary = generate_boundary();
+
+    let first_name = Part {
+        headers: {
+            let mut h = Headers::new();
+            h.set(ContentType(Mime(TopLevel::Text, SubLevel::Plain, vec![])));
+            h.set(ContentDisposition {
+                disposition: DispositionType::Ext("form-data".to_owned()),
+                parameters: vec![DispositionParam::Ext("name".to_owned(), "first_name".to_owned())],
+            });
+            h
+        },
+        body: b"Michael".to_vec(),
+    };
+
+    let last_name = Part {
+        headers: {
+            let mut h = Headers::new();
+            h.set(ContentType(Mime(TopLevel::Text, SubLevel::Plain, vec![])));
+            h.set(ContentDisposition {
+                disposition: DispositionType::Ext("form-data".to_owned()),
+                parameters: vec![DispositionParam::Ext("name".to_owned(), "last_name".to_owned())],
+            });
+            h
+        },
+        body: b"Dilger".to_vec(),
+    };
+
+    let mut nodes: Vec<Node> = Vec::new();
+    nodes.push(Node::Part(first_name));
+    nodes.push(Node::Part(last_name));
+
+    assert!(write_multipart_chunked(&mut output, &boundary, &nodes).is_ok());
+
+    let string = String::from_utf8_lossy(&output);
+
+    // Hard to compare programmatically since the headers could come in any order.
+    println!("{}", string);
+
+    assert_eq!(output.len(), 557);
+}
