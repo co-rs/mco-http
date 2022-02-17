@@ -109,6 +109,7 @@ fn main() {
     let middle = Arc::new(MyMiddleWare { secret: "123456".to_string() });
     route.add_middleware(middle.clone());
     route.handle_fn("/", |req: Request, mut res: Response| {
+        //Note that the token is obtained from path, which is not rigorous. In the actual system, the token should be obtained from the header
         let login_user_data = req.extra.get::<JWTToken>().unwrap();
         res.send(format!("read from middleware: {:?}", login_user_data).as_bytes());
     });
