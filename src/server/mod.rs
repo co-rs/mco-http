@@ -112,7 +112,6 @@ use std::io::{self, ErrorKind, BufWriter, Write};
 use std::net::{SocketAddr, ToSocketAddrs, Shutdown};
 use std::sync::Arc;
 use std::time::Duration;
-use cogo::coroutine::yield_now;
 use http::{HeaderMap, HeaderValue};
 pub use self::request::Request;
 pub use self::response::Response;
@@ -275,7 +274,7 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                                             if now.elapsed() >= timeout {
                                                 return;
                                             } else {
-                                                yield_now();
+                                                runtime::yield_now();
                                                 continue;
                                             }
                                         } else {
@@ -296,7 +295,7 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                                             if count >= total {
                                                 return;
                                             }
-                                            yield_now();
+                                            runtime::yield_now();
                                         }
                                     }
                                 }

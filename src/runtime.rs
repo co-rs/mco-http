@@ -18,6 +18,8 @@ pub type Mutex<T> = mco::std::sync::Mutex<T>;
 pub type SyncBtreeMap<K,V> = mco::std::map::SyncBtreeMap<K,V>;
 #[cfg(feature = "mco")]
 pub type SyncHashMap<K,V> = mco::std::map::SyncHashMap<K,V>;
+#[cfg(feature = "mco")]
+pub use mco::coroutine::yield_now;
 
 #[cfg(feature = "mco")]
 pub fn chan<T>() -> (Sender<T>, Receiver<T>) {
@@ -57,6 +59,8 @@ pub type Mutex<T> = std::sync::Mutex<T>;
 pub type SyncBtreeMap<K,V> = dashmap::DashMap<K,V>;
 #[cfg(not(feature = "mco"))]
 pub type SyncHashMap<K,V> = dashmap::DashMap<K,V>;
+#[cfg(not(feature = "mco"))]
+pub use std::thread::yield_now;
 
 #[cfg(not(feature = "mco"))]
 pub fn chan<T>() -> (Sender<T>, Receiver<T>) {
