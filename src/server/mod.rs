@@ -131,6 +131,7 @@ use self::listener::ListenerPool;
 pub mod request;
 pub mod response;
 pub mod extensions;
+pub use extensions::*;
 
 mod listener;
 
