@@ -11,7 +11,7 @@ impl MiddleWare for MyMiddleWare {
     fn handle(&self, req: &mut Request, res: &mut Response) -> bool {
         println!("hello MiddleWare!");
         //You can carry any data here
-        req.extra.insert("user_account".to_string(), "joe".to_string());
+        req.extra.insert( "joe".to_string());
         //return true is done
         return false;
     }
@@ -23,7 +23,7 @@ fn main() {
     let mut route = Route::new();
     route.add_middleware(MyMiddleWare {});
     route.handle_fn("/", |req: Request, res: Response| {
-        res.send(format!("read from middleware: {:?}", req.extra.get::<String>("user_account").unwrap()).as_bytes());
+        res.send(format!("read from middleware: {:?}", req.extra.get::<String>()).as_bytes());
     });
 
     let route = Arc::new(route);

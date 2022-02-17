@@ -15,7 +15,7 @@ use crate::method::Method;
 use crate::header::{Headers, ContentLength, TransferEncoding};
 use crate::http::h1::{self, Incoming, HttpReader};
 use crate::http::h1::HttpReader::{SizedReader, ChunkedReader, EmptyReader};
-use crate::server::extra::Extra;
+use crate::server::extensions::Extensions;
 use crate::uri::RequestUri;
 
 /// A request bundles several parts of an incoming `NetworkStream`, given to a `Handler`.
@@ -33,7 +33,7 @@ pub struct Request<'a, 'b: 'a> {
     /// http body
     pub body: HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>,
     /// The extra User defined data
-    pub extra: Extra,
+    pub extra: Extensions,
 }
 
 

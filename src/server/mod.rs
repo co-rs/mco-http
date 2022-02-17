@@ -130,7 +130,7 @@ use self::listener::ListenerPool;
 
 pub mod request;
 pub mod response;
-pub mod extra;
+pub mod extensions;
 
 mod listener;
 
