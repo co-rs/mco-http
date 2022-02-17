@@ -11,7 +11,8 @@ use mco::std::time::Time;
 use mco_http::query::read_query;
 use mco_http::uri::RequestUri;
 
-/// JWT 鉴权 Token结构
+/// JWT Token.
+/// This example shows the whole process from logging in to obtain the token to using the token to access the protected interface
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct JWTToken {
     //account id
