@@ -118,9 +118,9 @@ fn main() {
             role_ids: vec![],
             exp: {
                 // timeout for 24 hour
-                let mut now = Time::now();
-                now.add(Duration::from_secs(24 * 3600));
-                now.unix_timestamp() as usize
+                Time::now()
+                    .add(Duration::from_secs(24 * 3600))
+                    .unix_timestamp() as usize
             },
         };
         let token = jwt.create_token(middle.secret.as_str()).unwrap();
