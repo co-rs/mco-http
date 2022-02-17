@@ -56,7 +56,7 @@ impl FormData {
 
 
 /// Parse MIME `multipart/form-data` information from a stream as a `FormData`.
-pub fn read_formdata<S: Read>(stream:  S, headers: &HeaderMap, f: Option<fn(name: &mut FilePart) -> std::io::Result<()>>) -> Result<FormData, Error>
+pub fn read_formdata<S: Read>(headers: &HeaderMap,stream:  S, f: Option<fn(name: &mut FilePart) -> std::io::Result<()>>) -> Result<FormData, Error>
 {
     let nodes = crate::multipart::read_multipart_body(stream, headers, false, f)?;
     let mut formdata = FormData::new();

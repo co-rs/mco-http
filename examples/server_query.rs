@@ -7,7 +7,7 @@ use mco_http::server::{Request, Response};
 
 // http://127.0.0.1:3000/?q=query_info&b=123
 fn hello(req: Request, res: Response) {
-    let param = read_query(&req.uri.to_string());
+    let param = read_query(&req.uri().to_string());
     res.send(format!("{:?}",param).as_bytes()).unwrap();
 }
 

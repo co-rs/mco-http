@@ -10,7 +10,7 @@ use mco_http::multipart::mult_part::read_formdata;
 use mco_http::server::{Request, Response};
 
 fn hello(mut req: Request, res: Response) {
-    let form = read_formdata(&mut req.body, &req.headers, Some(|w| -> std::io::Result<()>{
+    let form = read_formdata(&req.headers().clone(),req.body_mut(), Some(|w| -> std::io::Result<()>{
         let path="target/".to_string() + &w.filename().unwrap_or("temp.file".to_string());
         w.set_write(File::create(&path)?); // or any impl Write and Read Struct
         println!("upload: {}",w.key);

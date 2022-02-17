@@ -11,16 +11,16 @@ use std::path::PathBuf;
 use std::sync::mpsc::RecvError;
 use captcha::Captcha;
 use captcha::filters::{Dots, Noise, Wave};
+use http::header::CONTENT_TYPE;
 use mco::{chan, defer, spawn_blocking};
 use mco::std::lazy::sync::Lazy;
 use mco::std::sync::{Receiver, Sender};
-use mco_http::header::ContentType;
 use mco_http::server::{Request, Response};
 
 /// Draw a captcha code and display it on the web
 fn download(mut req: Request, res: Response) {
     //first set header content type
-    res.headers.set(ContentType::png());
+    res.headers.insert(CONTENT_TYPE,"png".parse().unwrap());
     //next,req thread new an png to me
     //Heavy computing tasks should be performed by threads
     let png= spawn_blocking!(||{
