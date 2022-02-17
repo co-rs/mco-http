@@ -2,6 +2,8 @@
 //!
 //! These are requests that a `mco_http::Server` receives, and include its method,
 //! target URI, headers, and message body.
+use std::any::Any;
+use std::collections::HashMap;
 use std::io::{self, Read};
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -13,6 +15,7 @@ use crate::method::Method;
 use crate::header::{Headers, ContentLength, TransferEncoding};
 use crate::http::h1::{self, Incoming, HttpReader};
 use crate::http::h1::HttpReader::{SizedReader, ChunkedReader, EmptyReader};
+use crate::server::extra::Extra;
 use crate::uri::RequestUri;
 
 /// A request bundles several parts of an incoming `NetworkStream`, given to a `Handler`.
@@ -27,7 +30,10 @@ pub struct Request<'a, 'b: 'a> {
     pub uri: RequestUri,
     /// The version of HTTP for this request.
     pub version: HttpVersion,
-    pub body: HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>
+    /// http body
+    pub body: HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>,
+    /// The extra User defined data
+    pub extra: Extra,
 }
 
 
@@ -35,8 +41,7 @@ impl<'a, 'b: 'a> Request<'a, 'b> {
     /// Create a new Request, reading the StartLine and Headers so they are
     /// immediately useful.
     pub fn new(stream: &'a mut BufReader<&'b mut dyn NetworkStream>, addr: SocketAddr)
-        -> crate::Result<Request<'a, 'b>> {
-
+               -> crate::Result<Request<'a, 'b>> {
         let Incoming { version, subject: (method, uri), headers } = r#try!(h1::parse_request(stream));
         debug!("Request Line: {:?} {:?} {:?}", method, uri, version);
         debug!("{:?}", headers);
@@ -59,7 +64,8 @@ impl<'a, 'b: 'a> Request<'a, 'b> {
             uri: uri,
             headers: headers,
             version: version,
-            body: body
+            body: body,
+            extra: Default::default(),
         })
     }
 
@@ -218,7 +224,7 @@ mod tests {
         match req.headers.get::<Host>() {
             Some(host) => {
                 assert_eq!("example.domain", host.hostname);
-            },
+            }
             None => panic!("Host header expected!"),
         };
         match req.headers.get::<TransferEncoding>() {
@@ -303,5 +309,4 @@ mod tests {
 
         assert_eq!(read_to_string(req).unwrap(), "1".to_owned());
     }
-
 }
