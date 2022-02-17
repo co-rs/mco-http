@@ -222,7 +222,7 @@ pub fn read_multipart<S: Read>(
 /// It is presumed that you have the `Headers` already and the stream starts at the body.
 /// If the headers are still in the stream, use `read_multipart()` instead.
 pub fn read_multipart_body<S: Read>(
-    stream: &mut S,
+    stream:  S,
     headers: &http::HeaderMap,
     always_use_files: bool, f: Option<fn(name: &mut FilePart) -> std::io::Result<()>>)
     -> Result<Vec<Node>, Error>

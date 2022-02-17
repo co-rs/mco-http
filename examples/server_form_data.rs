@@ -9,7 +9,8 @@ use mco_http::multipart::mult_part::read_formdata;
 use mco_http::server::{Request, Response};
 
 fn hello(mut req: Request, res: Response) {
-    let form = read_formdata(&mut req.body, &req.headers,None).unwrap();
+    let head= req.headers().clone();
+    let form = read_formdata( req.body_mut(), &head,None).unwrap();
     res.send(serde_json::json!(form.fields).to_string().as_bytes()).unwrap();
 }
 
