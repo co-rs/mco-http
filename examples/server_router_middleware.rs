@@ -23,7 +23,7 @@ fn main() {
     let mut route = Route::new();
     route.add_middleware(MyMiddleWare {});
     route.handle_fn("/", |req: Request, res: Response| {
-        res.send(format!("read from middleware: {:?}", req.extra.get::<String>("user_account").unwrap()).as_bytes()).unwrap();
+        res.send(format!("read from middleware: {:?}", req.extra.get::<String>("user_account").unwrap()).as_bytes());
     });
 
     let route = Arc::new(route);
