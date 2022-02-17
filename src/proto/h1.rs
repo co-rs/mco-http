@@ -1183,13 +1183,13 @@ mod tests {
         let mut buf = BufReader::new(&mut raw);
         let res = parse_response(&mut buf).unwrap();
 
-        assert_eq!(res.subject.1, "OK");
+        assert_eq!(res.subject.to_string(), "OK");
 
         let mut raw = MockStream::with_input(b"HTTP/1.1 200 Howdy\r\n\r\n");
         let mut buf = BufReader::new(&mut raw);
         let res = parse_response(&mut buf).unwrap();
 
-        assert_eq!(res.subject.1, "Howdy");
+        assert_eq!(res.subject.to_string(), "Howdy");
     }
 
 

@@ -242,8 +242,8 @@ fn test_line_feed() {
 fn get_content_disposition_name(cd:&HeaderValue) -> Option<String> {
     let vec:Vec<&str>=cd.to_str().unwrap_or_default().split(";").collect();
     let mut idx=0;
-    for x in vec {
-        if x.eq("name"){
+    for x in &vec {
+        if (*x).eq("name"){
             match vec.get(idx+1){
                 None => {return None}
                 Some(v) => {

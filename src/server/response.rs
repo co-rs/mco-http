@@ -339,12 +339,11 @@ mod tests {
 
     #[test]
     fn test_fresh_drop() {
-        use crate::status::StatusCode;
         let mut headers =  http::HeaderMap::new();
         let mut stream = MockStream::new();
         {
             let mut res = Response::new(&mut stream, &mut headers);
-            *res.status_mut() = StatusCode::NotFound;
+            *res.status_mut() = http::StatusCode::NOT_FOUND;
         }
 
         lines! { stream =
@@ -374,7 +373,7 @@ mod tests {
             let mut headers =  http::HeaderMap::new();
             let mut stream = inner_stream.lock().unwrap();
             let mut res = Response::new(&mut *stream, &mut headers);
-            *res.status_mut() = StatusCode::NotFound;
+            *res.status_mut() = http::StatusCode::NOT_FOUND;
 
             panic!("inside")
         });
@@ -405,7 +404,7 @@ mod tests {
         let mut stream = MockStream::new();
         {
             let mut res = Response::new(&mut stream, &mut headers);
-            *res.status_mut() = StatusCode::NotFound;
+            *res.status_mut() = http::StatusCode::NOT_FOUND;
             let mut stream = res.start().unwrap();
             stream.write_all(b"foo").unwrap();
         }
@@ -428,7 +427,7 @@ mod tests {
         let mut stream = MockStream::new();
         {
             let mut res = Response::new(&mut stream, &mut headers);
-            *res.status_mut() = StatusCode::NoContent;
+            *res.status_mut() = http::StatusCode::NO_CONTENT;
             res.start().unwrap();
         }
 
