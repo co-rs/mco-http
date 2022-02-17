@@ -3,6 +3,8 @@
 * Coroutine HTTP framework for Cogo, Original code fork from Hyper，We improved the underlying logic
 * support http server
 * support http client
+* support route
+* support Interceptor/middleware
 ## Performance
 
 * platform(16CPU/32 thread AMD Ryzen 9 5950X,32GB mem,Os:Unbutu-20.04)
