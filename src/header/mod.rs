@@ -267,6 +267,21 @@ fn header_name<T: Header>() -> &'static str {
 }
 
 /// A map of header fields on requests and responses.
+///
+/// Example:
+///
+/// ```
+/// //set_raw
+/// # use mco_http::header::Headers;
+/// # let mut headers = Headers::new();
+/// headers.set_raw("content-length", vec![b"5".to_vec()]);
+/// ```
+/// ```
+/// //get_raw
+/// # use mco_http::header::Headers;
+/// # let mut headers = Headers::new();
+/// let raw_content_type = headers.get_raw("content-type");
+/// ```
 #[derive(Clone)]
 pub struct Headers {
     //data: HashMap<HeaderName, Item>
