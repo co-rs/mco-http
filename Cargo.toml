@@ -21,7 +21,7 @@ include = [
 ]
 
 [features]
-default = ["runtime_mco","serde_json"]
+default = ["runtime_mco", "serde_json"]
 runtime_thread = ["dashmap"]
 runtime_mco = ["mco"]
 nightly = []
@@ -37,20 +37,20 @@ traitobject = "0.1"
 typeable = "0.1"
 unicase = "1.0"
 url = "1.0"
-mco = {version = "0.1", optional = true }
+mco = { version = "0.1", optional = true }
 
 crossbeam = "0.8"
 crossbeam-channel = "0.5"
-encoding="0.2"
-textnonce="1"
+encoding = "0.2"
+textnonce = "1"
 buf-read-ext = "0.4.0"
 serde_urlencoded = "0.7"
-httpdate ="1"
+httpdate = "1"
 serde = "1"
-serde_json = {version = "1", optional = true }
+serde_json = { version = "1", optional = true }
 
 #only runtime_thread
-dashmap = {version = "4.0.2" , optional = true }
+dashmap = { version = "4.0.2", optional = true }
 
 [dev-dependencies]
 env_logger = "0.4"
@@ -62,3 +62,4 @@ cdbc-sqlite = "0.1"
 #captcha
 lodepng = "~3.5.2"
 captcha = "0.0.8"
+jsonwebtoken = "8"

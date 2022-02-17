@@ -8,6 +8,7 @@ use crate::status::StatusCode;
 use crate::uri::RequestUri::AbsolutePath;
 use std::io::copy;
 use std::ops::Deref;
+use std::rc::Rc;
 use std::sync::Arc;
 use crate::runtime::{SyncHashMap};
 use crate::uri::RequestUri;
@@ -27,9 +28,22 @@ impl Debug for HandleBox {
 }
 
 pub trait MiddleWare: Send + Sync + Debug {
-    //return is finish. if finish will be return
-    fn handle(&self, req: &mut Request, res: &mut Response) -> bool;
+    //if you take res. handle be done
+    fn handle(&self, req: &mut Request, res: &mut Option<Response>);
 }
+
+impl<T: MiddleWare> MiddleWare for Arc<T> {
+    fn handle(&self, req: &mut Request, res: &mut Option<Response>) {
+        T::handle(self, req, res)
+    }
+}
+
+impl<T: MiddleWare> MiddleWare for Box<T> {
+    fn handle(&self, req: &mut Request, res: &mut Option<Response>) {
+        T::handle(self, req, res)
+    }
+}
+
 
 #[derive(Debug)]
 pub struct Route {
@@ -96,17 +110,21 @@ impl Route {
 
     /// index will get from container.if not exist will be panic!
     pub fn index<T: Any>(&self, key: &str) -> &T {
-        self.get(key).expect(&format!("key:{} Does not exist in the container",key))
+        self.get(key).expect(&format!("key:{} Does not exist in the container", key))
     }
 }
 
 
 impl Handler for Route {
-    fn handle(&self, mut req: Request, mut res: Response<'_, Fresh>) {
+    fn handle(&self, mut req: Request, mut res: Response) {
         for x in &self.middleware {
+            let mut r = Some(res);
             //finish?.this is safety
-            if x.handle(&mut req, &mut res) {
+            x.handle(&mut req, &mut r);
+            if r.is_none() {
                 return;
+            } else {
+                res = r.unwrap();
             }
         }
         match &req.uri {

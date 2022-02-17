@@ -8,12 +8,10 @@ use mco_http::route::MiddleWare;
 pub struct MyMiddleWare {}
 
 impl MiddleWare for MyMiddleWare {
-    fn handle(&self, req: &mut Request, res: &mut Response) -> bool {
+    fn handle(&self, req: &mut Request, res: &mut Option<Response>) {
         println!("hello MiddleWare!");
         //You can carry any data here
         req.extra.insert( "joe".to_string());
-        //return true is done
-        return false;
     }
 }
 
