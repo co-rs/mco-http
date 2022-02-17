@@ -56,11 +56,8 @@ impl<'a, 'b: 'a> Request<'a, 'b> {
             EmptyReader(stream)
         };
 
-
-        let mut ext = Extensions::new();
-        ext.insert(addr);
         let mut req = http::Request::builder()
-            .extension(ext)
+            .extension(addr)
             .method(method.as_ref())
             .uri(uri)
             .version(version.into())
