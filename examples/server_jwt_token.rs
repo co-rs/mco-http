@@ -25,6 +25,7 @@ pub struct JWTToken {
     pub role_ids: Vec<String>,
     //Expiration time
     pub exp: usize,
+    //... and more... Custom type
 }
 
 impl JWTToken {
