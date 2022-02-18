@@ -784,6 +784,10 @@ impl<W: Write> HttpWriter<W> {
     pub fn end(mut self) -> Result<W, EndError<W>> {
         fn inner<W: Write>(w: &mut W) -> io::Result<()> {
             r#try!(w.write(&[]));
+            //unix system for non-blocking io don't need flush
+            #[cfg(unix)]
+            return io::Result::Ok(());
+            #[cfg(not(unix))]
             w.flush()
         }
 
