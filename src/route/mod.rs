@@ -38,15 +38,9 @@ impl<T: MiddleWare> MiddleWare for Arc<T> {
     }
 }
 
-impl<T: MiddleWare> MiddleWare for Box<T> {
+impl<F> MiddleWare for F where F: Fn(&mut Request, &mut Option<Response>), F: Sync + Send {
     fn handle(&self, req: &mut Request, res: &mut Option<Response>) {
-        T::handle(self, req, res)
-    }
-}
-
-impl MiddleWare for fn(&mut Request,&mut Option<Response>) {
-    fn handle(&self, req: &mut Request, res: &mut Option<Response>) {
-        self(req,res)
+        self(req, res)
     }
 }
 
