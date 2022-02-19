@@ -5,12 +5,15 @@ use mco_http::route::MiddleWare;
 
 // MiddleWare
 #[derive(Debug)]
-pub struct MyMiddleWare {}
+pub struct MyMiddleWare {
+    route: Arc<Route>
+}
 
 impl MiddleWare for MyMiddleWare {
     fn handle(&self, req: &mut Request, res: &mut Option<Response>) {
         println!("hello MiddleWare!");
         //You can carry any data here
+        req.extra.insert(self.route.clone());
         req.extra.insert( "joe".to_string());
     }
 }
@@ -18,8 +21,8 @@ impl MiddleWare for MyMiddleWare {
 fn main() {
     env_logger::init().unwrap();
 
-    let mut route = Route::new();
-    route.add_middleware(MyMiddleWare {});
+    let mut route = Arc::new(Route::new());
+    route.add_middleware(MyMiddleWare { route: route.clone() });
     route.add_middleware(|req: &mut Request, res: &mut Option<Response>|{
 
     });
@@ -27,8 +30,7 @@ fn main() {
         res.send(format!("read from middleware: {:?}", req.extra.get::<String>()).as_bytes());
     });
 
-    let route = Arc::new(route);
     let _listening = mco_http::Server::http("0.0.0.0:3000").unwrap()
-        .handle(route.clone());
+        .handle(route);
     println!("Listening on http://127.0.0.1:3000");
 }

@@ -46,16 +46,16 @@ impl<F> MiddleWare for F where F: Fn(&mut Request, &mut Option<Response>), F: Sy
 
 pub struct Route {
     pub container: SyncHashMap<String, Arc<Box<dyn Any>>>,
-    pub middleware: Vec<Box<dyn MiddleWare>>,
+    pub middleware: SyncHashMap<String, Box<dyn MiddleWare>>,
     pub handlers: SyncHashMap<String, HandleBox>,
 }
 
 impl Debug for Route {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Route")
-            .field("container",&self.container.len())
-            .field("middleware",&self.middleware.len())
-            .field("handlers",&self.handlers)
+            .field("container", &self.container.len())
+            .field("middleware", &self.middleware.len())
+            .field("handlers", &self.handlers)
             .finish()
     }
 }
@@ -65,7 +65,7 @@ impl Route {
     pub fn new() -> Self {
         Self {
             container: SyncHashMap::new(),
-            middleware: vec![],
+            middleware: SyncHashMap::new(),
             handlers: SyncHashMap::new(),
         }
     }
@@ -106,8 +106,8 @@ impl Route {
     ///        ///res.take() //take Response, next handle will be not run
     ///     });
     /// ```
-    pub fn add_middleware<M: MiddleWare + 'static>(&mut self, m: M) {
-        self.middleware.push(Box::new(m));
+    pub fn add_middleware<M: MiddleWare + 'static>(&self, m: M) {
+        self.middleware.insert(self.middleware.len().to_string(), Box::new(m));
     }
 
     pub fn insert<T: Any>(&self, key: &str, data: T) {
@@ -135,10 +135,10 @@ impl Route {
 
 impl Handler for Route {
     fn handle(&self, mut req: Request, mut res: Response) {
-        for x in &self.middleware {
+        for (_, m) in &self.middleware {
             let mut r = Some(res);
             //finish?.this is safety
-            x.handle(&mut req, &mut r);
+            m.handle(&mut req, &mut r);
             if r.is_none() {
                 return;
             } else {
