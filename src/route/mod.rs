@@ -27,7 +27,7 @@ impl Debug for HandleBox {
     }
 }
 
-pub trait MiddleWare: Send + Sync + Debug {
+pub trait MiddleWare: Send + Sync {
     //if you take res. handle be done
     fn handle(&self, req: &mut Request, res: &mut Option<Response>);
 }
@@ -44,12 +44,26 @@ impl<T: MiddleWare> MiddleWare for Box<T> {
     }
 }
 
+impl MiddleWare for fn(&mut Request,&mut Option<Response>) {
+    fn handle(&self, req: &mut Request, res: &mut Option<Response>) {
+        self(req,res)
+    }
+}
 
-#[derive(Debug)]
 pub struct Route {
     pub container: SyncHashMap<String, Arc<Box<dyn Any>>>,
     pub middleware: Vec<Box<dyn MiddleWare>>,
     pub handlers: SyncHashMap<String, HandleBox>,
+}
+
+impl Debug for Route {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Route")
+            .field("container",&self.container.len())
+            .field("middleware",&self.middleware.len())
+            .field("handlers",&self.handlers)
+            .finish()
+    }
 }
 
 

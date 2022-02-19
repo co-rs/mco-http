@@ -20,6 +20,9 @@ fn main() {
 
     let mut route = Route::new();
     route.add_middleware(MyMiddleWare {});
+    route.add_middleware(|req: &mut Request, res: &mut Option<Response>|{
+
+    });
     route.handle_fn("/", |req: Request, res: Response| {
         res.send(format!("read from middleware: {:?}", req.extra.get::<String>()).as_bytes());
     });
