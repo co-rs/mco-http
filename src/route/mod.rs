@@ -28,7 +28,7 @@ impl Debug for HandleBox {
 }
 
 pub trait MiddleWare: Send + Sync {
-    //if you take res. handle be done
+    /// if you call take Response, next handle will be not run
     fn handle(&self, req: &mut Request, res: &mut Option<Response>);
 }
 
@@ -102,6 +102,16 @@ impl Route {
         });
     }
 
+    /// if you take Response. handle be done
+    /// for example:
+    /// ```rust
+    /// use mco_http::server::{Request, Response};
+    /// use mco_http::route::Route;
+    /// let mut route = Route::new();
+    /// route.add_middleware(|req: &mut Request, res: &mut Option<Response>|{
+    ///        ///res.take() //take Response, next handle will be not run
+    ///     });
+    /// ```
     pub fn add_middleware<M: MiddleWare + 'static>(&mut self, m: M) {
         self.middleware.push(Box::new(m));
     }
