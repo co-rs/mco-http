@@ -72,7 +72,7 @@ impl FromStr for Origin {
         };
         // idx + 3 because thats how long "://" is
         let (scheme, etc) = (&s[..idx], &s[idx + 3..]);
-        let host = r#try!(Host::from_str(etc));
+        let host = Host::from_str(etc)?;
 
 
         Ok(Origin{

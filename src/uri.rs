@@ -62,11 +62,11 @@ impl FromStr for RequestUri {
         } else if bytes.starts_with(b"/") {
             Ok(RequestUri::AbsolutePath(s.to_owned()))
         } else if bytes.contains(&b'/') {
-            Ok(RequestUri::AbsoluteUri(r#try!(Url::parse(s))))
+            Ok(RequestUri::AbsoluteUri(Url::parse(s)?))
         } else {
             let mut temp = "http://".to_owned();
             temp.push_str(s);
-            r#try!(Url::parse(&temp[..]));
+            Url::parse(&temp[..])?;
             todo!("compare vs u.authority()");
             Ok(RequestUri::Authority(s.to_owned()))
         }

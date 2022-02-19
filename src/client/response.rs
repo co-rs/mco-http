@@ -119,7 +119,7 @@ mod tests {
 
     fn read_to_string(mut r: Response) -> io::Result<String> {
         let mut s = String::new();
-        r#try!(r.read_to_string(&mut s));
+        r.read_to_string(&mut s)?;
         Ok(s)
     }
 

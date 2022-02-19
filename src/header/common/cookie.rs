@@ -40,7 +40,7 @@ impl Header for Cookie {
     fn parse_header(raw: &[Vec<u8>]) -> crate::Result<Cookie> {
         let mut cookies = Vec::with_capacity(raw.len());
         for cookies_raw in raw.iter() {
-            let cookies_str = r#try!(from_utf8(&cookies_raw[..]));
+            let cookies_str = from_utf8(&cookies_raw[..])?;
             for cookie_str in cookies_str.split(';') {
                 cookies.push(cookie_str.trim().to_owned())
             }
@@ -59,9 +59,9 @@ impl HeaderFormat for Cookie {
         let cookies = &self.0;
         for (i, cookie) in cookies.iter().enumerate() {
             if i != 0 {
-                r#try!(f.write_str("; "));
+                f.write_str("; ")?;
             }
-            r#try!(Display::fmt(&cookie, f));
+            Display::fmt(&cookie, f)?;
         }
         Ok(())
     }

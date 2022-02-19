@@ -292,7 +292,7 @@ impl<'a> RequestBuilder<'a> {
     /// Execute this request and receive a Response back.
     pub fn send(self) -> crate::Result<Response> {
         let RequestBuilder { client, method, url, headers, body } = self;
-        let mut url = r#try!(url);
+        let mut url = url?;
         trace!("send method={:?}, url={:?}, client={:?}", method, url, client);
 
         let can_have_body = match method {
@@ -308,8 +308,8 @@ impl<'a> RequestBuilder<'a> {
 
         loop {
             let mut req = {
-                let (host, port) = r#try!(get_host_and_port(&url));
-                let mut message = r#try!(client.protocol.new_message(&host, port, url.scheme()));
+                let (host, port) = get_host_and_port(&url)?;
+                let mut message = client.protocol.new_message(&host, port, url.scheme())?;
                 if url.scheme() == "http" && client.proxy.is_some() {
                     message.set_proxied(true);
                 }
@@ -329,8 +329,8 @@ impl<'a> RequestBuilder<'a> {
                 Request::with_headers_and_message(method.clone(), url.clone(), headers, message)
             };
 
-            r#try!(req.set_write_timeout(client.write_timeout));
-            r#try!(req.set_read_timeout(client.read_timeout));
+            req.set_write_timeout(client.write_timeout)?;
+            req.set_read_timeout(client.read_timeout)?;
 
             match (can_have_body, body.as_ref()) {
                 (true, Some(body)) => match body.size() {
@@ -340,11 +340,11 @@ impl<'a> RequestBuilder<'a> {
                 (true, None) => req.headers_mut().set(ContentLength(0)),
                 _ => () // neither
             }
-            let mut streaming = r#try!(req.start());
+            let mut streaming = req.start()?;
             if let Some(mut rdr) = body.take() {
-                r#try!(copy(&mut rdr, &mut streaming));
+                copy(&mut rdr, &mut streaming)?;
             }
-            let res = r#try!(streaming.send());
+            let res = streaming.send()?;
             if !res.status.is_redirection() {
                 return Ok(res)
             }

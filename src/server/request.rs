@@ -42,7 +42,7 @@ impl<'a, 'b: 'a> Request<'a, 'b> {
     /// immediately useful.
     pub fn new(stream: &'a mut BufReader<&'b mut dyn NetworkStream>, addr: SocketAddr)
                -> crate::Result<Request<'a, 'b>> {
-        let Incoming { version, subject: (method, uri), headers } = r#try!(h1::parse_request(stream));
+        let Incoming { version, subject: (method, uri), headers } = h1::parse_request(stream)?;
         debug!("Request Line: {:?} {:?} {:?}", method, uri, version);
         debug!("{:?}", headers);
 
@@ -124,7 +124,7 @@ mod tests {
 
     fn read_to_string(mut req: Request) -> io::Result<String> {
         let mut s = String::new();
-        r#try!(req.read_to_string(&mut s));
+        req.read_to_string(&mut s)?;
         Ok(s)
     }
 

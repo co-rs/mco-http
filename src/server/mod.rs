@@ -308,7 +308,7 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                 }, stack_size);
             }
         }, stack_size);
-        let socket = r#try!(self.listener.clone().local_addr());
+        let socket = self.listener.clone().local_addr()?;
         return Ok(Listening {
             _guard: Some(h),
             socket: socket,
@@ -324,7 +324,7 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
 
 fn handle_task<H, L>(mut server: Server<L>, handler: H, tasks: usize) -> crate::Result<Listening>
     where H: Handler + 'static, L: NetworkListener + Send + 'static {
-    let socket = r#try!(server.listener.local_addr());
+    let socket = server.listener.local_addr()?;
 
     debug!("tasks = {:?}", tasks);
     let pool = ListenerPool::new(server.listener);

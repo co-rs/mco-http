@@ -162,14 +162,14 @@ impl<'a, 'b> MultilineFormatter<'a, 'b> {
         use std::fmt::Write;
         match self.0 {
             Multi::Line(ref name, ref mut f) => {
-                r#try!(f.write_str(*name));
-                r#try!(f.write_str(": "));
-                r#try!(write!(NewlineReplacer(*f), "{}", line));
+                f.write_str(*name)?;
+                f.write_str(": ")?;
+                write!(NewlineReplacer(*f), "{}", line)?;
                 f.write_str("\r\n")
             },
             Multi::Join(ref mut first, ref mut f) => {
                 if !*first {
-                    r#try!(f.write_str(", "));
+                    f.write_str(", ")?;
                 } else {
                     *first = false;
                 }
@@ -203,8 +203,8 @@ impl<'a, 'b> fmt::Write for NewlineReplacer<'a, 'b> {
         let mut since = 0;
         for (i, &byte) in s.as_bytes().iter().enumerate() {
             if byte == b'\r' || byte == b'\n' {
-                r#try!(self.0.write_str(&s[since..i]));
-                r#try!(self.0.write_str(" "));
+                self.0.write_str(&s[since..i])?;
+                self.0.write_str(" ")?;
                 since = i + 1;
             }
         }
@@ -465,7 +465,7 @@ impl PartialEq for Headers {
 impl fmt::Display for Headers {
    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for header in self.iter() {
-            r#try!(fmt::Display::fmt(&header, f));
+            fmt::Display::fmt(&header, f)?;
         }
         Ok(())
     }
@@ -473,11 +473,11 @@ impl fmt::Display for Headers {
 
 impl fmt::Debug for Headers {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        r#try!(f.write_str("Headers { "));
+        f.write_str("Headers { ")?;
         for header in self.iter() {
-            r#try!(write!(f, "{:?}, ", header));
+            write!(f, "{:?}, ", header)?;
         }
-        r#try!(f.write_str("}"));
+        f.write_str("}")?;
         Ok(())
     }
 }

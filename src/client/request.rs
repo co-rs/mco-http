@@ -63,7 +63,7 @@ impl Request<Fresh> {
             -> crate::Result<Request<Fresh>> {
         let mut headers = Headers::with_capacity(1);
         {
-            let (host, port) = r#try!(get_host_and_port(&url));
+            let (host, port) = get_host_and_port(&url)?;
             headers.set(Host {
                 hostname: host.to_owned(),
                 port: Some(port),
@@ -98,8 +98,8 @@ impl Request<Fresh> {
         C: NetworkConnector<Stream=S>,
         S: Into<Box<dyn NetworkStream + Send>> {
         let stream = {
-            let (host, port) = r#try!(get_host_and_port(&url));
-            r#try!(connector.connect(host, port, url.scheme())).into()
+            let (host, port) = get_host_and_port(&url)?;
+            connector.connect(host, port, url.scheme())?.into()
         };
 
         Request::with_message(method, url, Box::new(Http11Message::with_stream(stream)))

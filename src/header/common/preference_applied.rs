@@ -54,7 +54,7 @@ impl Header for PreferenceApplied {
     }
 
     fn parse_header(raw: &[Vec<u8>]) -> crate::Result<PreferenceApplied> {
-        let preferences = r#try!(from_comma_delimited(raw));
+        let preferences = from_comma_delimited(raw)?;
         if !preferences.is_empty() {
             Ok(PreferenceApplied(preferences))
         } else {

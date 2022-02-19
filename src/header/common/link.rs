@@ -421,33 +421,33 @@ impl fmt::Display for Link {
 
 impl fmt::Display for LinkValue {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        r#try!(write!(f, "<{}>", self.link));
+        write!(f, "<{}>", self.link)?;
 
         if let Some(ref rel) = self.rel {
-            r#try!(fmt_delimited(f, rel.as_slice(), " ", ("; rel=\"", "\"")));
+            fmt_delimited(f, rel.as_slice(), " ", ("; rel=\"", "\""))?;
         }
         if let Some(ref anchor) = self.anchor {
-            r#try!(write!(f, "; anchor=\"{}\"", anchor));
+            write!(f, "; anchor=\"{}\"", anchor)?;
         }
         if let Some(ref rev) = self.rev {
-            r#try!(fmt_delimited(f, rev.as_slice(), " ", ("; rev=\"", "\"")));
+            fmt_delimited(f, rev.as_slice(), " ", ("; rev=\"", "\""))?;
         }
         if let Some(ref href_lang) = self.href_lang {
             for tag in href_lang {
-                r#try!(write!(f, "; hreflang={}", tag));
+                write!(f, "; hreflang={}", tag)?;
             }
         }
         if let Some(ref media_desc) = self.media_desc {
-            r#try!(fmt_delimited(f, media_desc.as_slice(), ", ", ("; media=\"", "\"")));
+            fmt_delimited(f, media_desc.as_slice(), ", ", ("; media=\"", "\""))?;
         }
         if let Some(ref title) = self.title {
-            r#try!(write!(f, "; title=\"{}\"", title));
+            write!(f, "; title=\"{}\"", title)?;
         }
         if let Some(ref title_star) = self.title_star {
-            r#try!(write!(f, "; title*={}", title_star));
+            write!(f, "; title*={}", title_star)?;
         }
         if let Some(ref media_type) = self.media_type {
-            r#try!(write!(f, "; type=\"{}\"", media_type));
+            write!(f, "; type=\"{}\"", media_type)?;
         }
 
         Ok(())
@@ -860,15 +860,15 @@ impl<'a> Iterator for SplitAsciiUnquoted<'a> {
 fn fmt_delimited<T: fmt::Display>(f: &mut fmt::Formatter, p: &[T], d: &str, b: (&str, &str)) -> fmt::Result {
     if p.len() != 0 {
         // Write a starting string `b.0` before the first element
-        r#try!(write!(f, "{}{}", b.0, p[0]));
+        write!(f, "{}{}", b.0, p[0])?;
 
         for i in &p[1..] {
             // Write the next element preceded by the delimiter `d`
-            r#try!(write!(f, "{}{}", d, i));
+            write!(f, "{}{}", d, i)?;
         }
 
         // Write a ending string `b.1` before the first element
-        r#try!(write!(f, "{}", b.1));
+        write!(f, "{}", b.1)?;
     }
 
     Ok(())
