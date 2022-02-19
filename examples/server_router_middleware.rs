@@ -20,7 +20,9 @@ impl MiddleWare for MyMiddleWare {
 
 fn main() {
     env_logger::init().unwrap();
-    let mut route = Route::new();
+
+    let mut route = Arc::new(Route::new());
+    route.add_middleware(MyMiddleWare { route: route.clone() });
     route.add_middleware(|req: &mut Request, res: &mut Option<Response>|{
 
     });
