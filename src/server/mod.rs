@@ -131,7 +131,6 @@ use self::listener::ListenerPool;
 pub mod request;
 pub mod response;
 pub mod extensions;
-
 pub use extensions::*;
 
 mod listener;
@@ -264,7 +263,47 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                 let w = worker.clone();
                 runtime::spawn_stack_size(move || {
                     {
-                        w.handle_connection(&mut stream);
+                        #[cfg(unix)]
+                        stream.set_nonblocking(true);
+                        {
+                            match w.timeouts.keep_alive_type {
+                                KeepAliveType::WaitTime(timeout) => {
+                                    let mut now = std::time::Instant::now();
+                                    loop {
+                                        stream.reset_io();
+                                        let keep_alive = w.handle_connection(&mut stream);
+                                        stream.wait_io();
+                                        if keep_alive == false {
+                                            if now.elapsed() >= timeout {
+                                                return;
+                                            } else {
+                                                yield_now();
+                                                continue;
+                                            }
+                                        } else {
+                                            if now.elapsed() <= timeout {
+                                                now = std::time::Instant::now();
+                                            }
+                                        }
+                                    }
+                                }
+                                KeepAliveType::WaitError(total) => {
+                                    let mut count = 0;
+                                    loop {
+                                        stream.reset_io();
+                                        let keep_alive = w.handle_connection(&mut stream);
+                                        stream.wait_io();
+                                        if keep_alive == false {
+                                            count += 1;
+                                            if count >= total {
+                                                return;
+                                            }
+                                            yield_now();
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }, stack_size);
             }
@@ -317,7 +356,7 @@ impl<H: Handler + 'static> Worker<H> {
         }
     }
 
-    pub fn handle_connection<S>(&self, stream: &mut S) where S: NetworkStream {
+    pub fn handle_connection<S>(&self, stream: &mut S) -> bool where S: NetworkStream {
         debug!("Incoming stream");
         self.handler.on_connection_start();
 
@@ -325,33 +364,27 @@ impl<H: Handler + 'static> Worker<H> {
             Ok(addr) => addr,
             Err(e) => {
                 info!("Peer Name error: {:?}", e);
-                return;
+                return false;
             }
         };
-        #[cfg(unix)]
-        stream.set_nonblocking(true);
         //safety will forget copy s
         let mut s: S = unsafe { std::mem::transmute_copy(stream) };
         let stream2: &mut dyn NetworkStream = &mut s;
         let mut rdr = BufReader::new(stream2);
         let mut wrt = BufWriter::new(stream);
-        loop {
-            rdr.get_mut().reset_io();
-            if self.keep_alive_loop(&mut rdr, &mut wrt, addr) {
-                if let Err(e) = self.set_read_timeout(*rdr.get_ref(), self.timeouts.keep_alive) {
-                    info!("set_read_timeout keep_alive {:?}", e);
-                    rdr.get_mut().wait_io();
-                    break;
-                }
-            } else {
-                rdr.get_mut().wait_io();
-                break;
+
+        let mut keep_alive = false;
+        if self.keep_alive_loop(&mut rdr, &mut wrt, addr) {
+            if let Err(e) = self.set_read_timeout(*rdr.get_ref(), self.timeouts.keep_alive) {
+                info!("set_read_timeout keep_alive {:?}", e);
             }
-            rdr.get_mut().wait_io();
+            keep_alive = true;
         }
         self.handler.on_connection_end();
         debug!("keep_alive loop ending for {}", addr);
+
         std::mem::forget(s);
+        keep_alive
     }
 
     fn set_read_timeout(&self, s: &dyn NetworkStream, timeout: Option<Duration>) -> io::Result<()> {
