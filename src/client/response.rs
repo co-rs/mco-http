@@ -5,8 +5,8 @@ use url::Url;
 
 use crate::header;
 use crate::net::NetworkStream;
-use crate::http::{self, RawStatus, ResponseHead, HttpMessage};
-use crate::http::h1::Http11Message;
+use crate::proto::{self, RawStatus, ResponseHead, HttpMessage};
+use crate::proto::h1::Http11Message;
 use crate::status;
 use crate::version;
 
@@ -92,7 +92,7 @@ impl Drop for Response {
         // server has agreed to keep the connection open
         let is_drained = !self.message.has_body();
         trace!("Response.drop is_drained={}", is_drained);
-        if !(is_drained && http::should_keep_alive(self.version, &self.headers)) {
+        if !(is_drained && proto::should_keep_alive(self.version, &self.headers)) {
             trace!("Response.drop closing connection");
             if let Err(e) = self.message.close_connection() {
                 info!("Response.drop error closing connection: {}", e);
@@ -109,11 +109,11 @@ mod tests {
 
     use crate::header::TransferEncoding;
     use crate::header::Encoding;
-    use crate::http::HttpMessage;
+    use crate::proto::HttpMessage;
     use crate::mock::MockStream;
     use crate::status;
     use crate::version;
-    use crate::http::h1::Http11Message;
+    use crate::proto::h1::Http11Message;
 
     use super::Response;
 

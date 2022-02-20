@@ -13,8 +13,8 @@ use crate::net::{NetworkStream, NetworkConnector, DefaultConnector, Fresh, Strea
 use crate::version;
 use crate::client::{Response, get_host_and_port};
 
-use crate::http::{HttpMessage, RequestHead};
-use crate::http::h1::Http11Message;
+use crate::proto::{HttpMessage, RequestHead};
+use crate::proto::h1::Http11Message;
 
 
 /// A client request to a remote server.
@@ -181,7 +181,7 @@ mod tests {
     use crate::header::{ContentLength,TransferEncoding,Encoding};
     use url::form_urlencoded;
     use super::Request;
-    use crate::http::h1::Http11Message;
+    use crate::proto::h1::Http11Message;
 
     fn run_request(req: Request<Fresh>) -> Vec<u8> {
         let req = req.start().unwrap();

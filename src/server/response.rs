@@ -12,8 +12,8 @@ use std::thread;
 use time::now_utc;
 
 use crate::header;
-use crate::http::h1::{LINE_ENDING, HttpWriter};
-use crate::http::h1::HttpWriter::{ThroughWriter, ChunkedWriter, SizedWriter, EmptyWriter};
+use crate::proto::h1::{LINE_ENDING, HttpWriter};
+use crate::proto::h1::HttpWriter::{ThroughWriter, ChunkedWriter, SizedWriter, EmptyWriter};
 use crate::status;
 use crate::net::{Fresh, Streaming};
 use crate::version;

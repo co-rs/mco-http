@@ -905,7 +905,7 @@ mod tests {
 
     use crate::buffer::BufReader;
     use crate::mock::MockStream;
-    use crate::http::h1::parse_request;
+    use crate::proto::h1::parse_request;
 
     use mime::Mime;
     use mime::TopLevel::Text;

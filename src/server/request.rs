@@ -13,8 +13,8 @@ use crate::net::NetworkStream;
 use crate::version::{HttpVersion};
 use crate::method::Method;
 use crate::header::{Headers, ContentLength, TransferEncoding};
-use crate::http::h1::{self, Incoming, HttpReader};
-use crate::http::h1::HttpReader::{SizedReader, ChunkedReader, EmptyReader};
+use crate::proto::h1::{self, Incoming, HttpReader};
+use crate::proto::h1::HttpReader::{SizedReader, ChunkedReader, EmptyReader};
 use crate::server::extensions::Extensions;
 use crate::uri::RequestUri;
 

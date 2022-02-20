@@ -12,7 +12,7 @@ use std::time::Duration;
 use typeable::Typeable;
 
 use crate::header::Headers;
-use crate::http::RawStatus;
+use crate::proto::RawStatus;
 use crate::url::Url;
 
 use crate::method;

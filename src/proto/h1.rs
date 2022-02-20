@@ -23,7 +23,7 @@ use crate::uri::RequestUri;
 use self::HttpReader::{SizedReader, ChunkedReader, EofReader, EmptyReader};
 use self::HttpWriter::{ChunkedWriter, SizedWriter, EmptyWriter, ThroughWriter};
 
-use crate::http::{
+use crate::proto::{
     RawStatus,
     Protocol,
     HttpMessage,
@@ -997,7 +997,7 @@ mod tests {
 
     use crate::buffer::BufReader;
     use crate::mock::MockStream;
-    use crate::http::HttpMessage;
+    use crate::proto::HttpMessage;
 
     use super::{read_chunk_size, parse_request, parse_response, Http11Message};
 

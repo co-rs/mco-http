@@ -88,8 +88,8 @@ pub mod pool;
 pub mod request;
 pub mod response;
 
-use crate::http::Protocol;
-use crate::http::h1::Http11Protocol;
+use crate::proto::Protocol;
+use crate::proto::h1::Http11Protocol;
 
 
 /// A Client to use additional features with Requests.
@@ -592,7 +592,7 @@ mod scheme {
 mod tests {
     use std::io::Read;
     use crate::header::Server;
-    use crate::http::h1::Http11Message;
+    use crate::proto::h1::Http11Message;
     use crate::mock::{MockStream, MockSsl};
     use super::{Client, RedirectPolicy};
     use super::scheme::Scheme;

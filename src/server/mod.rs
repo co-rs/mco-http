@@ -119,7 +119,7 @@ pub use crate::net::{Fresh, Streaming};
 use crate::{Error, runtime};
 use crate::buffer::BufReader;
 use crate::header::{Headers, Expect, Connection};
-use crate::http;
+use crate::proto;
 use crate::method::Method;
 use crate::net::{NetworkListener, NetworkStream, HttpListener, HttpsListener, SslServer};
 use crate::status::StatusCode;
@@ -421,7 +421,7 @@ impl<H: Handler + 'static> Worker<H> {
         }
 
         let mut keep_alive = self.timeouts.keep_alive.is_some() &&
-            http::should_keep_alive(req.version, &req.headers);
+            proto::should_keep_alive(req.version, &req.headers);
         let version = req.version;
         let mut res_headers = Headers::with_capacity(1);
         if !keep_alive {
@@ -436,7 +436,7 @@ impl<H: Handler + 'static> Worker<H> {
         // if the request was keep-alive, we need to check that the server agrees
         // if it wasn't, then the server cannot force it to be true anyways
         if keep_alive {
-            keep_alive = http::should_keep_alive(version, &res_headers);
+            keep_alive = proto::should_keep_alive(version, &res_headers);
         }
 
         debug!("keep_alive = {:?} for {}", keep_alive, addr);
