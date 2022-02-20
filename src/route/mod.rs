@@ -104,7 +104,7 @@ impl Route {
     /// use mco_http::route::Route;
     /// let mut route = Route::new();
     /// route.add_middleware(|req: &mut Request, res: &mut Option<Response>|{
-    ///        ///res.take() //take Response, next handle will be not run
+    ///        //res.take() //take Response, next handle will be not run
     ///     });
     /// ```
     pub fn add_middleware<M: MiddleWare + 'static>(&self, m: M) {
