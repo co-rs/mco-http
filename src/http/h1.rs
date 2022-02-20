@@ -880,6 +880,7 @@ pub fn parse_response<R: Read>(buf: &mut BufReader<R>) -> crate::Result<Incoming
 
 fn parse<R: Read, T: TryParse<Subject=I>, I>(rdr: &mut BufReader<R>) -> crate::Result<Incoming<I>> {
     loop {
+        let n = rdr.read_into_buf()?;
         match try_parse::<R, T, I>(rdr)? {
             httparse::Status::Complete((inc, len)) => {
                 rdr.consume(len);
