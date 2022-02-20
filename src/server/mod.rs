@@ -374,9 +374,10 @@ impl<H: Handler + 'static> Worker<H> {
         let mut wrt = BufWriter::new(stream);
 
         let mut keep_alive = false;
-        if self.keep_alive_loop(&mut rdr, &mut wrt, addr) {
+        while self.keep_alive_loop(&mut rdr, &mut wrt, addr) {
             if let Err(e) = self.set_read_timeout(*rdr.get_ref(), self.timeouts.keep_alive) {
                 info!("set_read_timeout keep_alive {:?}", e);
+                break;
             }
             keep_alive = true;
         }
