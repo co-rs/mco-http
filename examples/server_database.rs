@@ -2,6 +2,9 @@
 extern crate mco_http;
 extern crate fast_log;
 
+#[macro_use]
+extern crate cdbc;
+
 use std::fs::File;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -10,9 +13,10 @@ use cdbc_sqlite::SqlitePool;
 use fast_log::config::Config;
 use mco_http::route::Route;
 use mco_http::server::{Request, Response};
+use cdbc::scan::Scan;
 
 /// table
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, cdbc::Scan)]
 pub struct BizActivity {
     pub id: Option<String>,
     pub name: Option<String>,
@@ -21,25 +25,26 @@ pub struct BizActivity {
 
 impl BizActivity {
     pub fn find_all(pool: &SqlitePool) -> cdbc::Result<Vec<Self>> {
-        let rows = cdbc::query("select * from biz_activity limit 1")
-            .fetch_all(pool)?;
-        let data = cdbc::row_scans!(rows,BizActivity{id:None,name:None,delete_flag:None})?;
+        let data =
+            cdbc::query("select * from biz_activity limit 1")
+                .fetch_all(pool)
+                .scan()?;
         Ok(data)
     }
 
-    // pub fn count(pool: &SqlitePool) -> cdbc::Result<i32> {
-    //     pub struct Count {
-    //         pub count: i32,
-    //     }
-    //     let row = cdbc::query("select count(1) as count from biz_activity limit 1")
-    //         .fetch_one(pool)?;
-    //     let c = cdbc::row_scan!(row,Count{count:0})?;
-    //     Ok(c.count)
-    // }
+    pub fn count(pool: &SqlitePool) -> cdbc::Result<i32> {
+        #[derive(Debug,cdbc::Scan)]
+        pub struct Count {
+            pub count: Option<i32>,
+        }
+        let row: Count = cdbc::query("select count(1) as count from biz_activity limit 1")
+            .fetch_one(pool).scan()?;
+        Ok(row.count.unwrap_or_default())
+    }
 }
 
 pub trait Controllers {
-    fn get_pool(&self)-> &SqlitePool;
+    fn get_pool(&self) -> &SqlitePool;
     fn find_all(&self, req: Request, res: Response);
 }
 

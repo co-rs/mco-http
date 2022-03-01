@@ -57,7 +57,6 @@ fast_log = "1.5"
 serde = "1"
 serde_json = "1"
 cdbc = "0.1"
-# cdbc-mysql,cdbc-pg... and more...
 cdbc-sqlite = "0.1"
 #captcha
 lodepng = "~3.5.2"
