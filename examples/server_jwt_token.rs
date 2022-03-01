@@ -10,7 +10,7 @@ use jsonwebtoken::errors::ErrorKind;
 use mco::std::time::Time;
 use mco_http::query::read_query;
 use mco_http::uri::RequestUri;
-
+use fast_log::config::Config;
 /// JWT Token.
 /// This example shows the whole process from logging in to obtain the token to using the token to access the protected interface
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
@@ -103,7 +103,7 @@ impl MiddleWare for MyMiddleWare {
 
 
 fn main() {
-    env_logger::init().unwrap();
+    fast_log::init(Config::new().console());
 
     let mut route = Route::new();
     let middle = Arc::new(MyMiddleWare { secret: "123456".to_string() });

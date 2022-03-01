@@ -1,8 +1,8 @@
 #[deny(unused_variables)]
 extern crate mco_http;
-extern crate env_logger;
+extern crate fast_log;
 extern crate serde_json;
-
+use fast_log::config::Config;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::ops::Deref;
@@ -39,7 +39,7 @@ fn download(mut req: Request, res: Response) {
 }
 
 fn main() {
-    env_logger::init().unwrap();
+    fast_log::init(Config::new().console());
 
     let _listening = mco_http::Server::http("0.0.0.0:3000").unwrap()
         .handle(download).unwrap();

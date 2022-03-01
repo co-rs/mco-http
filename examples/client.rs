@@ -1,14 +1,15 @@
 extern crate mco_http;
-extern crate env_logger;
+extern crate fast_log;
 
 use std::env;
 use std::io;
+use fast_log::config::Config;
 
 use mco_http::Client;
 use mco_http::header::Connection;
 
 fn main() {
-    env_logger::init().unwrap();
+    fast_log::init(Config::new().console());
 
     let mut url = "http://www.baidu.com".to_string();
 

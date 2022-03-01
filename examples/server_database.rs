@@ -1,12 +1,13 @@
 #[deny(unused_variables)]
 extern crate mco_http;
-extern crate env_logger;
+extern crate fast_log;
 
 use std::fs::File;
 use std::ops::Deref;
 use std::sync::Arc;
 use cdbc::Executor;
 use cdbc_sqlite::SqlitePool;
+use fast_log::config::Config;
 use mco_http::route::Route;
 use mco_http::server::{Request, Response};
 
@@ -55,7 +56,7 @@ impl Controllers for Route {
 
 
 fn main() {
-    env_logger::init().unwrap();
+    fast_log::init(Config::new().console());
 
     let mut route = Arc::new(Route::new());
     //insert pool

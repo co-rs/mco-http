@@ -2,7 +2,7 @@ use std::sync::Arc;
 use mco_http::route::{Route};
 use mco_http::server::{Request, Response};
 use mco_http::route::MiddleWare;
-
+use fast_log::config::Config;
 
 pub trait Api {
     fn js(&self, req: Request, res: Response);
@@ -18,7 +18,7 @@ impl Api for Route {
 
 
 fn main() {
-    env_logger::init().unwrap();
+    fast_log::init(Config::new().console());
 
     let mut route = Arc::new(Route::new());
     route.insert("name", "joe");

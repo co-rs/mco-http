@@ -3,9 +3,10 @@ use std::sync::Arc;
 use mco_http::route::Route;
 use mco_http::server::{Request, Response};
 use mco_http::route::MiddleWare;
+use fast_log::config::Config;
 
 fn main() {
-    env_logger::init().unwrap();
+    fast_log::init(Config::new().console());
 
     let mut route = Route::new();
     route.handle_fn("/", |req: Request, res: Response| {

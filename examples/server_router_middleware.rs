@@ -2,7 +2,7 @@ use std::sync::Arc;
 use mco_http::route::Route;
 use mco_http::server::{Request, Response};
 use mco_http::route::MiddleWare;
-
+use fast_log::config::Config;
 // MiddleWare
 #[derive(Debug)]
 pub struct MyMiddleWare {
@@ -19,7 +19,7 @@ impl MiddleWare for MyMiddleWare {
 }
 
 fn main() {
-    env_logger::init().unwrap();
+    fast_log::init(Config::new().console());
 
     let mut route = Arc::new(Route::new());
     route.add_middleware(MyMiddleWare { route: route.clone() });

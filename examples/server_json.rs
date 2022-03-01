@@ -1,9 +1,9 @@
 #[deny(unused_variables)]
 extern crate mco_http;
-extern crate env_logger;
+extern crate fast_log;
 #[macro_use]
 extern crate serde_json;
-
+use fast_log::config::Config;
 use mco_http::json::read_json;
 use mco_http::server::{Request, Response};
 
@@ -15,7 +15,7 @@ fn hello(mut req: Request, res: Response) {
 }
 
 fn main() {
-    env_logger::init().unwrap();
+    fast_log::init(Config::new().console());
     let _listening = mco_http::Server::http("0.0.0.0:3000").unwrap()
         .handle(hello).unwrap();
     println!("Listening on http://127.0.0.1:3000");
