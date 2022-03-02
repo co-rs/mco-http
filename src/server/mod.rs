@@ -423,9 +423,6 @@ impl<H: Handler + 'static> Worker<H> {
             proto::should_keep_alive(req.version, &req.headers);
         let version = req.version;
         let mut res_headers = Headers::with_capacity(1);
-        if !keep_alive {
-            res_headers.set(Connection::close());
-        }
         {
             let mut res = Response::new(wrt, &mut res_headers);
             res.version = version;
