@@ -369,8 +369,7 @@ impl<H: Handler + 'static> Worker<H> {
         };
         //safety will forget copy s
         let mut s: S = unsafe { std::mem::transmute_copy(stream) };
-        let stream2: &mut dyn NetworkStream = &mut s;
-        let mut rdr = BufReader::new(stream2);
+        let mut rdr = BufReader::new(&mut s as &mut dyn NetworkStream);
         let mut wrt = BufWriter::new(stream);
 
         let mut keep_alive = false;
