@@ -274,12 +274,7 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                                         let keep_alive = w.handle_connection(&mut stream);
                                         stream.wait_io();
                                         if keep_alive == false {
-                                            if now.elapsed() >= timeout {
-                                                return;
-                                            } else {
-                                                yield_now();
-                                                continue;
-                                            }
+                                            return;
                                         } else {
                                             if now.elapsed() <= timeout {
                                                 now = std::time::Instant::now();
@@ -294,6 +289,8 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                                         let keep_alive = w.handle_connection(&mut stream);
                                         stream.wait_io();
                                         if keep_alive == false {
+                                            return;
+                                        }else{
                                             count += 1;
                                             if count >= total {
                                                 return;
@@ -372,10 +369,11 @@ impl<H: Handler + 'static> Worker<H> {
         let mut rdr = BufReader::new(&mut s as &mut dyn NetworkStream);
         let mut wrt = BufWriter::new(stream);
 
-        let mut keep_alive = false;
-        if self.keep_alive_loop(&mut rdr, &mut wrt, addr) {
+        let mut keep_alive = self.timeouts.keep_alive.is_some();
+        while self.keep_alive_loop(&mut rdr, &mut wrt, addr) {
             if let Err(e) = self.set_read_timeout(*rdr.get_ref(), self.timeouts.keep_alive) {
                 info!("set_read_timeout keep_alive {:?}", e);
+                break;
             }
             keep_alive = true;
         }
