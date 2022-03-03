@@ -309,10 +309,17 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                     let mut s: HttpStream = unsafe { std::mem::transmute_copy(&mut stream) };
                     let mut s = ForgetDrop { inner: Some(s) };
                     let mut buf = BufReader::new(s.deref_mut() as &mut dyn NetworkStream);
+                    worker.handler.on_connection_start();
+                    defer!(||{
+                       worker.handler.on_connection_end();
+                    });
                     loop {
                         if let Ok(req) = Request::new(&mut buf, addr) {
-                            let mut res_headers = Headers::with_capacity(1);
                             let mut wrt = BufWriter::new(&mut stream);
+                            if !worker.handle_expect(&req, &mut wrt) {
+                                continue;
+                            }
+                            let mut res_headers = Headers::with_capacity(1);
                             let mut res = Response::new(&mut wrt, &mut res_headers);
                             res.version = req.version;
                             worker.handler.handle(req, res);
