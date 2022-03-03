@@ -294,12 +294,16 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                         } else {
                             let mut temp_buf = vec![0; 512];
                             match stream.read(&mut temp_buf) {
-                                Ok(0) => return, // connection was closed
+                                Ok(0) => {
+                                    std::mem::forget(s);
+                                    return;
+                                }, // connection was closed
                                 Ok(n) => {
                                   //buf.put(&temp_buf[0..n]),
                                     buf.read_into_buf();
                                 }
                                 Err(err) => {
+                                    std::mem::forget(s);
                                     println!("err = {:?}", err);
                                     break;
                                 }
