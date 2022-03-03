@@ -15,5 +15,5 @@ fn main() {
         res.start().unwrap().end().unwrap();
     }
     let w = Worker::new(handle, Default::default());
-    w.handle_connection(&mut mock);
+    w.handle_connection(&mut mock,None);
 }

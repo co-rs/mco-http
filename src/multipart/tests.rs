@@ -50,7 +50,7 @@ fn parser() {
     let mock: &mut dyn NetworkStream = &mut mock;
     let mut stream = BufReader::new(mock);
     let sock: SocketAddr = "127.0.0.1:80".parse().unwrap();
-    let req = HyperRequest::new(&mut stream, sock).unwrap();
+    let req = HyperRequest::new(&mut stream, Some(sock)).unwrap();
     let (_, _, headers, _, _, mut reader) = req.deconstruct();
 
     match read_multipart_body(&mut reader, &headers, false,Some(|w|->std::io::Result<()>{
@@ -134,7 +134,7 @@ fn mixed_parser() {
     let mock: &mut dyn NetworkStream = &mut mock;
     let mut stream = BufReader::new(mock);
     let sock: SocketAddr = "127.0.0.1:80".parse().unwrap();
-    let req = HyperRequest::new(&mut stream, sock).unwrap();
+    let req = HyperRequest::new(&mut stream, Some(sock)).unwrap();
     let (_, _, headers, _, _, mut reader) = req.deconstruct();
 
     match read_multipart_body(&mut reader, &headers, false,Some(|w|->std::io::Result<()>{
@@ -228,7 +228,7 @@ fn test_line_feed() {
     let mock: &mut dyn NetworkStream = &mut mock;
     let mut stream = BufReader::new(mock);
     let sock: SocketAddr = "127.0.0.1:80".parse().unwrap();
-    let req = HyperRequest::new(&mut stream, sock).unwrap();
+    let req = HyperRequest::new(&mut stream, Some(sock)).unwrap();
     let (_, _, headers, _, _, mut reader) = req.deconstruct();
 
     if let Err(e) = read_multipart_body(&mut reader, &headers, false,Some(|w|->std::io::Result<()>{

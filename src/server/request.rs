@@ -141,7 +141,7 @@ mod tests {
         let mock: &mut dyn NetworkStream = &mut mock;
         let mut stream = BufReader::new(mock);
 
-        let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();
+        let req = Request::new(&mut stream, Some(sock("127.0.0.1:80"))).unwrap();
         assert_eq!(read_to_string(req).unwrap(), "".to_owned());
     }
 
@@ -159,7 +159,7 @@ mod tests {
         let mock: &mut dyn NetworkStream = &mut mock;
         let mut stream = BufReader::new(mock);
 
-        let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();
+        let req = Request::new(&mut stream, Some(sock("127.0.0.1:80"))).unwrap();
         assert_eq!(read_to_string(req).unwrap(), "I'm a good request.".to_owned());
     }
 
@@ -176,7 +176,7 @@ mod tests {
         let mock: &mut dyn NetworkStream = &mut mock;
         let mut stream = BufReader::new(mock);
 
-        let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();
+        let req = Request::new(&mut stream, Some(sock("127.0.0.1:80"))).unwrap();
         assert_eq!(read_to_string(req).unwrap(), "".to_owned());
     }
 
@@ -193,7 +193,7 @@ mod tests {
         let mock: &mut dyn NetworkStream = &mut mock;
         let mut stream = BufReader::new(mock);
 
-        let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();
+        let req = Request::new(&mut stream, Some(sock("127.0.0.1:80"))).unwrap();
         assert_eq!(read_to_string(req).unwrap(), "".to_owned());
     }
 
@@ -218,7 +218,7 @@ mod tests {
         let mock: &mut dyn NetworkStream = &mut mock;
         let mut stream = BufReader::new(mock);
 
-        let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();
+        let req = Request::new(&mut stream, Some(sock("127.0.0.1:80"))).unwrap();
 
         // The headers are correct?
         match req.headers.get::<Host>() {
@@ -257,7 +257,7 @@ mod tests {
         let mock: &mut dyn NetworkStream = &mut mock;
         let mut stream = BufReader::new(mock);
 
-        let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();
+        let req = Request::new(&mut stream, Some(sock("127.0.0.1:80"))).unwrap();
 
         assert!(read_to_string(req).is_err());
     }
@@ -281,7 +281,7 @@ mod tests {
         let mock: &mut dyn NetworkStream = &mut mock;
         let mut stream = BufReader::new(mock);
 
-        let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();
+        let req = Request::new(&mut stream, Some(sock("127.0.0.1:80"))).unwrap();
 
         assert!(read_to_string(req).is_err());
     }
@@ -305,7 +305,7 @@ mod tests {
         let mock: &mut dyn NetworkStream = &mut mock;
         let mut stream = BufReader::new(mock);
 
-        let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();
+        let req = Request::new(&mut stream, Some(sock("127.0.0.1:80"))).unwrap();
 
         assert_eq!(read_to_string(req).unwrap(), "1".to_owned());
     }
