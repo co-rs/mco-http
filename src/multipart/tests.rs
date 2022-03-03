@@ -98,6 +98,11 @@ fn parser() {
         },
         Err(err) => panic!("{}", err),
     }
+    std::fs::remove_file("awesome_image.gif");
+    std::fs::remove_file("file.txt");
+    std::fs::remove_file("file1.txt");
+    std::fs::remove_file("genome.txt");
+    std::fs::remove_file("image.gif");
 }
 
 #[test]
