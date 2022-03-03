@@ -296,8 +296,11 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                 let mut stream = t_c!(stream);
                 let addr = {
                     match stream.peer_addr(){
-                        Ok(v) => {Some(v)}
-                        Err(_) => {None}
+                        Ok(v) => {v}
+                        Err(e) => {
+                            log::error!("peer_addr error:{}",e);
+                            return;
+                        }
                     }
                 };
                 let worker = worker.clone();
@@ -447,10 +450,10 @@ impl<H: Handler + 'static> Worker<H> {
         self.handler.on_connection_start();
 
         let addr = match stream.peer_addr() {
-            Ok(addr) => Some(addr),
+            Ok(addr) => addr,
             Err(e) => {
                 info!("Peer Name error: {:?}", e);
-                None
+                return false;
             }
         };
         //safety will forget copy s
@@ -478,7 +481,7 @@ impl<H: Handler + 'static> Worker<H> {
     }
 
     fn keep_alive_loop<W: Write>(&self, rdr: &mut BufReader<&mut dyn NetworkStream>,
-                                 wrt: &mut W, addr: Option<SocketAddr>) -> bool {
+                                 wrt: &mut W, addr: SocketAddr) -> bool {
         let req = match Request::new(rdr, addr) {
             Ok(req) => req,
             Err(Error::Io(ref e)) if e.kind() == ErrorKind::ConnectionAborted => {
