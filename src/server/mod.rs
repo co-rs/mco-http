@@ -294,7 +294,12 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
         let h = runtime::spawn_stack_size(move || {
             for stream in listener.incoming() {
                 let mut stream = t_c!(stream);
-                let addr = stream.peer_addr().unwrap();
+                let addr = {
+                    match stream.peer_addr(){
+                        Ok(v) => {Some(v)}
+                        Err(_) => {None}
+                    }
+                };
                 let worker = worker.clone();
                 runtime::spawn_stack_size(move || {
                     //safety will forget copy s
@@ -442,10 +447,10 @@ impl<H: Handler + 'static> Worker<H> {
         self.handler.on_connection_start();
 
         let addr = match stream.peer_addr() {
-            Ok(addr) => addr,
+            Ok(addr) => Some(addr),
             Err(e) => {
                 info!("Peer Name error: {:?}", e);
-                return false;
+                None
             }
         };
         //safety will forget copy s
@@ -462,7 +467,7 @@ impl<H: Handler + 'static> Worker<H> {
             keep_alive = true;
         }
         self.handler.on_connection_end();
-        debug!("keep_alive loop ending for {}", addr);
+        debug!("keep_alive loop ending for {:?}", addr);
 
         std::mem::forget(s);
         keep_alive
@@ -473,7 +478,7 @@ impl<H: Handler + 'static> Worker<H> {
     }
 
     fn keep_alive_loop<W: Write>(&self, rdr: &mut BufReader<&mut dyn NetworkStream>,
-                                 wrt: &mut W, addr: SocketAddr) -> bool {
+                                 wrt: &mut W, addr: Option<SocketAddr>) -> bool {
         let req = match Request::new(rdr, addr) {
             Ok(req) => req,
             Err(Error::Io(ref e)) if e.kind() == ErrorKind::ConnectionAborted => {
@@ -516,7 +521,7 @@ impl<H: Handler + 'static> Worker<H> {
             keep_alive = proto::should_keep_alive(version, &res_headers);
         }
 
-        debug!("keep_alive = {:?} for {}", keep_alive, addr);
+        debug!("keep_alive = {:?} for {:?}", keep_alive, addr);
         keep_alive
     }
 
