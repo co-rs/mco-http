@@ -1,3 +1,7 @@
+[workspace]
+members = [
+    "examples"
+]
 [package]
 name = "mco-http"
 version = "0.1.23"
@@ -53,12 +57,3 @@ serde_json = { version = "1", optional = true }
 dashmap = { version = "4.0.2", optional = true }
 
 [dev-dependencies]
-fast_log = "1.5"
-serde = "1"
-serde_json = "1"
-cdbc = "0.1"
-cdbc-sqlite = "0.1"
-#captcha
-lodepng = "~3.5.2"
-captcha = "0.0.8"
-jsonwebtoken = "8"

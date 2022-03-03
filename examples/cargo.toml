@@ -1,0 +1,67 @@
+[package]
+name = "example"
+version = "0.0.0"
+authors = ["zhuxiujia <zhuxiujia@qq.com>"]
+edition = "2018"
+publish = false
+
+
+[dependencies]
+mco-http = { path = "../"}
+fast_log = "1.5"
+serde = "1"
+serde_json = "1"
+cdbc = "0.1"
+cdbc-sqlite = "0.1"
+#captcha
+lodepng = "~3.5.2"
+captcha = "0.0.8"
+jsonwebtoken = "8"
+httparse = "1"
+
+[[bin]]
+name = "client"
+path = "src/client.rs"
+[[bin]]
+name = "hello_world"
+path = "src/hello_world.rs"
+[[bin]]
+name = "server_database"
+path = "src/server_database.rs"
+[[bin]]
+name = "server_download"
+path = "src/server_download.rs"
+[[bin]]
+name = "server_form_data"
+path = "src/server_form_data.rs"
+[[bin]]
+name = "server_json"
+path = "src/server_json.rs"
+[[bin]]
+name = "server_jwt_token"
+path = "src/server_jwt_token.rs"
+[[bin]]
+name = "server_mock"
+path = "src/server_mock.rs"
+[[bin]]
+name = "server_path"
+path = "src/server_path.rs"
+[[bin]]
+name = "server_query"
+path = "src/server_query.rs"
+[[bin]]
+name = "server_router"
+path = "src/server_router.rs"
+[[bin]]
+name = "server_router_container"
+path = "src/server_router_container.rs"
+[[bin]]
+name = "server_router_middleware"
+path = "src/server_router_middleware.rs"
+[[bin]]
+name = "server_upload"
+path = "src/server_upload.rs"
+[profile.release]
+lto = true
+opt-level = 3
+codegen-units = 1
