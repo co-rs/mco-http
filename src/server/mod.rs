@@ -285,10 +285,10 @@ impl Drop for ForgetDrop {
 impl<L: NetworkListener + Send + 'static> Server<L> {
     /// Binds to a socket and starts handling connections.
     pub fn handle<H: Handler + 'static>(self, handler: H) -> crate::Result<Listening> {
-        Self::handle_loop(self, handler, 0x2000)
+        Self::handle_stack(self, handler, 0x2000)
     }
 
-    pub fn handle_loop<H: Handler + 'static>(self, handler: H, stack_size: usize) -> crate::Result<Listening> {
+    pub fn handle_stack<H: Handler + 'static>(self, handler: H, stack_size: usize) -> crate::Result<Listening> {
         let worker = Arc::new(Worker::new(handler, self.timeouts));
         let mut listener = self.listener.clone();
         let h = runtime::spawn_stack_size(move || {
@@ -335,66 +335,66 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
         });
     }
 
-    /// Binds to a socket and starts handling connections.
-    pub fn handle_stack<H: Handler + 'static>(self, handler: H, stack_size: usize) -> crate::Result<Listening> {
-        let worker = Arc::new(Worker::new(handler, self.timeouts));
-        let mut listener = self.listener.clone();
-        let h = runtime::spawn_stack_size(move || {
-            for stream in listener.incoming() {
-                let mut stream = t_c!(stream);
-                let w = worker.clone();
-                runtime::spawn_stack_size(move || {
-                    {
-                        #[cfg(unix)]
-                        stream.set_nonblocking(true);
-                        {
-                            match w.timeouts.keep_alive_type {
-                                KeepAliveType::WaitTime(timeout) => {
-                                    let mut now = std::time::Instant::now();
-                                    loop {
-                                        stream.reset_io();
-                                        let keep_alive = w.handle_connection(&mut stream);
-                                        stream.wait_io();
-                                        if keep_alive == false {
-                                            return;
-                                        } else {
-                                            if now.elapsed() <= timeout {
-                                                now = std::time::Instant::now();
-                                            } else {
-                                                return;
-                                            }
-                                        }
-                                    }
-                                }
-                                KeepAliveType::WaitError(total) => {
-                                    let mut count = 0;
-                                    loop {
-                                        stream.reset_io();
-                                        let keep_alive = w.handle_connection(&mut stream);
-                                        stream.wait_io();
-                                        if keep_alive == false {
-                                            return;
-                                        } else {
-                                            count += 1;
-                                            if count >= total {
-                                                return;
-                                            }
-                                            yield_now();
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }, stack_size);
-            }
-        }, stack_size);
-        let socket = self.listener.clone().local_addr()?;
-        return Ok(Listening {
-            _guard: Some(h),
-            socket: socket,
-        });
-    }
+    // /// Binds to a socket and starts handling connections.
+    // pub fn handle_stack<H: Handler + 'static>(self, handler: H, stack_size: usize) -> crate::Result<Listening> {
+    //     let worker = Arc::new(Worker::new(handler, self.timeouts));
+    //     let mut listener = self.listener.clone();
+    //     let h = runtime::spawn_stack_size(move || {
+    //         for stream in listener.incoming() {
+    //             let mut stream = t_c!(stream);
+    //             let w = worker.clone();
+    //             runtime::spawn_stack_size(move || {
+    //                 {
+    //                     #[cfg(unix)]
+    //                     stream.set_nonblocking(true);
+    //                     {
+    //                         match w.timeouts.keep_alive_type {
+    //                             KeepAliveType::WaitTime(timeout) => {
+    //                                 let mut now = std::time::Instant::now();
+    //                                 loop {
+    //                                     stream.reset_io();
+    //                                     let keep_alive = w.handle_connection(&mut stream);
+    //                                     stream.wait_io();
+    //                                     if keep_alive == false {
+    //                                         return;
+    //                                     } else {
+    //                                         if now.elapsed() <= timeout {
+    //                                             now = std::time::Instant::now();
+    //                                         } else {
+    //                                             return;
+    //                                         }
+    //                                     }
+    //                                 }
+    //                             }
+    //                             KeepAliveType::WaitError(total) => {
+    //                                 let mut count = 0;
+    //                                 loop {
+    //                                     stream.reset_io();
+    //                                     let keep_alive = w.handle_connection(&mut stream);
+    //                                     stream.wait_io();
+    //                                     if keep_alive == false {
+    //                                         return;
+    //                                     } else {
+    //                                         count += 1;
+    //                                         if count >= total {
+    //                                             return;
+    //                                         }
+    //                                         yield_now();
+    //                                     }
+    //                                 }
+    //                             }
+    //                         }
+    //                     }
+    //                 }
+    //             }, stack_size);
+    //         }
+    //     }, stack_size);
+    //     let socket = self.listener.clone().local_addr()?;
+    //     return Ok(Listening {
+    //         _guard: Some(h),
+    //         socket: socket,
+    //     });
+    // }
 
     /// Binds to a socket and starts handling connections with the provided
     /// number of tasks on pool
