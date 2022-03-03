@@ -316,7 +316,7 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                                 } // connection was closed
                                 Ok(n) => {
                                     //buf.put(&temp_buf[0..n]),
-                                    buf.read_into_buf();
+                                    buf.read(&mut temp_buf[0..n]);
                                 }
                                 Err(err) => {
                                     println!("err = {:?}", err);
