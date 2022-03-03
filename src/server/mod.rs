@@ -111,9 +111,11 @@ use std::cell::RefCell;
 use std::fmt;
 use std::io::{self, ErrorKind, BufWriter, Write, Read};
 use std::net::{SocketAddr, ToSocketAddrs, Shutdown};
+use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 use std::time::Duration;
 use mco::coroutine::yield_now;
+use mco::defer;
 pub use self::request::Request;
 pub use self::response::Response;
 pub use crate::net::{Fresh, Streaming};
@@ -251,17 +253,33 @@ macro_rules! t_c {
     };
 }
 
-fn req_done(buf: &[u8], path: &mut String) -> Option<usize> {
-    let mut headers = [httparse::EMPTY_HEADER; 16];
-    let mut req = httparse::Request::new(&mut headers);
+pub struct ForgetDrop {
+    pub inner: Option<HttpStream>,
+}
 
-    if let Ok(httparse::Status::Complete(i)) = req.parse(buf) {
-        path.clear();
-        path.push_str(req.path.unwrap_or("/"));
-        return Some(i);
+impl Deref for ForgetDrop {
+    type Target = HttpStream;
+
+    fn deref(&self) -> &Self::Target {
+        self.inner.as_ref().unwrap()
     }
+}
 
-    None
+impl DerefMut for ForgetDrop {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.inner.as_mut().unwrap()
+    }
+}
+
+impl Drop for ForgetDrop {
+    fn drop(&mut self) {
+        match self.inner.take() {
+            None => {}
+            Some(s) => {
+                std::mem::forget(s)
+            }
+        }
+    }
 }
 
 impl<L: NetworkListener + Send + 'static> Server<L> {
@@ -280,30 +298,27 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                 let worker = worker.clone();
                 runtime::spawn_stack_size(move || {
                     //safety will forget copy s
-                    let mut s:HttpStream = unsafe { std::mem::transmute_copy(&mut stream) };
-                    let mut buf = BufReader::new(&mut s as &mut dyn NetworkStream);
+                    let mut s: HttpStream = unsafe { std::mem::transmute_copy(&mut stream) };
+                    let mut s = ForgetDrop { inner: Some(s) };
+                    let mut buf = BufReader::new(s.deref_mut() as &mut dyn NetworkStream);
                     loop {
                         if let Ok(req) = Request::new(&mut buf, addr) {
                             let mut res_headers = Headers::with_capacity(1);
-                            {
-                                let mut wrt = BufWriter::new(&mut stream);
-                                let mut res = Response::new(&mut wrt, &mut res_headers);
-                                res.version = req.version;
-                                worker.handler.handle(req, res);
-                            }
+                            let mut wrt = BufWriter::new(&mut stream);
+                            let mut res = Response::new(&mut wrt, &mut res_headers);
+                            res.version = req.version;
+                            worker.handler.handle(req, res);
                         } else {
                             let mut temp_buf = vec![0; 512];
                             match stream.read(&mut temp_buf) {
                                 Ok(0) => {
-                                    std::mem::forget(s);
                                     return;
-                                }, // connection was closed
+                                } // connection was closed
                                 Ok(n) => {
-                                  //buf.put(&temp_buf[0..n]),
+                                    //buf.put(&temp_buf[0..n]),
                                     buf.read_into_buf();
                                 }
                                 Err(err) => {
-                                    std::mem::forget(s);
                                     println!("err = {:?}", err);
                                     break;
                                 }
