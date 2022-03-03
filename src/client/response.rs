@@ -21,8 +21,8 @@ pub struct Response {
     pub version: version::HttpVersion,
     /// The final URL of this response.
     pub url: Url,
-    status_raw: RawStatus,
-    message: Box<dyn HttpMessage>,
+    pub status_raw: RawStatus,
+    pub message: Box<dyn HttpMessage>,
 }
 
 impl Response {
