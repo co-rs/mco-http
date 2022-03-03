@@ -107,8 +107,9 @@
 //! out by calling `start` on the `Response<Fresh>`. This will return a new
 //! `Response<Streaming>` object, that no longer has `headers_mut()`, but does
 //! implement `Write`.
+use std::cell::RefCell;
 use std::fmt;
-use std::io::{self, ErrorKind, BufWriter, Write};
+use std::io::{self, ErrorKind, BufWriter, Write, Read};
 use std::net::{SocketAddr, ToSocketAddrs, Shutdown};
 use std::sync::Arc;
 use std::time::Duration;
@@ -121,7 +122,7 @@ use crate::buffer::BufReader;
 use crate::header::{Headers, Expect, Connection};
 use crate::proto;
 use crate::method::Method;
-use crate::net::{NetworkListener, NetworkStream, HttpListener, HttpsListener, SslServer};
+use crate::net::{NetworkListener, NetworkStream, HttpListener, HttpsListener, SslServer, HttpStream};
 use crate::status::StatusCode;
 use crate::uri::RequestUri;
 use crate::version::HttpVersion::Http11;
@@ -131,7 +132,10 @@ use self::listener::ListenerPool;
 pub mod request;
 pub mod response;
 pub mod extensions;
+
 pub use extensions::*;
+use crate::proto::h1;
+use crate::runtime::TcpStream;
 
 mod listener;
 
@@ -247,10 +251,69 @@ macro_rules! t_c {
     };
 }
 
+fn req_done(buf: &[u8], path: &mut String) -> Option<usize> {
+    let mut headers = [httparse::EMPTY_HEADER; 16];
+    let mut req = httparse::Request::new(&mut headers);
+
+    if let Ok(httparse::Status::Complete(i)) = req.parse(buf) {
+        path.clear();
+        path.push_str(req.path.unwrap_or("/"));
+        return Some(i);
+    }
+
+    None
+}
+
 impl<L: NetworkListener + Send + 'static> Server<L> {
     /// Binds to a socket and starts handling connections.
     pub fn handle<H: Handler + 'static>(self, handler: H) -> crate::Result<Listening> {
-        Self::handle_stack(self, handler, 0x2000)
+        Self::handle_loop(self, handler, 0x2000)
+    }
+
+    pub fn handle_loop<H: Handler + 'static>(self, handler: H, stack_size: usize) -> crate::Result<Listening> {
+        let worker = Arc::new(Worker::new(handler, self.timeouts));
+        let mut listener = self.listener.clone();
+        let h = runtime::spawn_stack_size(move || {
+            for stream in listener.incoming() {
+                let mut stream = t_c!(stream);
+                let addr = stream.peer_addr().unwrap();
+                let worker = worker.clone();
+                runtime::spawn_stack_size(move || {
+                    //safety will forget copy s
+                    let mut s:HttpStream = unsafe { std::mem::transmute_copy(&mut stream) };
+                    let mut buf = BufReader::new(&mut s as &mut dyn NetworkStream);
+                    loop {
+                        if let Ok(req) = Request::new(&mut buf, addr) {
+                            let mut res_headers = Headers::with_capacity(1);
+                            {
+                                let mut wrt = BufWriter::new(&mut stream);
+                                let mut res = Response::new(&mut wrt, &mut res_headers);
+                                res.version = req.version;
+                                worker.handler.handle(req, res);
+                            }
+                        } else {
+                            let mut temp_buf = vec![0; 512];
+                            match stream.read(&mut temp_buf) {
+                                Ok(0) => return, // connection was closed
+                                Ok(n) => {
+                                  //buf.put(&temp_buf[0..n]),
+                                    buf.read_into_buf();
+                                }
+                                Err(err) => {
+                                    println!("err = {:?}", err);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }, stack_size);
+            }
+        }, stack_size);
+        let socket = self.listener.clone().local_addr()?;
+        return Ok(Listening {
+            _guard: Some(h),
+            socket: socket,
+        });
     }
 
     /// Binds to a socket and starts handling connections.
@@ -278,7 +341,7 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                                         } else {
                                             if now.elapsed() <= timeout {
                                                 now = std::time::Instant::now();
-                                            }else{
+                                            } else {
                                                 return;
                                             }
                                         }
@@ -292,7 +355,7 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                                         stream.wait_io();
                                         if keep_alive == false {
                                             return;
-                                        }else{
+                                        } else {
                                             count += 1;
                                             if count >= total {
                                                 return;
