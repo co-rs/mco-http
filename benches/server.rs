@@ -23,6 +23,6 @@ fn bench_mock_handle_connection(b: &mut test::Bencher) {
     }
     let w=Worker::new(handle, Default::default());
     b.iter(|| {
-        w.handle_connection(&mut mock);
+        w.handle_connection(&mut mock,None);
     });
 }

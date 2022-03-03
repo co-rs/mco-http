@@ -21,7 +21,7 @@ use crate::uri::RequestUri;
 /// A request bundles several parts of an incoming `NetworkStream`, given to a `Handler`.
 pub struct Request<'a, 'b: 'a> {
     /// The IP address of the remote connection.
-    pub remote_addr: SocketAddr,
+    pub remote_addr: Option<SocketAddr>,
     /// The `Method`, such as `Get`, `Post`, etc.
     pub method: Method,
     /// The headers of the incoming request.
@@ -40,7 +40,7 @@ pub struct Request<'a, 'b: 'a> {
 impl<'a, 'b: 'a> Request<'a, 'b> {
     /// Create a new Request, reading the StartLine and Headers so they are
     /// immediately useful.
-    pub fn new(stream: &'a mut BufReader<&'b mut dyn NetworkStream>, addr: SocketAddr)
+    pub fn new(stream: &'a mut BufReader<&'b mut dyn NetworkStream>, addr: Option<SocketAddr>)
                -> crate::Result<Request<'a, 'b>> {
         let Incoming { version, subject: (method, uri), headers } = h1::parse_request(stream)?;
         debug!("Request Line: {:?} {:?} {:?}", method, uri, version);
@@ -92,7 +92,7 @@ impl<'a, 'b: 'a> Request<'a, 'b> {
 
     /// Deconstruct a Request into its constituent parts.
     #[inline]
-    pub fn deconstruct(self) -> (SocketAddr, Method, Headers,
+    pub fn deconstruct(self) -> (Option<SocketAddr>, Method, Headers,
                                  RequestUri, HttpVersion,
                                  HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>) {
         (self.remote_addr, self.method, self.headers,

@@ -132,6 +132,7 @@ pub mod request;
 pub mod response;
 pub mod extensions;
 pub use extensions::*;
+use crate::runtime::TcpStream;
 
 mod listener;
 
@@ -260,6 +261,12 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
         let h = runtime::spawn_stack_size(move || {
             for stream in listener.incoming() {
                 let mut stream = t_c!(stream);
+                let addr = {
+                    match stream.peer_addr(){
+                        Ok(v) => {Some(v)}
+                        Err(_) => {return;}
+                    }
+                };
                 let w = worker.clone();
                 runtime::spawn_stack_size(move || {
                     {
@@ -271,7 +278,7 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                                     let mut now = std::time::Instant::now();
                                     loop {
                                         stream.reset_io();
-                                        let keep_alive = w.handle_connection(&mut stream);
+                                        let keep_alive = w.handle_connection(&mut stream,addr);
                                         stream.wait_io();
                                         if keep_alive == false {
                                             return;
@@ -288,7 +295,7 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                                     let mut count = 0;
                                     loop {
                                         stream.reset_io();
-                                        let keep_alive = w.handle_connection(&mut stream);
+                                        let keep_alive = w.handle_connection(&mut stream,addr);
                                         stream.wait_io();
                                         if keep_alive == false {
                                             return;
@@ -329,7 +336,7 @@ fn handle_task<H, L>(mut server: Server<L>, handler: H, tasks: usize) -> crate::
     let pool = ListenerPool::new(server.listener);
     let worker = Worker::new(handler, server.timeouts);
     let work = move |mut stream| {
-        worker.handle_connection(&mut stream);
+        worker.handle_connection(&mut stream, None);
     };
 
     let guard = runtime::spawn(move || {
@@ -355,17 +362,19 @@ impl<H: Handler + 'static> Worker<H> {
         }
     }
 
-    pub fn handle_connection<S>(&self, stream: &mut S) -> bool where S: NetworkStream {
+    pub fn handle_connection<S>(&self, stream: &mut S, mut addr:Option<SocketAddr>) -> bool where S: NetworkStream {
         debug!("Incoming stream");
         self.handler.on_connection_start();
 
-        let addr = match stream.peer_addr() {
-            Ok(addr) => addr,
-            Err(e) => {
-                error!("Peer Name error: {:?}", e);
-                return false;
-            }
-        };
+        if addr.is_none(){
+            addr = match stream.peer_addr() {
+                Ok(addr) => Some(addr),
+                Err(e) => {
+                    error!("Peer Name error: {:?}", e);
+                    return false;
+                }
+            };
+        }
         //safety will forget copy s
         let mut s: S = unsafe { std::mem::transmute_copy(stream) };
         let mut rdr = BufReader::new(&mut s as &mut dyn NetworkStream);
@@ -380,7 +389,7 @@ impl<H: Handler + 'static> Worker<H> {
             keep_alive = true;
         }
         self.handler.on_connection_end();
-        debug!("keep_alive loop ending for {}", addr);
+        debug!("keep_alive loop ending for {:?}", addr);
 
         std::mem::forget(s);
         keep_alive
@@ -391,7 +400,7 @@ impl<H: Handler + 'static> Worker<H> {
     }
 
     fn keep_alive_loop<W: Write>(&self, rdr: &mut BufReader<&mut dyn NetworkStream>,
-                                 wrt: &mut W, addr: SocketAddr) -> bool {
+                                 wrt: &mut W, addr: Option<SocketAddr>) -> bool {
         let req = match Request::new(rdr, addr) {
             Ok(req) => req,
             Err(Error::Io(ref e)) if e.kind() == ErrorKind::ConnectionAborted => {
@@ -434,7 +443,7 @@ impl<H: Handler + 'static> Worker<H> {
             keep_alive = proto::should_keep_alive(version, &res_headers);
         }
 
-        debug!("keep_alive = {:?} for {}", keep_alive, addr);
+        debug!("keep_alive = {:?} for {:?}", keep_alive, addr);
         keep_alive
     }
 
@@ -547,7 +556,7 @@ mod tests {
             res.start().unwrap().end().unwrap();
         }
 
-        Worker::new(handle, Default::default()).handle_connection(&mut mock);
+        Worker::new(handle, Default::default()).handle_connection(&mut mock,None);
         let cont = b"HTTP/1.1 100 Continue\r\n\r\n";
         assert_eq!(&mock.write[..cont.len()], cont);
         let res = b"HTTP/1.1 200 OK\r\n";
@@ -576,7 +585,7 @@ mod tests {
             1234567890\
         ");
 
-        Worker::new(Reject, Default::default()).handle_connection(&mut mock);
+        Worker::new(Reject, Default::default()).handle_connection(&mut mock,None);
         assert_eq!(mock.write, &b"HTTP/1.1 417 Expectation Failed\r\n\r\n"[..]);
     }
 }
