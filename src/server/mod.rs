@@ -109,6 +109,7 @@
 //! implement `Write`.
 use std::fmt;
 use std::io::{self, ErrorKind, BufWriter, Write};
+use std::io::ErrorKind::NotConnected;
 use std::net::{SocketAddr, ToSocketAddrs, Shutdown};
 use std::sync::Arc;
 use std::time::Duration;
@@ -264,7 +265,12 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                 let addr = {
                     match stream.peer_addr(){
                         Ok(v) => {Some(v)}
-                        Err(_) => {return;}
+                        Err(e) => {
+                            if e.kind() == NotConnected{
+                                stream.close(Shutdown::Both);
+                            }
+                            return;
+                        }
                     }
                 };
                 let w = worker.clone();
