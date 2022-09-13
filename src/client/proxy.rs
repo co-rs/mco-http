@@ -31,7 +31,6 @@ impl<C, S> NetworkConnector for Proxy<C, S>
     type Stream = Proxied<C::Stream, S::Stream>;
 
     fn connect(&self, host: &str, port: u16, scheme: &str) -> crate::Result<Self::Stream> {
-        use httparse;
         use std::io::{Read, Write};
         use crate::version::HttpVersion::Http11;
         trace!("{:?} proxy for '{}://{}:{}'", self.proxy, scheme, host, port);
@@ -230,7 +229,7 @@ mod no_ssl {
             match *self {}
         }
 
-        fn set_nonblocking(&self, b: bool) {
+        fn set_nonblocking(&self, _: bool) {
             match *self {}
         }
 

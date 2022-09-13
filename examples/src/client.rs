@@ -9,7 +9,7 @@ use mco_http::Client;
 use mco_http::header::Connection;
 
 fn main() {
-    fast_log::init(Config::new().console());
+    let _=fast_log::init(Config::new().console());
 
     let mut url = "http://www.baidu.com".to_string();
 

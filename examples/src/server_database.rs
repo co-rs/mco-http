@@ -61,7 +61,7 @@ impl Controllers for Route {
 
 
 fn main() {
-    fast_log::init(Config::new().console());
+    let _=fast_log::init(Config::new().console());
 
     let mut route = Arc::new(Route::new());
     //insert pool

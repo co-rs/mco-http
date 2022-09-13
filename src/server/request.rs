@@ -2,8 +2,6 @@
 //!
 //! These are requests that a `mco_http::Server` receives, and include its method,
 //! target URI, headers, and message body.
-use std::any::Any;
-use std::collections::HashMap;
 use std::io::{self, Read};
 use std::net::SocketAddr;
 use std::time::Duration;

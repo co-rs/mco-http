@@ -1,5 +1,4 @@
 use std::sync::{Arc};
-use std::thread;
 
 use crate::net::NetworkListener;
 use crate::runtime;

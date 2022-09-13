@@ -18,12 +18,9 @@ pub use error::Error;
 
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read, Write};
-use std::path::{Path, PathBuf};
-use std::borrow::{BorrowMut, Cow};
-use std::cell::RefCell;
+use std::path::PathBuf;
+use std::borrow::Cow;
 use std::fmt::{Debug, Formatter};
-use std::ops::{DerefMut, Drop};
-use std::sync::Arc;
 use encoding::{all, Encoding, DecoderTrap};
 use textnonce::TextNonce;
 use mime::{Attr, Mime, TopLevel, Value};

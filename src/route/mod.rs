@@ -1,14 +1,9 @@
 use std::any::Any;
-use std::collections::{BTreeMap, HashMap};
-use std::error::Error;
 use std::fmt::{Debug, Formatter};
 use crate::net::Fresh;
 use crate::server::{Handler, Request, Response};
 use crate::status::StatusCode;
 use crate::uri::RequestUri::AbsolutePath;
-use std::io::copy;
-use std::ops::Deref;
-use std::rc::Rc;
 use std::sync::Arc;
 use mco::std::vec::SyncVec;
 use crate::runtime::{SyncHashMap};
@@ -170,7 +165,7 @@ impl Handler for Route {
 }
 
 impl Handler for Arc<Route> {
-    fn handle(&self, mut req: Request, mut res: Response<'_, Fresh>) {
+    fn handle(&self, req: Request, res: Response<'_, Fresh>) {
         Route::handle(self, req, res)
     }
 }

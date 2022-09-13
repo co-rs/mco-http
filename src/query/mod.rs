@@ -1,6 +1,4 @@
 use std::collections::BTreeMap;
-use crate::error::Result;
-
 pub fn read_query(url: &str) -> BTreeMap<String, String> {
     let mut m = BTreeMap::new();
     let idx = url.find("?");

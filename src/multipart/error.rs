@@ -7,7 +7,7 @@
 
 use std::borrow::Cow;
 use std::error::Error as StdError;
-use std::fmt::{self, Debug, Display};
+use std::fmt::{self, Display};
 use std::io;
 use std::string::FromUtf8Error;
 use httparse;

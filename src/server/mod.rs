@@ -119,7 +119,7 @@ pub use self::response::Response;
 pub use crate::net::{Fresh, Streaming};
 use crate::{Error, runtime};
 use crate::buffer::BufReader;
-use crate::header::{Headers, Expect, Connection};
+use crate::header::{Headers, Expect};
 use crate::proto;
 use crate::method::Method;
 use crate::net::{NetworkListener, NetworkStream, HttpListener, HttpsListener, SslServer};
@@ -133,7 +133,6 @@ pub mod request;
 pub mod response;
 pub mod extensions;
 pub use extensions::*;
-use crate::runtime::TcpStream;
 
 mod listener;
 
@@ -267,7 +266,7 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
                         Ok(v) => {Some(v)}
                         Err(e) => {
                             if e.kind() == NotConnected{
-                                stream.close(Shutdown::Both);
+                                let _=stream.close(Shutdown::Both);
                             }
                             return;
                         }

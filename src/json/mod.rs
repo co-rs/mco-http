@@ -1,4 +1,3 @@
-use std::io;
 use std::io::Read;
 use serde::de::DeserializeOwned;
 use crate::server::Request;

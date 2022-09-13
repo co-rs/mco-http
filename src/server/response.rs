@@ -8,9 +8,6 @@ use std::mem;
 use std::io::{self, Write};
 use std::ptr;
 use std::thread;
-
-use time::now_utc;
-
 use crate::header;
 use crate::proto::h1::{LINE_ENDING, HttpWriter};
 use crate::proto::h1::HttpWriter::{ThroughWriter, ChunkedWriter, SizedWriter, EmptyWriter};

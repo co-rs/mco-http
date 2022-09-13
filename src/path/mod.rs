@@ -1,5 +1,4 @@
 use std::collections::{BTreeMap};
-use crate::error::Result;
 
 #[derive(Clone,Debug)]
 pub struct Path {
