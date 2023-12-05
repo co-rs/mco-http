@@ -30,12 +30,12 @@ pub fn sleep(d: Duration) {
 }
 
 #[cfg(feature = "mco")]
-pub fn spawn<F>(f: F) -> JoinHandle<()> where F: FnOnce() + std::marker::Send + 'static {
-    mco::coroutine::Builder::new().stack_size(0x1000).spawn(f)
+pub fn spawn<F>(f: F) -> JoinHandle<()> where F: FnOnce() + Send + 'static {
+    mco::coroutine::Builder::new().spawn(f)
 }
 
 #[cfg(feature = "mco")]
-pub fn spawn_stack_size<F>(f: F, stack_size:usize) -> JoinHandle<()> where F: FnOnce() + std::marker::Send + 'static {
+pub fn spawn_stack_size<F>(f: F, stack_size:usize) -> JoinHandle<()> where F: FnOnce() + Send + 'static {
     mco::coroutine::Builder::new().stack_size(stack_size).spawn(f)
 }
 

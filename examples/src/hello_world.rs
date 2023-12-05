@@ -2,12 +2,8 @@
 extern crate mco_http;
 extern crate fast_log;
 
-use std::io::{Read, Write};
 use fast_log::config::Config;
 use httparse::Status;
-use mco_http::route::Route;
-use mco_http::runtime;
-use mco_http::runtime::{spawn_stack_size, TcpListener};
 use mco_http::server::{Request, Response};
 
 fn hello(req: Request, res: Response) {
