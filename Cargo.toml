@@ -4,7 +4,7 @@ members = [
 ]
 [package]
 name = "mco-http"
-version = "0.1.24"
+version = "0.1.25"
 edition = "2021"
 description = "A modern HTTP library."
 readme = "README.md"
@@ -31,9 +31,9 @@ runtime_mco = ["mco"]
 nightly = []
 
 [dependencies]
-base64 = "0.9.0"
+base64 = "0.21.5"
 httparse = "1"
-language-tags = "0.2"
+language-tags = "0.3.2"
 log = "0.4"
 mime = "0.2"
 time = "0.1"
@@ -54,6 +54,6 @@ serde = "1"
 serde_json = { version = "1", optional = true }
 
 #only runtime_thread
-dashmap = { version = "4.0.2", optional = true }
+dashmap = { version = "5.5.3", optional = true }
 
 [dev-dependencies]
