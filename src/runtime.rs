@@ -15,9 +15,9 @@ pub type JoinHandle<T> = mco::coroutine::JoinHandle<T>;
 #[cfg(feature = "mco")]
 pub type Mutex<T> = mco::std::sync::Mutex<T>;
 #[cfg(feature = "mco")]
-pub type SyncBtreeMap<K,V> = mco::std::map::SyncBtreeMap<K,V>;
+pub type SyncBtreeMap<K,V> = mco::std::sync::SyncBtreeMap<K,V>;
 #[cfg(feature = "mco")]
-pub type SyncHashMap<K,V> = mco::std::map::SyncHashMap<K,V>;
+pub type SyncHashMap<K,V> = mco::std::sync::SyncHashMap<K,V>;
 
 #[cfg(feature = "mco")]
 pub fn chan<T>() -> (Sender<T>, Receiver<T>) {
