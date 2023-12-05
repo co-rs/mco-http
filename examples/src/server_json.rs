@@ -14,7 +14,7 @@ fn hello(mut req: Request, res: Response) {
 }
 
 fn main() {
-    let _=fast_log::init(Config::new().console());
+    let _=fast_log::init(Config::new().level(log::LevelFilter::Info).console());
     let _listening = mco_http::Server::http("0.0.0.0:3000").unwrap()
         .handle(hello).unwrap();
     println!("Listening on http://127.0.0.1:3000");

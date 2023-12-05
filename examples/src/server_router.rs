@@ -6,7 +6,7 @@ use mco_http::route::MiddleWare;
 use fast_log::config::Config;
 
 fn main() {
-    let _=fast_log::init(Config::new().console());
+    let _=fast_log::init(Config::new().level(log::LevelFilter::Info).console());
 
     let mut route = Route::new();
     route.handle_fn("/", |req: Request, res: Response| {

@@ -19,7 +19,7 @@ impl MiddleWare for MyMiddleWare {
 }
 
 fn main() {
-    let _=fast_log::init(Config::new().console());
+    let _=fast_log::init(Config::new().level(log::LevelFilter::Info).console());
 
     let mut route = Arc::new(Route::new());
     route.add_middleware(MyMiddleWare { route: route.clone() });

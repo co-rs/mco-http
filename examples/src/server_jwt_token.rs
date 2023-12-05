@@ -103,7 +103,7 @@ impl MiddleWare for MyMiddleWare {
 
 
 fn main() {
-    let _=fast_log::init(Config::new().console());
+    let _=fast_log::init(Config::new().level(log::LevelFilter::Info).console());
 
     let mut route = Route::new();
     let middle = Arc::new(MyMiddleWare { secret: "123456".to_string() });
