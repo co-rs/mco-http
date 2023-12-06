@@ -594,7 +594,7 @@ impl<'a, H: HeaderFormat> fmt::Debug for HeaderFormatter<'a, H> {
 }
 
 #[derive(Clone, Hash, Eq, PartialEq, PartialOrd, Ord)]
-struct CowStr(Cow<'static, str>);
+pub struct CowStr(Cow<'static, str>);
 
 impl Deref for CowStr {
     type Target = Cow<'static, str>;
