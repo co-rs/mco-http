@@ -181,6 +181,7 @@ pub mod path;
 pub mod route;
 pub mod runtime;
 pub mod json;
+mod mock;
 
 /// Re-exporting the mime crate, for convenience.
 pub mod mime {

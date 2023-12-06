@@ -397,7 +397,7 @@ impl NetworkStream for HttpStream {
 
     fn set_nonblocking(&self, b: bool) {
         #[cfg(unix)]
-        let _=self.0.set_nonblocking(b);
+            let _=self.0.set_nonblocking(b);
     }
 
     fn reset_io(&self) {
@@ -431,7 +431,7 @@ impl NetworkConnector for HttpConnector {
             },
             _ => {
                 Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                "Invalid scheme for Http"))
+                                   "Invalid scheme for Http"))
             }
         }?)
     }
