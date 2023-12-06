@@ -65,18 +65,6 @@ impl NetworkStream for MyHttpsStream {
             e
         })
     }
-
-    fn set_nonblocking(&self, b: bool) {
-        //let _ = self.inner.sock.set_nonblocking(b);
-    }
-
-    fn reset_io(&self) {
-        //self.inner.sock.reset_io()
-    }
-
-    fn wait_io(&self) {
-       // self.inner.sock.wait_io()
-    }
 }
 
 #[derive(Clone, Debug)]
