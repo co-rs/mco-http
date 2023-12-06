@@ -7,7 +7,7 @@ publish = false
 
 
 [dependencies]
-mco-http = { path = "../"}
+mco-http = { path = "../" }
 fast_log = "1.6"
 serde = "1"
 serde_json = "1"

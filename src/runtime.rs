@@ -54,9 +54,9 @@ pub type JoinHandle<T> = std::thread::JoinHandle<T>;
 #[cfg(not(feature = "mco"))]
 pub type Mutex<T> = std::sync::Mutex<T>;
 #[cfg(not(feature = "mco"))]
-pub type SyncBtreeMap<K,V> = dashmap::DashMap<K,V>;
+pub type SyncBtreeMap<K,V> = dark_std::sync::SyncBtreeMap<K,V>;
 #[cfg(not(feature = "mco"))]
-pub type SyncHashMap<K,V> = dashmap::DashMap<K,V>;
+pub type SyncHashMap<K,V> = dark_std::sync::SyncHashMap<K,V>;
 
 #[cfg(not(feature = "mco"))]
 pub fn chan<T>() -> (Sender<T>, Receiver<T>) {

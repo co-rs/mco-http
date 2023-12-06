@@ -26,7 +26,7 @@ include = [
 
 [features]
 default = ["runtime_mco", "serde_json"]
-runtime_thread = ["dashmap"]
+runtime_thread = ["dark-std"]
 runtime_mco = ["mco"]
 nightly = []
 
@@ -54,6 +54,6 @@ serde = "1"
 serde_json = { version = "1", optional = true }
 
 #only runtime_thread
-dashmap = { version = "5.5.3", optional = true }
+dark-std = { version = "0.2", optional = true }
 
 [dev-dependencies]
