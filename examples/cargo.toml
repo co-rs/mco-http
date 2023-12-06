@@ -20,12 +20,19 @@ jsonwebtoken = "8"
 httparse = "1"
 log = "0.4.20"
 
+#tls
+rustls = "0.20"
+rustls-pemfile = "0.2.1"
+
 [[bin]]
 name = "client"
 path = "src/client.rs"
 [[bin]]
-name = "hello_world"
-path = "src/hello_world.rs"
+name = "http"
+path = "src/http.rs"
+[[bin]]
+name = "https"
+path = "src/https.rs"
 [[bin]]
 name = "server_database"
 path = "src/server_database.rs"

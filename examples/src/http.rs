@@ -3,24 +3,10 @@ extern crate mco_http;
 extern crate fast_log;
 
 use fast_log::config::Config;
-use httparse::Status;
 use mco_http::server::{Request, Response};
 
 fn hello(req: Request, res: Response) {
     res.send(b"Hello World!").unwrap();
-}
-
-fn req_done(buf: &[u8], path: &mut String) -> Option<usize> {
-    let mut headers = [httparse::EMPTY_HEADER; 16];
-    let mut req = httparse::Request::new(&mut headers);
-
-    if let Ok(Status::Complete(i)) = req.parse(buf) {
-        path.clear();
-        path.push_str(req.path.unwrap_or("/"));
-        return Some(i);
-    }
-
-    None
 }
 
 fn main() {
