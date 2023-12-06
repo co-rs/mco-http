@@ -113,6 +113,7 @@ use std::io::ErrorKind::NotConnected;
 use std::net::{SocketAddr, ToSocketAddrs, Shutdown};
 use std::sync::Arc;
 use std::time::Duration;
+use mco::config;
 use mco::coroutine::yield_now;
 pub use self::request::Request;
 pub use self::response::Response;
@@ -251,7 +252,7 @@ macro_rules! t_c {
 impl<L: NetworkListener + Send + 'static> Server<L> {
     /// Binds to a socket and starts handling connections.
     pub fn handle<H: Handler + 'static>(self, handler: H) -> crate::Result<Listening> {
-        Self::handle_stack(self, handler, 0x2000)
+        Self::handle_stack(self, handler, config().get_stack_size())
     }
 
     /// Binds to a socket and starts handling connections.
