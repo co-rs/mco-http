@@ -236,6 +236,13 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
         Self::handle_tasks(self, handler, num_cpus::get())
     }
 
+    /// Binds to a socket and starts handling connections with the provided
+    /// number of tasks on pool
+    pub fn handle_tasks<H: Handler + 'static>(self, handler: H, tasks: usize) -> crate::Result<Listening> {
+        handle_task(self, handler, tasks)
+    }
+
+
     // /// Binds to a socket and starts handling connections.
     // pub fn handle_stack<H: Handler + 'static>(self, handler: H, stack_size: usize) -> crate::Result<Listening> {
     //     let worker = Arc::new(Worker::new(handler, self.timeouts));
@@ -307,12 +314,6 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
     //         socket: socket,
     //     });
     // }
-
-    /// Binds to a socket and starts handling connections with the provided
-    /// number of tasks on pool
-    pub fn handle_tasks<H: Handler + 'static>(self, handler: H, tasks: usize) -> crate::Result<Listening> {
-        handle_task(self, handler, tasks)
-    }
 }
 
 fn handle_task<H, L>(mut server: Server<L>, handler: H, tasks: usize) -> crate::Result<Listening>

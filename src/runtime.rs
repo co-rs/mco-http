@@ -37,11 +37,6 @@ pub fn spawn<F>(f: F) -> JoinHandle<()> where F: FnOnce() + Send + 'static {
     mco::coroutine::Builder::new().spawn(f)
 }
 
-#[cfg(feature = "mco")]
-pub fn spawn_stack_size<F>(f: F, stack_size:usize) -> JoinHandle<()> where F: FnOnce() + Send + 'static {
-    mco::coroutine::Builder::new().stack_size(stack_size).spawn(f)
-}
-
 
 /// if not mco
 #[cfg(not(feature = "mco"))]
@@ -75,10 +70,5 @@ pub fn sleep(d: Duration) {
 
 #[cfg(not(feature = "mco"))]
 pub fn spawn<F>(f: F) -> JoinHandle<()> where F: FnOnce() + std::marker::Send + 'static {
-    std::thread::spawn(f)
-}
-
-#[cfg(not(feature = "mco"))]
-pub fn spawn_stack_size<F>(f: F, stack_size:usize) -> JoinHandle<()> where F: FnOnce() + std::marker::Send + 'static {
     std::thread::spawn(f)
 }
