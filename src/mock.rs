@@ -96,16 +96,4 @@ impl NetworkStream for MockStream {
     fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> {
         Ok(())
     }
-
-    fn set_nonblocking(&self, b: bool) {
-
-    }
-
-    fn reset_io(&self) {
-
-    }
-
-    fn wait_io(&self) {
-
-    }
 }

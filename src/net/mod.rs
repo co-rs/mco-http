@@ -88,12 +88,6 @@ pub trait NetworkStream: Read + Write + Any + Send + Typeable {
     fn previous_response_expected_no_content(&self) -> bool {
         false
     }
-
-    fn set_nonblocking(&self, b: bool);
-
-    fn reset_io(&self);
-
-    fn wait_io(&self);
 }
 
 /// A connector creates a NetworkStream.
@@ -394,25 +388,6 @@ impl NetworkStream for HttpStream {
             err => err
         }
     }
-
-    fn set_nonblocking(&self, b: bool) {
-        #[cfg(unix)]
-            let _=self.0.set_nonblocking(b);
-    }
-
-    fn reset_io(&self) {
-        #[cfg(unix)]
-        use mco::io::WaitIo;
-        #[cfg(unix)]
-        self.0.reset_io();
-    }
-
-    fn wait_io(&self) {
-        #[cfg(unix)]
-        use mco::io::WaitIo;
-        #[cfg(unix)]
-        self.0.wait_io();
-    }
 }
 
 /// A connector that will produce HttpStreams.
@@ -549,27 +524,6 @@ impl<S: NetworkStream> NetworkStream for HttpsStream<S> {
         match *self {
             HttpsStream::Http(ref mut s) => s.close(how),
             HttpsStream::Https(ref mut s) => s.close(how)
-        }
-    }
-    #[inline]
-    fn set_nonblocking(&self, b: bool) {
-        match *self {
-            HttpsStream::Http(ref s) => s.set_nonblocking(b),
-            HttpsStream::Https(ref s) => s.set_nonblocking(b)
-        }
-    }
-    #[inline]
-    fn reset_io(&self) {
-        match *self {
-            HttpsStream::Http(ref s) => s.reset_io(),
-            HttpsStream::Https(ref s) => s.reset_io()
-        }
-    }
-    #[inline]
-    fn wait_io(&self) {
-        match *self {
-            HttpsStream::Http(ref s) => s.wait_io(),
-            HttpsStream::Https(ref s) => s.wait_io()
         }
     }
 }

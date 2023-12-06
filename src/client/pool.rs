@@ -373,18 +373,6 @@ impl<S: NetworkStream> NetworkStream for PooledStream<S> {
         trace!("previous_response_expected_no_content {}", answer);
         answer
     }
-
-    fn set_nonblocking(&self, b: bool) {
-        self.inner.as_ref().unwrap().stream.set_nonblocking(b);
-    }
-
-    fn reset_io(&self) {
-        self.inner.as_ref().unwrap().stream.reset_io();
-    }
-
-    fn wait_io(&self) {
-        self.inner.as_ref().unwrap().stream.wait_io();
-    }
 }
 
 impl<S> Drop for PooledStream<S> {

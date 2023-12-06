@@ -120,7 +120,7 @@ pub use self::response::Response;
 pub use crate::net::{Fresh, Streaming};
 use crate::{Error, runtime};
 use crate::buffer::BufReader;
-use crate::header::{Headers, Expect};
+use crate::header::{Headers, Expect, Connection};
 use crate::proto;
 use crate::method::Method;
 use crate::net::{NetworkListener, NetworkStream, HttpListener, HttpsListener, SslServer};
@@ -134,6 +134,7 @@ pub mod request;
 pub mod response;
 pub mod extensions;
 pub use extensions::*;
+use crate::proto::should_keep_alive;
 
 mod listener;
 
@@ -151,22 +152,14 @@ pub struct Server<L = HttpListener> {
 pub struct Timeouts {
     read: Option<Duration>,
     keep_alive: Option<Duration>,
-    keep_alive_type: KeepAliveType,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum KeepAliveType {
-    WaitTime(Duration),
-    //wait time close
-    WaitError(i32),//wait error close
-}
 
 impl Default for Timeouts {
     fn default() -> Timeouts {
         Timeouts {
             read: None,
             keep_alive: Some(Duration::from_secs(5)),
-            keep_alive_type: KeepAliveType::WaitTime(Duration::from_secs(5)),
         }
     }
 }
@@ -192,7 +185,6 @@ impl<L: NetworkListener> Server<L> {
     #[inline]
     pub fn keep_alive(mut self, timeout: Option<Duration>) -> Self {
         self.timeouts.keep_alive = timeout;
-        self.timeouts.keep_alive_type = KeepAliveType::WaitTime(timeout.unwrap_or(Duration::from_secs(5)));
         self
     }
 
@@ -206,12 +198,6 @@ impl<L: NetworkListener> Server<L> {
     /// Sets the write timeout for all Response writes.
     pub fn set_write_timeout(mut self, dur: Option<Duration>) -> Self {
         self.listener.set_write_timeout(dur);
-        self
-    }
-
-    /// set set_keep_alive_type
-    pub fn set_keep_alive_type(mut self, t: KeepAliveType) -> Self {
-        self.timeouts.keep_alive_type = t;
         self
     }
 
@@ -252,80 +238,80 @@ macro_rules! t_c {
 impl<L: NetworkListener + Send + 'static> Server<L> {
     /// Binds to a socket and starts handling connections.
     pub fn handle<H: Handler + 'static>(self, handler: H) -> crate::Result<Listening> {
-        Self::handle_stack(self, handler, config().get_stack_size())
+        Self::handle_tasks(self, handler, 1)
     }
 
-    /// Binds to a socket and starts handling connections.
-    pub fn handle_stack<H: Handler + 'static>(self, handler: H, stack_size: usize) -> crate::Result<Listening> {
-        let worker = Arc::new(Worker::new(handler, self.timeouts));
-        let mut listener = self.listener.clone();
-        let h = runtime::spawn_stack_size(move || {
-            for stream in listener.incoming() {
-                let mut stream = t_c!(stream);
-                let addr = {
-                    match stream.peer_addr(){
-                        Ok(v) => {Some(v)}
-                        Err(e) => {
-                            if e.kind() == NotConnected{
-                                let _=stream.close(Shutdown::Both);
-                            }
-                            return;
-                        }
-                    }
-                };
-                let w = worker.clone();
-                runtime::spawn_stack_size(move || {
-                    {
-                        #[cfg(unix)]
-                        stream.set_nonblocking(true);
-                        {
-                            match w.timeouts.keep_alive_type {
-                                KeepAliveType::WaitTime(timeout) => {
-                                    let mut now = std::time::Instant::now();
-                                    loop {
-                                        stream.reset_io();
-                                        let keep_alive = w.handle_connection(&mut stream,addr);
-                                        stream.wait_io();
-                                        if keep_alive == false {
-                                            return;
-                                        } else {
-                                            if now.elapsed() <= timeout {
-                                                now = std::time::Instant::now();
-                                            }else{
-                                                return;
-                                            }
-                                        }
-                                    }
-                                }
-                                KeepAliveType::WaitError(total) => {
-                                    let mut count = 0;
-                                    loop {
-                                        stream.reset_io();
-                                        let keep_alive = w.handle_connection(&mut stream,addr);
-                                        stream.wait_io();
-                                        if keep_alive == false {
-                                            return;
-                                        }else{
-                                            count += 1;
-                                            if count >= total {
-                                                return;
-                                            }
-                                            yield_now();
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }, stack_size);
-            }
-        }, stack_size);
-        let socket = self.listener.clone().local_addr()?;
-        return Ok(Listening {
-            _guard: Some(h),
-            socket: socket,
-        });
-    }
+    // /// Binds to a socket and starts handling connections.
+    // pub fn handle_stack<H: Handler + 'static>(self, handler: H, stack_size: usize) -> crate::Result<Listening> {
+    //     let worker = Arc::new(Worker::new(handler, self.timeouts));
+    //     let mut listener = self.listener.clone();
+    //     let h = runtime::spawn_stack_size(move || {
+    //         for stream in listener.incoming() {
+    //             let mut stream = t_c!(stream);
+    //             let addr = {
+    //                 match stream.peer_addr(){
+    //                     Ok(v) => {Some(v)}
+    //                     Err(e) => {
+    //                         if e.kind() == NotConnected{
+    //                             let _=stream.close(Shutdown::Both);
+    //                         }
+    //                         return;
+    //                     }
+    //                 }
+    //             };
+    //             let w = worker.clone();
+    //             runtime::spawn_stack_size(move || {
+    //                 {
+    //                     #[cfg(unix)]
+    //                     stream.set_nonblocking(true);
+    //                     {
+    //                         match w.timeouts.keep_alive_type {
+    //                             KeepAliveType::WaitTime(timeout) => {
+    //                                 let mut now = std::time::Instant::now();
+    //                                 loop {
+    //                                     stream.reset_io();
+    //                                     let keep_alive = w.handle_connection(&mut stream,addr);
+    //                                     stream.wait_io();
+    //                                     if keep_alive == false {
+    //                                         return;
+    //                                     } else {
+    //                                         if now.elapsed() <= timeout {
+    //                                             now = std::time::Instant::now();
+    //                                         }else{
+    //                                             return;
+    //                                         }
+    //                                     }
+    //                                 }
+    //                             }
+    //                             KeepAliveType::WaitError(total) => {
+    //                                 let mut count = 0;
+    //                                 loop {
+    //                                     stream.reset_io();
+    //                                     let keep_alive = w.handle_connection(&mut stream,addr);
+    //                                     stream.wait_io();
+    //                                     if keep_alive == false {
+    //                                         return;
+    //                                     }else{
+    //                                         count += 1;
+    //                                         if count >= total {
+    //                                             return;
+    //                                         }
+    //                                         yield_now();
+    //                                     }
+    //                                 }
+    //                             }
+    //                         }
+    //                     }
+    //                 }
+    //             }, stack_size);
+    //         }
+    //     }, stack_size);
+    //     let socket = self.listener.clone().local_addr()?;
+    //     return Ok(Listening {
+    //         _guard: Some(h),
+    //         socket: socket,
+    //     });
+    // }
 
     /// Binds to a socket and starts handling connections with the provided
     /// number of tasks on pool
@@ -342,7 +328,7 @@ fn handle_task<H, L>(mut server: Server<L>, handler: H, tasks: usize) -> crate::
     let pool = ListenerPool::new(server.listener);
     let worker = Worker::new(handler, server.timeouts);
     let work = move |mut stream| {
-        worker.handle_connection(&mut stream, None);
+        worker.handle_connection(&mut stream);
     };
 
     let guard = runtime::spawn(move || {
@@ -368,38 +354,72 @@ impl<H: Handler + 'static> Worker<H> {
         }
     }
 
-    pub fn handle_connection<S>(&self, stream: &mut S, mut addr:Option<SocketAddr>) -> bool where S: NetworkStream {
+
+    fn handle_connection<S>(&self, stream: &mut S) where S: NetworkStream + Clone {
         debug!("Incoming stream");
+
         self.handler.on_connection_start();
 
-        if addr.is_none(){
-            addr = match stream.peer_addr() {
-                Ok(addr) => Some(addr),
-                Err(e) => {
-                    error!("Peer Name error: {:?}", e);
-                    return false;
-                }
-            };
-        }
-        //safety will forget copy s
-        let mut s: S = unsafe { std::mem::transmute_copy(stream) };
-        let mut rdr = BufReader::new(&mut s as &mut dyn NetworkStream);
+        let addr = match stream.peer_addr() {
+            Ok(addr) => addr,
+            Err(e) => {
+                info!("Peer Name error: {:?}", e);
+                return;
+            }
+        };
+
+        let stream2: &mut dyn NetworkStream = &mut stream.clone();
+        let mut rdr = BufReader::new(stream2);
         let mut wrt = BufWriter::new(stream);
 
-        let mut keep_alive = self.timeouts.keep_alive.is_some();
-        while self.keep_alive_loop(&mut rdr, &mut wrt, addr) {
+        while self.keep_alive_loop(&mut rdr, &mut wrt, Some(addr)) {
             if let Err(e) = self.set_read_timeout(*rdr.get_ref(), self.timeouts.keep_alive) {
                 info!("set_read_timeout keep_alive {:?}", e);
                 break;
             }
-            keep_alive = true;
         }
-        self.handler.on_connection_end();
-        debug!("keep_alive loop ending for {:?}", addr);
 
-        std::mem::forget(s);
-        keep_alive
+        self.handler.on_connection_end();
+
+        debug!("keep_alive loop ending for {}", addr);
+
+        if let Err(e) = rdr.get_mut().close(Shutdown::Both) {
+            info!("failed to close stream: {}", e);
+        }
     }
+
+    // pub fn handle_connection<S>(&self, stream: &mut S, mut addr:Option<SocketAddr>) -> bool where S: NetworkStream {
+    //     debug!("Incoming stream");
+    //     self.handler.on_connection_start();
+    //
+    //     if addr.is_none(){
+    //         addr = match stream.peer_addr() {
+    //             Ok(addr) => Some(addr),
+    //             Err(e) => {
+    //                 error!("Peer Name error: {:?}", e);
+    //                 return false;
+    //             }
+    //         };
+    //     }
+    //     //safety will forget copy s
+    //     let mut s: S = unsafe { std::mem::transmute_copy(stream) };
+    //     let mut rdr = BufReader::new(&mut s as &mut dyn NetworkStream);
+    //     let mut wrt = BufWriter::new(stream);
+    //
+    //     let mut keep_alive = self.timeouts.keep_alive.is_some();
+    //     while self.keep_alive_loop(&mut rdr, &mut wrt, addr) {
+    //         if let Err(e) = self.set_read_timeout(*rdr.get_ref(), self.timeouts.keep_alive) {
+    //             info!("set_read_timeout keep_alive {:?}", e);
+    //             break;
+    //         }
+    //         keep_alive = true;
+    //     }
+    //     self.handler.on_connection_end();
+    //     debug!("keep_alive loop ending for {:?}", addr);
+    //
+    //     std::mem::forget(s);
+    //     keep_alive
+    // }
 
     fn set_read_timeout(&self, s: &dyn NetworkStream, timeout: Option<Duration>) -> io::Result<()> {
         s.set_read_timeout(timeout)
@@ -434,9 +454,12 @@ impl<H: Handler + 'static> Worker<H> {
         }
 
         let mut keep_alive = self.timeouts.keep_alive.is_some() &&
-            proto::should_keep_alive(req.version, &req.headers);
+           should_keep_alive(req.version, &req.headers);
         let version = req.version;
-        let mut res_headers = Headers::with_capacity(1);
+        let mut res_headers = Headers::new();
+        if !keep_alive {
+            res_headers.set(Connection::close());
+        }
         {
             let mut res = Response::new(wrt, &mut res_headers);
             res.version = version;
@@ -446,7 +469,7 @@ impl<H: Handler + 'static> Worker<H> {
         // if the request was keep-alive, we need to check that the server agrees
         // if it wasn't, then the server cannot force it to be true anyways
         if keep_alive {
-            keep_alive = proto::should_keep_alive(version, &res_headers);
+            keep_alive = should_keep_alive(version, &res_headers);
         }
 
         debug!("keep_alive = {:?} for {:?}", keep_alive, addr);

@@ -153,27 +153,6 @@ impl<T1: NetworkStream, T2: NetworkStream> NetworkStream for Proxied<T1, T2> {
             Proxied::Tunneled(ref mut s) => s.close(how)
         }
     }
-
-    fn set_nonblocking(&self, b: bool) {
-        match *self {
-            Proxied::Normal(ref s) => s.set_nonblocking(b),
-            Proxied::Tunneled(ref s) => s.set_nonblocking(b)
-        }
-    }
-
-    fn reset_io(&self) {
-        match *self {
-            Proxied::Normal(ref s) => s.reset_io(),
-            Proxied::Tunneled(ref s) => s.reset_io()
-        }
-    }
-
-    fn wait_io(&self) {
-        match *self {
-            Proxied::Normal(ref s) => s.wait_io(),
-            Proxied::Tunneled(ref s) => s.wait_io()
-        }
-    }
 }
 
 #[cfg(not(any(feature = "openssl", feature = "security-framework")))]
@@ -226,18 +205,6 @@ mod no_ssl {
 
         #[inline]
         fn close(&mut self, _how: Shutdown) -> io::Result<()> {
-            match *self {}
-        }
-
-        fn set_nonblocking(&self, _: bool) {
-            match *self {}
-        }
-
-        fn reset_io(&self) {
-            match *self {}
-        }
-
-        fn wait_io(&self) {
             match *self {}
         }
     }
