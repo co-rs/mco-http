@@ -20,6 +20,9 @@ pub type SyncBtreeMap<K,V> = mco::std::sync::SyncBtreeMap<K,V>;
 pub type SyncHashMap<K,V> = mco::std::sync::SyncHashMap<K,V>;
 
 #[cfg(feature = "mco")]
+pub type SyncVec<V> = mco::std::sync::SyncVec<V>;
+
+#[cfg(feature = "mco")]
 pub fn chan<T>() -> (Sender<T>, Receiver<T>) {
     mco::chan!()
 }
@@ -57,6 +60,8 @@ pub type Mutex<T> = std::sync::Mutex<T>;
 pub type SyncBtreeMap<K,V> = dark_std::sync::SyncBtreeMap<K,V>;
 #[cfg(not(feature = "mco"))]
 pub type SyncHashMap<K,V> = dark_std::sync::SyncHashMap<K,V>;
+#[cfg(not(feature = "mco"))]
+pub type SyncVec<V> = dark_std::sync::SyncVec<V>;
 
 #[cfg(not(feature = "mco"))]
 pub fn chan<T>() -> (Sender<T>, Receiver<T>) {

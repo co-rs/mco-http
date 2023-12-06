@@ -109,19 +109,14 @@
 //! implement `Write`.
 use std::fmt;
 use std::io::{self, ErrorKind, BufWriter, Write};
-use std::io::ErrorKind::NotConnected;
 use std::net::{SocketAddr, ToSocketAddrs, Shutdown};
-use std::sync::Arc;
 use std::time::Duration;
-use mco::config;
-use mco::coroutine::yield_now;
 pub use self::request::Request;
 pub use self::response::Response;
 pub use crate::net::{Fresh, Streaming};
 use crate::{Error, runtime};
 use crate::buffer::BufReader;
 use crate::header::{Headers, Expect, Connection};
-use crate::proto;
 use crate::method::Method;
 use crate::net::{NetworkListener, NetworkStream, HttpListener, HttpsListener, SslServer};
 use crate::status::StatusCode;

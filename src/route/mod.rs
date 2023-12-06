@@ -5,8 +5,7 @@ use crate::server::{Handler, Request, Response};
 use crate::status::StatusCode;
 use crate::uri::RequestUri::AbsolutePath;
 use std::sync::Arc;
-use mco::std::vec::SyncVec;
-use crate::runtime::{SyncHashMap};
+use crate::runtime::{SyncHashMap, SyncVec};
 use crate::uri::RequestUri;
 
 pub struct HandleBox {
