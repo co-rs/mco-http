@@ -233,7 +233,7 @@ macro_rules! t_c {
 impl<L: NetworkListener + Send + 'static> Server<L> {
     /// Binds to a socket and starts handling connections.
     pub fn handle<H: Handler + 'static>(self, handler: H) -> crate::Result<Listening> {
-        Self::handle_tasks(self, handler, 1)
+        Self::handle_tasks(self, handler, num_cpus::get())
     }
 
     // /// Binds to a socket and starts handling connections.
