@@ -13,6 +13,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use rustls::{ClientConnection, IoState, Reader, RootCertStore, ServerConnection, Writer};
+use rustls::server::Acceptor;
 use mco_http::runtime::Mutex;
 
 
@@ -285,13 +286,19 @@ impl TlsServer {
 impl mco_http::net::SslServer for TlsServer {
     type Stream = WrappedStream;
 
-    fn wrap_server(&self, stream: HttpStream) -> mco_http::Result<WrappedStream> {
-        let v=
-            rustls::ServerConnection::new(self.cfg.clone())
-                .map_err(|e| mco_http::Error::Ssl(Box::new(e)))?;
-
+    fn wrap_server(&self, mut stream: HttpStream) -> mco_http::Result<WrappedStream> {
+        let mut acceptor = Acceptor::default();
+        let accepted = loop {
+            acceptor.read_tls(&mut stream).unwrap();
+            if let Some(accepted) = acceptor.accept().unwrap() {
+                break accepted;
+            }
+        };
+        let conn = accepted
+            .into_connection(self.cfg.clone())
+            .unwrap();
         let tls = TlsStream {
-            sess: Box::new(Connection::Server(v)),
+            sess: Box::new(Connection::Server(conn)),
             underlying: stream,
             io_error: None,
             tls_error: None,
