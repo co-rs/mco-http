@@ -151,9 +151,9 @@ pub struct Server<L = HttpListener> {
 }
 
 #[derive(Clone, Copy, Debug)]
-struct Timeouts {
-    read: Option<Duration>,
-    keep_alive: Option<Duration>,
+pub struct Timeouts {
+    pub read: Option<Duration>,
+    pub keep_alive: Option<Duration>,
 }
 
 impl Default for Timeouts {
@@ -252,20 +252,20 @@ where H: Handler + 'static, L: NetworkListener + Send + 'static {
     })
 }
 
-struct Worker<H: Handler + 'static> {
+pub struct Worker<H: Handler + 'static> {
     handler: H,
     timeouts: Timeouts,
 }
 
 impl<H: Handler + 'static> Worker<H> {
-    fn new(handler: H, timeouts: Timeouts) -> Worker<H> {
+    pub fn new(handler: H, timeouts: Timeouts) -> Worker<H> {
         Worker {
             handler: handler,
             timeouts: timeouts,
         }
     }
 
-    fn handle_connection<S>(&self, stream: &mut S) where S: NetworkStream + Clone {
+    pub fn handle_connection<S>(&self, stream: &mut S) where S: NetworkStream + Clone {
         debug!("Incoming stream");
 
         self.handler.on_connection_start();

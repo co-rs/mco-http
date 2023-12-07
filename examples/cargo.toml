@@ -34,47 +34,47 @@ path = "src/http_client.rs"
 name = "https_client"
 path = "src/https_client.rs"
 [[bin]]
-name = "http"
-path = "src/http.rs"
+name = "http_server"
+path = "src/http_server.rs"
 [[bin]]
-name = "https"
-path = "src/https.rs"
+name = "https_server"
+path = "src/https_server.rs"
 [[bin]]
-name = "server_database"
-path = "src/server_database.rs"
+name = "http_server_database"
+path = "src/http_server_database.rs"
 [[bin]]
-name = "server_download"
-path = "src/server_download.rs"
+name = "http_server_download"
+path = "src/http_server_download.rs"
 [[bin]]
-name = "server_form_data"
-path = "src/server_form_data.rs"
+name = "http_server_form_data"
+path = "src/http_server_form_data.rs"
 [[bin]]
-name = "server_json"
-path = "src/server_json.rs"
+name = "http_server_json"
+path = "src/http_server_json.rs"
 [[bin]]
-name = "server_jwt_token"
-path = "src/server_jwt_token.rs"
+name = "http_server_jwt_token"
+path = "src/http_server_jwt_token.rs"
 [[bin]]
-name = "server_mock"
-path = "src/server_mock.rs"
+name = "http_server_mock"
+path = "src/http_server_mock.rs"
 [[bin]]
-name = "server_path"
-path = "src/server_path.rs"
+name = "http_server_path"
+path = "src/http_server_path.rs"
 [[bin]]
-name = "server_query"
-path = "src/server_query.rs"
+name = "http_server_query"
+path = "src/http_server_query.rs"
 [[bin]]
-name = "server_router"
-path = "src/server_router.rs"
+name = "http_server_router"
+path = "src/http_server_router.rs"
 [[bin]]
-name = "server_router_container"
-path = "src/server_router_container.rs"
+name = "http_server_router_container"
+path = "src/http_server_router_container.rs"
 [[bin]]
-name = "server_router_middleware"
-path = "src/server_router_middleware.rs"
+name = "http_server_router_middleware"
+path = "src/http_server_router_middleware.rs"
 [[bin]]
-name = "server_upload"
-path = "src/server_upload.rs"
+name = "http_server_upload"
+path = "src/http_server_upload.rs"
 [profile.release]
 lto = true
 opt-level = 3
