@@ -10,7 +10,7 @@ repository = "https://github.com/ctz/hyper-rustls"
 
 [dependencies]
 webpki-roots = "0.26.0"
-rustls = { version="0.22",features = [] }
+rustls = { version = "0.22",default-features = false, features = ["tls12","ring"] }
 rustls-pemfile="2.0"
 mco-http ={version = "0.1",path="../"}
 
