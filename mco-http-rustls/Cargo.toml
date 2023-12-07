@@ -10,8 +10,8 @@ repository = "https://github.com/ctz/hyper-rustls"
 
 [features]
 default = ["runtime_mco"]
-runtime_thread = ["mco-http/runtime_thread"]
-runtime_mco = ["mco-http/runtime_mco"]
+runtime_thread = ["mco-http/runtime_thread","mco-http/serde_json"]
+runtime_mco = ["mco-http/runtime_mco","mco-http/serde_json"]
 
 [dependencies]
 webpki-roots = "0.26.0"
