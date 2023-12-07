@@ -134,6 +134,8 @@ use self::listener::ListenerPool;
 pub mod request;
 pub mod response;
 
+pub mod extensions;
+
 mod listener;
 
 /// A server can listen on a TCP socket.
