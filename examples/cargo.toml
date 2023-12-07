@@ -31,6 +31,9 @@ rustls-pemfile = "0.2.1"
 name = "http_client"
 path = "src/http_client.rs"
 [[bin]]
+name = "https_client"
+path = "src/https_client.rs"
+[[bin]]
 name = "http"
 path = "src/http.rs"
 [[bin]]

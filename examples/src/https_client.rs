@@ -1,0 +1,23 @@
+extern crate mco_http;
+extern crate fast_log;
+use std::io;
+use fast_log::config::Config;
+use mco_http::Client;
+use mco_http::net::HttpsConnector;
+use mco_http_rustls::TlsClient;
+
+//FIXME not successful
+fn main() {
+    let _ = fast_log::init(Config::new().level(log::LevelFilter::Info).console());
+
+    let url = "https://127.0.0.1:3000".to_string();
+
+    let client = Client::with_connector(HttpsConnector::new(TlsClient::new()));
+
+    let mut res = client.get(&url)
+        .send().unwrap();
+
+    println!("Response: {}", res.status);
+    println!("Headers:\n{}", res.headers);
+    io::copy(&mut res, &mut io::stdout()).unwrap();
+}
