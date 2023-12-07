@@ -25,7 +25,7 @@ include = [
 ]
 
 [features]
-default = ["runtime_mco", "serde_json"]
+default = ["runtime_thread", "serde_json"]
 runtime_thread = ["dark-std"]
 runtime_mco = ["mco"]
 nightly = []

@@ -46,7 +46,12 @@ where A: NetworkListener + Send + 'static,
         let _sentinel = Sentinel::new(supervisor, ());
         loop {
             match acceptor.accept() {
-                Ok(stream) => work(stream),
+                Ok(stream) => {
+                    let w = work.clone();
+                    runtime::spawn(move ||{
+                        w(stream)
+                    });
+                },
                 Err(e) => {
                     info!("Connection failed: {}", e);
                 }
