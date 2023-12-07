@@ -2,108 +2,73 @@ extern crate mco_http;
 extern crate rustls;
 extern crate webpki_roots;
 
-use mco_http::net::{HttpStream, NetworkStream};
+use mco_http::net::{HttpsStream, HttpStream, NetworkStream};
 use std::convert::{TryInto};
 
 use std::{io};
 use std::fmt::{Debug, Display, Formatter};
-use std::io::{BufReader, Cursor, Error};
+use std::io::{BufReader, Cursor, Error, Read, Write};
 use std::net::{Shutdown, SocketAddr};
+use std::ops::DerefMut;
 use std::sync::Arc;
 use std::time::Duration;
 
-use rustls::{ClientConnection, IoState, Reader, RootCertStore, ServerConnection, Writer};
+use rustls::{ClientConnection, IoState, Reader, RootCertStore, ServerConnection, StreamOwned, Writer};
 use rustls::server::Acceptor;
 use mco_http::runtime::Mutex;
 
 
 pub enum Connection{
-    Client(ClientConnection),
-    Server(ServerConnection)
+    Client(StreamOwned<ClientConnection,HttpStream>),
+    Server(StreamOwned<ServerConnection,HttpStream>)
 }
 
-impl Connection{
-    pub fn writer(&mut self) -> Writer<'_> {
+impl Read for Connection{
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match self {
-            Connection::Client(c) => {c.writer()}
-            Connection::Server(c) => {c.writer()}
-        }
-    }
-    pub fn reader(&mut self) -> Reader<'_> {
-        match self {
-            Connection::Client(c) => {c.reader()}
-            Connection::Server(c) => {c.reader()}
-        }
-    }
-    pub fn process_new_packets(&mut self) -> Result<IoState, rustls::Error> {
-        match self {
-            Connection::Client(c) => {c.process_new_packets()}
-            Connection::Server(c) => {c.process_new_packets()}
-        }
-    }
-    pub fn wants_write(&self) -> bool {
-        match self {
-            Connection::Client(c) => {c.wants_write()}
-            Connection::Server(c) => {c.wants_write()}
-        }
-    }
-
-    pub fn wants_read(&self) -> bool {
-        match self {
-            Connection::Client(c) => {c.wants_read()}
-            Connection::Server(c) => {c.wants_read()}
-        }
-    }
-    pub fn write_tls(&mut self, wr: &mut dyn io::Write) -> Result<usize, Error> {
-        match self {
-            Connection::Client(c) => {c.write_tls(wr)}
-            Connection::Server(c) => {c.write_tls(wr)}
-        }
-    }
-
-    pub fn read_tls(&mut self, wr: &mut dyn io::Read) -> Result<usize, Error> {
-        match self {
-            Connection::Client(c) => {c.read_tls(wr)}
-            Connection::Server(c) => {c.read_tls(wr)}
+            Connection::Client(c) => {
+                c.read(buf)
+            }
+            Connection::Server(c) => {
+                c.read(buf)
+            }
         }
     }
 }
+
+impl Write for Connection{
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match self {
+            Connection::Client(c) => {
+                c.write(buf)
+            }
+            Connection::Server(c) => {
+                c.write(buf)
+            }
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        match self {
+            Connection::Client(c) => {
+                c.flush()
+            }
+            Connection::Server(c) => {
+                c.flush()
+            }
+        }
+    }
+}
+
 
 
 pub struct TlsStream {
     sess: Box<Connection>,
-    underlying: HttpStream,
     tls_error: Option<rustls::Error>,
     io_error: Option<io::Error>,
 }
 
 impl TlsStream {
-    fn underlying_io(&mut self) {
-        if self.io_error.is_some() || self.tls_error.is_some() {
-            return;
-        }
-
-        while self.io_error.is_none() && self.sess.wants_write() {
-            if let Err(err) = self.sess.write_tls(&mut self.underlying) {
-                if err.kind() != io::ErrorKind::WouldBlock {
-                    self.io_error = Some(err);
-                }
-            }
-        }
-
-        if self.io_error.is_none() && self.sess.wants_read() {
-            if let Err(err) = self.sess.read_tls(&mut self.underlying) {
-                if err.kind() != io::ErrorKind::WouldBlock {
-                    self.io_error = Some(err);
-                }
-            }
-        }
-
-        if let Err(err) = self.sess.process_new_packets() {
-            self.tls_error = Some(err);
-        }
-    }
-
     fn promote_tls_error(&mut self) -> io::Result<()> {
         match self.tls_error.take() {
             Some(err) => {
@@ -112,30 +77,48 @@ impl TlsStream {
             None => return Ok(()),
         };
     }
+}
 
-    fn close(&mut self, how: Shutdown) -> io::Result<()> {
-        self.underlying.close(how)
-    }
-
+impl NetworkStream for TlsStream{
     fn peer_addr(&mut self) -> io::Result<SocketAddr> {
-        self.underlying.peer_addr()
+        match self.sess.as_mut() {
+            Connection::Client(c) => {
+                c.sock.peer_addr()
+            }
+            Connection::Server(c) => {
+                c.sock.peer_addr()
+            }
+        }
     }
 
     fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        self.underlying.set_read_timeout(dur)
+        match self.sess.as_ref() {
+            Connection::Client(c) => {
+                c.sock.set_read_timeout(dur)
+            }
+            Connection::Server(c) => {
+                c.sock.set_read_timeout(dur)
+            }
+        }
     }
 
     fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        self.underlying.set_write_timeout(dur)
+        match self.sess.as_ref() {
+            Connection::Client(c) => {
+                c.sock.set_write_timeout(dur)
+            }
+            Connection::Server(c) => {
+                c.sock.set_write_timeout(dur)
+            }
+        }
     }
 }
 
 impl io::Read for TlsStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         loop {
-            self.underlying_io();
             self.promote_tls_error()?;
-            match self.sess.as_mut().reader().read(buf) {
+            match self.sess.as_mut().read(buf) {
                 Ok(0) => continue,
                 Ok(n) => return Ok(n),
                 Err(e) => return Err(e),
@@ -146,16 +129,14 @@ impl io::Read for TlsStream {
 
 impl io::Write for TlsStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let len = self.sess.writer().write(buf)?;
+        let len = self.sess.write(buf)?;
         self.promote_tls_error()?;
-        self.underlying_io();
         Ok(len)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        let rc = self.sess.writer().flush();
+        let rc = self.sess.flush();
         self.promote_tls_error()?;
-        self.underlying_io();
         rc
     }
 }
@@ -244,12 +225,12 @@ impl mco_http::net::SslClient for TlsClient {
     type Stream = WrappedStream;
 
     fn wrap_client(&self, stream: HttpStream, host: &str) -> mco_http::Result<WrappedStream> {
+        let c=ClientConnection::new(
+            self.cfg.clone(),
+            host.to_string().try_into().unwrap(),
+        ).map_err(|e|mco_http::Error::Ssl(Box::new(e)))?;
         let tls = TlsStream {
-            sess: Box::new(Connection::Client(ClientConnection::new(
-                self.cfg.clone(),
-                host.to_string().try_into().unwrap(),
-            ).map_err(|e|mco_http::Error::Ssl(Box::new(e)))?)),
-            underlying: stream,
+            sess: Box::new(Connection::Client(StreamOwned::new(c,stream))),
             io_error: None,
             tls_error: None,
         };
@@ -287,19 +268,21 @@ impl mco_http::net::SslServer for TlsServer {
     type Stream = WrappedStream;
 
     fn wrap_server(&self, mut stream: HttpStream) -> mco_http::Result<WrappedStream> {
-        let mut acceptor = Acceptor::default();
-        let accepted = loop {
-            acceptor.read_tls(&mut stream).unwrap();
-            if let Some(accepted) = acceptor.accept().unwrap() {
-                break accepted;
-            }
-        };
-        let conn = accepted
-            .into_connection(self.cfg.clone())
-            .unwrap();
+        // let mut acceptor = Acceptor::default();
+        // let accepted = loop {
+        //     acceptor.read_tls(&mut stream).unwrap();
+        //     if let Some(accepted) = acceptor.accept().unwrap() {
+        //         break accepted;
+        //     }
+        // };
+        // let conn = accepted
+        //     .into_connection(self.cfg.clone())
+        //     .unwrap();
+        let  conn = ServerConnection::new(self.cfg.clone()).unwrap();
+        let  stream = rustls::StreamOwned::new(conn, stream);
+
         let tls = TlsStream {
-            sess: Box::new(Connection::Server(conn)),
-            underlying: stream,
+            sess: Box::new(Connection::Server(stream)),
             io_error: None,
             tls_error: None,
         };
