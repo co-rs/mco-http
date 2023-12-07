@@ -1,7 +1,7 @@
 use std::sync::{Arc, mpsc};
-use std::thread;
 
 use crate::net::NetworkListener;
+use crate::runtime;
 
 pub struct ListenerPool<A: NetworkListener> {
     acceptor: A
@@ -42,7 +42,7 @@ impl<A: NetworkListener + Send + 'static> ListenerPool<A> {
 fn spawn_with<A, F>(supervisor: mpsc::Sender<()>, work: Arc<F>, mut acceptor: A)
 where A: NetworkListener + Send + 'static,
       F: Fn(<A as NetworkListener>::Stream) + Send + Sync + 'static {
-    thread::spawn(move || {
+    runtime::spawn(move || {
         let _sentinel = Sentinel::new(supervisor, ());
 
         loop {

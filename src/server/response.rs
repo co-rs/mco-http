@@ -273,6 +273,8 @@ impl<'a, T: Any> Drop for Response<'a, T> {
 mod tests {
     use crate::header::Headers;
     use mock::MockStream;
+    use crate::mock::MockStream;
+    use crate::runtime;
     use super::Response;
 
     macro_rules! lines {
@@ -352,15 +354,14 @@ mod tests {
     #[cfg(not(all(windows, target_arch="x86", target_env="msvc")))]
     #[test]
     fn test_fresh_drop_panicing() {
-        use std::thread;
         use std::sync::{Arc, Mutex};
 
         use crate::status::StatusCode;
 
-        let stream = MockStream::new();
+        let stream = crate::mock::MockStream::new();
         let stream = Arc::new(Mutex::new(stream));
         let inner_stream = stream.clone();
-        let join_handle = thread::spawn(move || {
+        let join_handle = runtime::spawn(move || {
             let mut headers = Headers::new();
             let mut stream = inner_stream.lock().unwrap();
             let mut res = Response::new(&mut *stream, &mut headers);
