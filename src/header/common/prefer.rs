@@ -57,7 +57,7 @@ impl Header for Prefer {
     }
 
     fn parse_header(raw: &[Vec<u8>]) -> crate::Result<Prefer> {
-        let preferences = r#try!(from_comma_delimited(raw));
+        let preferences = from_comma_delimited(raw)?;
         if !preferences.is_empty() {
             Ok(Prefer(preferences))
         } else {
@@ -112,12 +112,12 @@ impl fmt::Display for Preference {
             Wait(secs) => return write!(f, "wait={}", secs),
 
             Extension(ref name, ref value, ref params) => {
-                r#try!(write!(f, "{}", name));
-                if value != "" { r#try!(write!(f, "={}", value)); }
+                write!(f, "{}", name)?;
+                if value != "" { write!(f, "={}", value)?; }
                 if params.len() > 0 {
                     for &(ref name, ref value) in params {
-                        r#try!(write!(f, "; {}", name));
-                        if value != "" { r#try!(write!(f, "={}", value)); }
+                        write!(f, "; {}", name)?;
+                        if value != "" { write!(f, "={}", value)?; }
                     }
                 }
                 return Ok(());

@@ -122,9 +122,9 @@ macro_rules! mock_connector (
         struct $name;
 
         impl $crate::net::NetworkConnector for $name {
-            type Stream = ::mock::MockStream;
+            type Stream = crate::mock::MockStream;
             fn connect(&self, host: &str, port: u16, scheme: &str)
-                    -> $crate::Result<::mock::MockStream> {
+                    -> $crate::Result<crate::mock::MockStream> {
                 use std::collections::HashMap;
                 debug!("MockStream::connect({:?}, {:?}, {:?})", host, port, scheme);
                 let mut map = HashMap::new();

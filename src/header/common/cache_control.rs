@@ -55,7 +55,7 @@ impl Header for CacheControl {
     }
 
     fn parse_header(raw: &[Vec<u8>]) -> crate::Result<CacheControl> {
-        let directives = r#try!(from_comma_delimited(raw));
+        let directives = from_comma_delimited(raw)?;
         if !directives.is_empty() {
             Ok(CacheControl(directives))
         } else {

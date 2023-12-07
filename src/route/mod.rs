@@ -165,8 +165,7 @@ impl Handler for Route {
 }
 
 impl Handler for Arc<Route> {
-    fn handle<'a, 'k>(&'a self, mut req: Request<'a, 'k>, mut res: Response<'a, Fresh>) {
-        // Route::handle(&self, req, res)
+    fn handle<'a, 'k>(&'a self,  req: Request<'a, 'k>,  res: Response<'a, Fresh>) {
         self.deref().handle(req,res)
     }
 }

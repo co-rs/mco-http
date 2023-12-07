@@ -1,4 +1,3 @@
-use crate::header::Headers;
 
 #[derive(Clone)]
 pub struct VecMap<K, V> {

@@ -133,7 +133,7 @@ impl Header for ContentDisposition {
                             Charset::Ext("UTF-8".to_owned()), None,
                             val.trim_matches('"').as_bytes().to_owned())
                     } else if UniCase(&*key) == UniCase("filename*") {
-                        let extended_value = r#try!(parse_extended_value(val));
+                        let extended_value = parse_extended_value(val)?;
                         DispositionParam::Filename(extended_value.charset, extended_value.language_tag, extended_value.value)
                     } else {
                         DispositionParam::Ext(key.to_owned(), val.trim_matches('"').to_owned())
@@ -156,9 +156,9 @@ impl HeaderFormat for ContentDisposition {
 impl fmt::Display for ContentDisposition {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.disposition {
-            DispositionType::Inline => r#try!(write!(f, "inline")),
-            DispositionType::Attachment => r#try!(write!(f, "attachment")),
-            DispositionType::Ext(ref s) => r#try!(write!(f, "{}", s)),
+            DispositionType::Inline => write!(f, "inline")?,
+            DispositionType::Attachment => write!(f, "attachment")?,
+            DispositionType::Ext(ref s) => write!(f, "{}", s)?,
         }
         for param in &self.parameters {
             match *param {
@@ -172,22 +172,22 @@ impl fmt::Display for ContentDisposition {
                         }
                     }
                     if use_simple_format {
-                        r#try!(write!(f, "; filename=\"{}\"",
+                        write!(f, "; filename=\"{}\"",
                                     match String::from_utf8(bytes.clone()) {
                                         Ok(s) => s,
                                         Err(_) => return Err(fmt::Error),
-                                    }));
+                                    })?;
                     } else {
-                        r#try!(write!(f, "; filename*={}'", charset));
+                        write!(f, "; filename*={}'", charset)?;
                         if let Some(ref lang) = *opt_lang {
-                            r#try!(write!(f, "{}", lang));
+                            write!(f, "{}", lang)?;
                         };
-                        r#try!(write!(f, "'"));
-                        r#try!(f.write_str(
-                            &percent_encoding::percent_encode(bytes, HTTP_VALUE).to_string()))
+                        write!(f, "'")?;
+                        f.write_str(
+                            &percent_encoding::percent_encode(bytes, HTTP_VALUE).to_string())?
                     }
                 },
-                DispositionParam::Ext(ref k, ref v) => r#try!(write!(f, "; {}=\"{}\"", k, v)),
+                DispositionParam::Ext(ref k, ref v) => write!(f, "; {}=\"{}\"", k, v)?,
             }
         }
         Ok(())

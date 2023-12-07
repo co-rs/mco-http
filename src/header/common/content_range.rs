@@ -122,20 +122,20 @@ impl FromStr for ContentRangeSpec {
     fn from_str(s: &str) -> crate::Result<Self> {
         let res = match split_in_two(s, ' ') {
             Some(("bytes", resp)) => {
-                let (range, instance_length) = r#try!(split_in_two(resp, '/').ok_or(crate::Error::Header));
+                let (range, instance_length) = split_in_two(resp, '/').ok_or(crate::Error::Header)?;
 
                 let instance_length = if instance_length == "*" {
                     None
                 } else {
-                    Some(r#try!(instance_length.parse().map_err(|_| crate::Error::Header)))
+                    Some(instance_length.parse().map_err(|_| crate::Error::Header)?)
                 };
 
                 let range = if range == "*" {
                     None
                 } else {
-                    let (first_byte, last_byte) = r#try!(split_in_two(range, '-').ok_or(crate::Error::Header));
-                    let first_byte = r#try!(first_byte.parse().map_err(|_| crate::Error::Header));
-                    let last_byte = r#try!(last_byte.parse().map_err(|_| crate::Error::Header));
+                    let (first_byte, last_byte) = split_in_two(range, '-').ok_or(crate::Error::Header)?;
+                    let first_byte = first_byte.parse().map_err(|_| crate::Error::Header)?;
+                    let last_byte = last_byte.parse().map_err(|_| crate::Error::Header)?;
                     if last_byte < first_byte {
                         return Err(crate::Error::Header);
                     }
@@ -163,16 +163,16 @@ impl Display for ContentRangeSpec {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ContentRangeSpec::Bytes { range, instance_length } => {
-                r#try!(f.write_str("bytes "));
+                f.write_str("bytes ")?;
                 match range {
                     Some((first_byte, last_byte)) => {
-                        r#try!(write!(f, "{}-{}", first_byte, last_byte));
+                        write!(f, "{}-{}", first_byte, last_byte)?;
                     },
                     None => {
-                        r#try!(f.write_str("*"));
+                        f.write_str("*")?;
                     }
                 };
-                r#try!(f.write_str("/"));
+                f.write_str("/")?;
                 if let Some(v) = instance_length {
                     write!(f, "{}", v)
                 } else {
@@ -180,8 +180,8 @@ impl Display for ContentRangeSpec {
                 }
             }
             ContentRangeSpec::Unregistered { ref unit, ref resp } => {
-                r#try!(f.write_str(&unit));
-                r#try!(f.write_str(" "));
+                f.write_str(&unit)?;
+                f.write_str(" ")?;
                 f.write_str(&resp)
             }
         }

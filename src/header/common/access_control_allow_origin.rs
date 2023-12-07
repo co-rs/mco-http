@@ -67,7 +67,7 @@ impl Header for AccessControlAllowOrigin {
         Ok(match &value[..] {
             b"*" => AccessControlAllowOrigin::Any,
             b"null" => AccessControlAllowOrigin::Null,
-            _ => AccessControlAllowOrigin::Value(r#try!(String::from_utf8(value.clone())))
+            _ => AccessControlAllowOrigin::Value(String::from_utf8(value.clone())?)
         })
     }
 }

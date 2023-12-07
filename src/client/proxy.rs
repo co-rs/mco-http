@@ -32,7 +32,6 @@ where C: NetworkConnector + Send + Sync + 'static,
     type Stream = Proxied<C::Stream, S::Stream>;
 
     fn connect(&self, host: &str, port: u16, scheme: &str) -> crate::Result<Self::Stream> {
-        use httparse;
         use std::io::{Read, Write};
         use crate::version::HttpVersion::Http11;
         trace!("{:?} proxy for '{}://{}:{}'", self.proxy, scheme, host, port);
@@ -42,18 +41,18 @@ where C: NetworkConnector + Send + Sync + 'static,
                     .map(Proxied::Normal)
             },
             "https" => {
-                let mut stream = r#try!(self.connector.connect(self.proxy.1.as_ref(), self.proxy.2, self.proxy.0.as_ref()));
+                let mut stream = self.connector.connect(self.proxy.1.as_ref(), self.proxy.2, self.proxy.0.as_ref())?;
                 trace!("{:?} CONNECT {}:{}", self.proxy, host, port);
-                r#try!(write!(&mut stream, "{method} {host}:{port} {version}\r\nHost: {host}:{port}\r\n\r\n",
-                            method=Method::Connect, host=host, port=port, version=Http11));
-                r#try!(stream.flush());
+                write!(&mut stream, "{method} {host}:{port} {version}\r\nHost: {host}:{port}\r\n\r\n",
+                            method=Method::Connect, host=host, port=port, version=Http11)?;
+                stream.flush()?;
                 let mut buf = [0; 1024];
                 let mut n = 0;
                 while n < buf.len() {
-                    n += r#try!(stream.read(&mut buf[n..]));
+                    n += stream.read(&mut buf[n..])?;
                     let mut headers = [httparse::EMPTY_HEADER; 10];
                     let mut res = httparse::Response::new(&mut headers);
-                    if r#try!(res.parse(&buf[..n])).is_complete() {
+                    if res.parse(&buf[..n])?.is_complete() {
                         let code = res.code.expect("complete parsing lost code");
                         if code >= 200 && code < 300 {
                             trace!("CONNECT success = {:?}", code);

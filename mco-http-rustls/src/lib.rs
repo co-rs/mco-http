@@ -7,7 +7,7 @@ extern crate rustls_pki_types;
 use mco_http::net::{HttpStream, NetworkStream};
 use std::convert::{TryFrom, TryInto};
 
-use std::{fs, io};
+use std::{io};
 use std::fmt::{Debug, Display, Formatter, Pointer};
 use std::io::{BufReader, Cursor, Error, ErrorKind};
 use std::net::{Shutdown, SocketAddr};

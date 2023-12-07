@@ -54,7 +54,7 @@ impl Header for PreferenceApplied {
     }
 
     fn parse_header(raw: &[Vec<u8>]) -> crate::Result<PreferenceApplied> {
-        let preferences = r#try!(from_comma_delimited(raw));
+        let preferences = from_comma_delimited(raw)?;
         if !preferences.is_empty() {
             Ok(PreferenceApplied(preferences))
         } else {
@@ -97,7 +97,7 @@ mod tests {
                 "foo".to_owned(),
                 "bar".to_owned(),
                 vec![("bar".to_owned(), "foo".to_owned()), ("buz".to_owned(), "".to_owned())]
-            )]) as &(HeaderFormat + Send + Sync)),
+            )]) as &(dyn HeaderFormat + Send + Sync)),
             "foo=bar".to_owned()
         );
     }

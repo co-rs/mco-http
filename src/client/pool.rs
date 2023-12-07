@@ -163,7 +163,7 @@ impl<C: NetworkConnector<Stream=S>, S: NetworkStream + Send> NetworkConnector fo
             None => PooledStreamInner {
                 key: key.clone(),
                 idle: None,
-                stream: r#try!(self.connector.connect(host, port, scheme)),
+                stream: self.connector.connect(host, port, scheme)?,
                 previous_response_expected_no_content: false,
             }
 
@@ -289,7 +289,7 @@ impl<S: NetworkStream> Read for PooledStream<S> {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let inner = self.inner.as_mut().unwrap();
-        let n = r#try!(inner.stream.read(buf));
+        let n = inner.stream.read(buf)?;
         if n == 0 {
             // if the wrapped stream returns EOF (Ok(0)), that means the
             // server has closed the stream. we must be sure this stream
@@ -397,7 +397,7 @@ mod tests {
     use std::net::Shutdown;
     use std::io::Read;
     use std::time::Duration;
-    use mock::{MockConnector};
+    use crate::mock::{MockConnector};
     use crate::net::{NetworkConnector, NetworkStream};
 
     use super::{Pool, key};

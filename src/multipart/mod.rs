@@ -10,8 +10,6 @@ pub mod mult_part;
 pub mod byte_buf;
 
 #[cfg(test)]
-mod mock;
-#[cfg(test)]
 mod tests;
 
 pub use error::Error;

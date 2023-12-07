@@ -110,7 +110,7 @@ mod tests {
     use crate::header::TransferEncoding;
     use crate::header::Encoding;
     use crate::http::HttpMessage;
-    use mock::MockStream;
+    use crate::mock::MockStream;
     use crate::status;
     use crate::version;
     use crate::http::h1::Http11Message;
@@ -119,14 +119,14 @@ mod tests {
 
     fn read_to_string(mut r: Response) -> io::Result<String> {
         let mut s = String::new();
-        r#try!(r.read_to_string(&mut s));
+        r.read_to_string(&mut s)?;
         Ok(s)
     }
 
 
     #[test]
     fn test_into_inner() {
-        let message: Box<HttpMessage> = Box::new(
+        let message: Box<dyn HttpMessage> = Box::new(
             Http11Message::with_stream(Box::new(MockStream::new())));
         let message = message.downcast::<Http11Message>().ok().unwrap();
         let b = message.into_inner().downcast::<MockStream>().ok().unwrap();

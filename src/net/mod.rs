@@ -242,7 +242,7 @@ impl From<TcpListener> for HttpListener {
 impl HttpListener {
     /// Start listening to an address over HTTP.
     pub fn new<To: ToSocketAddrs>(addr: To) -> crate::Result<HttpListener> {
-        Ok(HttpListener::from(r#try!(TcpListener::bind(addr))))
+        Ok(HttpListener::from(TcpListener::bind(addr)?))
     }
 }
 
@@ -251,9 +251,9 @@ impl NetworkListener for HttpListener {
 
     #[inline]
     fn accept(&mut self) -> crate::Result<HttpStream> {
-        let stream = HttpStream(r#try!(self.listener.accept()).0);
-        r#try!(stream.set_read_timeout(self.read_timeout));
-        r#try!(stream.set_write_timeout(self.write_timeout));
+        let stream = HttpStream(self.listener.accept()?.0);
+        stream.set_read_timeout(self.read_timeout)?;
+        stream.set_write_timeout(self.write_timeout)?;
         Ok(stream)
     }
 
@@ -397,16 +397,16 @@ impl NetworkConnector for HttpConnector {
 
     fn connect(&self, host: &str, port: u16, scheme: &str) -> crate::Result<HttpStream> {
         let addr = &(host, port);
-        Ok(r#try!(match scheme {
+        Ok(match scheme {
             "http" => {
                 debug!("http scheme");
-                Ok(HttpStream(r#try!(TcpStream::connect(addr))))
+                Ok(HttpStream(TcpStream::connect(addr)?))
             },
             _ => {
                 Err(io::Error::new(io::ErrorKind::InvalidInput,
                                 "Invalid scheme for Http"))
             }
-        }))
+        }?)
     }
 }
 
@@ -426,8 +426,8 @@ impl NetworkConnector for HttpConnector {
 ///
 /// ```norun
 /// Client::with_connector(|addr: &str, port: u16, scheme: &str| {
-///     let b = r#try!(TcpBuilder::new_v4());
-///     r#try!(b.bind("127.0.0.1:0"));
+///     let b = TcpBuilder::new_v4());
+///     b.bind("127.0.0.1:0"));
 ///     b.connect(&(addr, port))
 /// });
 /// ```
@@ -435,7 +435,7 @@ impl<F> NetworkConnector for F where F: Fn(&str, u16, &str) -> io::Result<TcpStr
     type Stream = HttpStream;
 
     fn connect(&self, host: &str, port: u16, scheme: &str) -> crate::Result<HttpStream> {
-        Ok(HttpStream(r#try!((*self)(host, port, scheme))))
+        Ok(HttpStream((*self)(host, port, scheme)?))
     }
 }
 
@@ -598,7 +598,7 @@ impl<S: SslClient, C: NetworkConnector<Stream=HttpStream>> NetworkConnector for 
     type Stream = HttpsStream<S::Stream>;
 
     fn connect(&self, host: &str, port: u16, scheme: &str) -> crate::Result<Self::Stream> {
-        let stream = r#try!(self.connector.connect(host, port, "http"));
+        let stream = self.connector.connect(host, port, "http")?;
         if scheme == "https" {
             debug!("https scheme");
             self.ssl.wrap_client(stream, host).map(HttpsStream::Https)
@@ -614,13 +614,13 @@ pub type DefaultConnector = HttpConnector;
 
 #[cfg(test)]
 mod tests {
-    use mock::MockStream;
+    use crate::mock::MockStream;
     use super::{NetworkStream};
 
     #[test]
     fn test_downcast_box_stream() {
         // FIXME: Use Type ascription
-        let stream: Box<NetworkStream + Send> = Box::new(MockStream::new());
+        let stream: Box<dyn NetworkStream + Send> = Box::new(MockStream::new());
 
         let mock = stream.downcast::<MockStream>().ok().unwrap();
         assert_eq!(mock, Box::new(MockStream::new()));
@@ -629,7 +629,7 @@ mod tests {
     #[test]
     fn test_downcast_unchecked_box_stream() {
         // FIXME: Use Type ascription
-        let stream: Box<NetworkStream + Send> = Box::new(MockStream::new());
+        let stream: Box<dyn NetworkStream + Send> = Box::new(MockStream::new());
 
         let mock = unsafe { stream.downcast_unchecked::<MockStream>() };
         assert_eq!(mock, Box::new(MockStream::new()));

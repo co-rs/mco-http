@@ -82,7 +82,7 @@ impl<'a, W: Any> Response<'a, W> {
 
     fn write_head(&mut self) -> io::Result<Body> {
         debug!("writing head: {:?} {:?}", self.version, self.status);
-        r#try!(write!(&mut self.body, "{} {}\r\n", self.version, self.status));
+        write!(&mut self.body, "{} {}\r\n", self.version, self.status)?;
 
         if !self.headers.has::<header::Date>() {
             self.headers.set(header::Date(header::HttpDate(now_utc())));
@@ -117,8 +117,8 @@ impl<'a, W: Any> Response<'a, W> {
 
 
         debug!("headers [\n{:?}]", self.headers);
-        r#try!(write!(&mut self.body, "{}", self.headers));
-        r#try!(write!(&mut self.body, "{}", LINE_ENDING));
+        write!(&mut self.body, "{}", self.headers)?;
+        write!(&mut self.body, "{}", LINE_ENDING)?;
 
         Ok(body_type)
     }
@@ -168,15 +168,15 @@ impl<'a> Response<'a, Fresh> {
     #[inline]
     pub fn send(self, body: &[u8]) -> io::Result<()> {
         self.headers.set(header::ContentLength(body.len() as u64));
-        let mut stream = r#try!(self.start());
-        r#try!(stream.write_all(body));
+        let mut stream = self.start()?;
+        stream.write_all(body)?;
         stream.end()
     }
 
     /// Consume this Response<Fresh>, writing the Headers and Status and
     /// creating a Response<Streaming>
     pub fn start(mut self) -> io::Result<Response<'a, Streaming>> {
-        let body_type = r#try!(self.write_head());
+        let body_type = self.write_head()?;
         let (version, body, status, headers) = self.deconstruct();
         let stream = match body_type {
             Body::Chunked => ChunkedWriter(body.into_inner()),
@@ -209,7 +209,7 @@ impl<'a> Response<'a, Streaming> {
     pub fn end(self) -> io::Result<()> {
         trace!("ending");
         let (_, body, _, _) = self.deconstruct();
-        r#try!(body.end());
+        body.end()?;
         Ok(())
     }
 }
@@ -272,7 +272,6 @@ impl<'a, T: Any> Drop for Response<'a, T> {
 #[cfg(test)]
 mod tests {
     use crate::header::Headers;
-    use mock::MockStream;
     use crate::mock::MockStream;
     use crate::runtime;
     use super::Response;

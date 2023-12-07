@@ -136,6 +136,8 @@ pub mod response;
 
 pub mod extensions;
 
+pub use extensions::*;
+
 mod listener;
 
 /// A server can listen on a TCP socket.
@@ -235,7 +237,7 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
 
 fn handle<H, L>(mut server: Server<L>, handler: H, threads: usize) -> crate::Result<Listening>
 where H: Handler + 'static, L: NetworkListener + Send + 'static {
-    let socket = r#try!(server.listener.local_addr());
+    let socket = server.listener.local_addr()?;
 
     debug!("threads = {:?}", threads);
     let pool = ListenerPool::new(server.listener);
@@ -439,7 +441,7 @@ impl<F> Handler for F where F: Fn(Request, Response<Fresh>), F: Sync + Send {
 mod tests {
     use crate::header::Headers;
     use crate::method::Method;
-    use mock::MockStream;
+    use crate::mock::MockStream;
     use crate::status::StatusCode;
     use crate::uri::RequestUri;
 

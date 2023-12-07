@@ -243,7 +243,7 @@ impl HttpMessage for Http11Message {
     }
 
     fn get_incoming(&mut self) -> crate::Result<ResponseHead> {
-        r#try!(self.flush_outgoing());
+        self.flush_outgoing()?;
         let method = self.method.take().unwrap_or(Method::Get);
         let mut res = Err(From::from(
                         io::Error::new(io::ErrorKind::Other,
@@ -357,7 +357,7 @@ impl HttpMessage for Http11Message {
 
     #[inline]
     fn close_connection(&mut self) -> crate::Result<()> {
-        r#try!(self.get_mut().close(Shutdown::Both));
+        self.get_mut().close(Shutdown::Both)?;
         Ok(())
     }
 
@@ -441,7 +441,7 @@ pub struct Http11Protocol {
 
 impl Protocol for Http11Protocol {
     fn new_message(&self, host: &str, port: u16, scheme: &str) -> crate::Result<Box<dyn HttpMessage>> {
-        let stream = r#try!(self.connector.connect(host, port, scheme)).into();
+        let stream = self.connector.connect(host, port, scheme)?.into();
 
         Ok(Box::new(Http11Message::with_stream(stream)))
     }
@@ -467,7 +467,7 @@ impl<C: NetworkConnector<Stream=S> + Send + Sync, S: NetworkStream + Send>
     #[inline]
     fn connect(&self, host: &str, port: u16, scheme: &str)
         -> crate::Result<Box<dyn NetworkStream + Send>> {
-        Ok(r#try!(self.0.connect(host, port, scheme)).into())
+        Ok(self.0.connect(host, port, scheme)?.into())
     }
 }
 
@@ -478,7 +478,7 @@ impl NetworkConnector for Connector {
     #[inline]
     fn connect(&self, host: &str, port: u16, scheme: &str)
         -> crate::Result<Box<dyn NetworkStream + Send>> {
-        Ok(r#try!(self.0.connect(host, port, scheme)).into())
+        Ok(self.0.connect(host, port, scheme)?.into())
     }
 }
 
@@ -570,7 +570,7 @@ impl<R: Read> Read for HttpReader<R> {
                     Ok(0)
                 } else {
                     let to_read = min(*remaining as usize, buf.len());
-                    let num = r#try!(body.read(&mut buf[..to_read])) as u64;
+                    let num = body.read(&mut buf[..to_read])? as u64;
                     trace!("Sized read: {}", num);
                     if num > *remaining {
                         *remaining = 0;
@@ -586,13 +586,13 @@ impl<R: Read> Read for HttpReader<R> {
                 let mut rem = match *opt_remaining {
                     Some(ref rem) => *rem,
                     // None means we don't know the size of the next chunk
-                    None => r#try!(read_chunk_size(body))
+                    None => read_chunk_size(body)?
                 };
                 trace!("Chunked read, remaining={:?}", rem);
 
                 if rem == 0 {
                     if opt_remaining.is_none() {
-                        r#try!(eat(body, LINE_ENDING.as_bytes()));
+                        eat(body, LINE_ENDING.as_bytes())?;
                     }
 
                     *opt_remaining = Some(0);
@@ -606,7 +606,7 @@ impl<R: Read> Read for HttpReader<R> {
                 }
 
                 let to_read = min(rem as usize, buf.len());
-                let count = r#try!(body.read(&mut buf[..to_read])) as u64;
+                let count = body.read(&mut buf[..to_read])? as u64;
 
                 if count == 0 {
                     *opt_remaining = Some(0);
@@ -617,7 +617,7 @@ impl<R: Read> Read for HttpReader<R> {
                 *opt_remaining = if rem > 0 {
                     Some(rem)
                 } else {
-                    r#try!(eat(body, LINE_ENDING.as_bytes()));
+                    eat(body, LINE_ENDING.as_bytes())?;
                     None
                 };
                 Ok(count as usize)
@@ -635,7 +635,7 @@ impl<R: Read> Read for HttpReader<R> {
 fn eat<R: Read>(rdr: &mut R, bytes: &[u8]) -> io::Result<()> {
     let mut buf = [0];
     for &b in bytes.iter() {
-        match r#try!(rdr.read(&mut buf)) {
+        match rdr.read(&mut buf)? {
             1 if buf[0] == b => (),
             _ => return Err(io::Error::new(io::ErrorKind::InvalidInput,
                                           "Invalid characters found")),
@@ -649,7 +649,7 @@ fn read_chunk_size<R: Read>(rdr: &mut R) -> io::Result<u64> {
     macro_rules! byte (
         ($rdr:ident) => ({
             let mut buf = [0];
-            match r#try!($rdr.read(&mut buf)) {
+            match $rdr.read(&mut buf)? {
                 1 => buf[0],
                 _ => return Err(io::Error::new(io::ErrorKind::InvalidInput,
                                                   "Invalid chunk size line")),
@@ -783,7 +783,7 @@ impl<W: Write> HttpWriter<W> {
     #[inline]
     pub fn end(mut self) -> Result<W, EndError<W>> {
         fn inner<W: Write>(w: &mut W) -> io::Result<()> {
-            r#try!(w.write(&[]));
+            w.write(&[])?;
             w.flush()
         }
 
@@ -811,20 +811,20 @@ impl<W: Write> Write for HttpWriter<W> {
             ChunkedWriter(ref mut w) => {
                 let chunk_size = msg.len();
                 trace!("chunked write, size = {:?}", chunk_size);
-                r#try!(write!(w, "{:X}{}", chunk_size, LINE_ENDING));
-                r#try!(w.write_all(msg));
-                r#try!(w.write_all(LINE_ENDING.as_bytes()));
+                write!(w, "{:X}{}", chunk_size, LINE_ENDING)?;
+                w.write_all(msg)?;
+                w.write_all(LINE_ENDING.as_bytes())?;
                 Ok(msg.len())
             },
             SizedWriter(ref mut w, ref mut remaining) => {
                 let len = msg.len() as u64;
                 if len > *remaining {
                     let len = *remaining;
-                    r#try!(w.write_all(&msg[..len as usize]));
+                    w.write_all(&msg[..len as usize])?;
                     *remaining = 0;
                     Ok(len as usize)
                 } else {
-                    r#try!(w.write_all(msg));
+                    w.write_all(msg)?;
                     *remaining -= len;
                     Ok(len as usize)
                 }
@@ -876,14 +876,14 @@ pub fn parse_response<R: Read>(buf: &mut BufReader<R>) -> crate::Result<Incoming
 
 fn parse<R: Read, T: TryParse<Subject=I>, I>(rdr: &mut BufReader<R>) -> crate::Result<Incoming<I>> {
     loop {
-        match r#try!(try_parse::<R, T, I>(rdr)) {
+        match try_parse::<R, T, I>(rdr)? {
             httparse::Status::Complete((inc, len)) => {
                 rdr.consume(len);
                 return Ok(inc);
             },
             _partial => ()
         }
-        let n = r#try!(rdr.read_into_buf());
+        let n = rdr.read_into_buf()?;
         if n == 0 {
             let buffered = rdr.get_buf().len();
             if buffered == crate::buffer::MAX_BUFFER_SIZE {
@@ -924,16 +924,15 @@ impl<'a> TryParse for httparse::Request<'a, 'a> {
             TryParseResult<(Method, RequestUri)> {
         trace!("Request.try_parse([Header; {}], [u8; {}])", headers.len(), buf.len());
         let mut req = httparse::Request::new(headers);
-        Ok(match r#try!(req.parse(buf)) {
+        Ok(match req.parse(buf)? {
             httparse::Status::Complete(len) => {
                 trace!("Request.try_parse Complete({})", len);
                 httparse::Status::Complete((Incoming {
                     version: if req.version.unwrap() == 1 { Http11 } else { Http10 },
                     subject: (
-                        r#try!(req.method.unwrap().parse()),
-                        r#try!(req.path.unwrap().parse())
-                    ),
-                    headers: r#try!(Headers::from_raw(req.headers))
+                        req.method.unwrap().parse()?,
+                        req.path.unwrap().parse()?),
+                    headers: Headers::from_raw(req.headers)?
                 }, len))
             },
             httparse::Status::Partial => httparse::Status::Partial
@@ -948,7 +947,7 @@ impl<'a> TryParse for httparse::Response<'a, 'a> {
             TryParseResult<RawStatus> {
         trace!("Response.try_parse([Header; {}], [u8; {}])", headers.len(), buf.len());
         let mut res = httparse::Response::new(headers);
-        Ok(match r#try!(res.parse(buf)) {
+        Ok(match res.parse(buf)? {
             httparse::Status::Complete(len) => {
                 trace!("Response.try_parse Complete({})", len);
                 let code = res.code.unwrap();
@@ -959,7 +958,7 @@ impl<'a> TryParse for httparse::Response<'a, 'a> {
                 httparse::Status::Complete((Incoming {
                     version: if res.version.unwrap() == 1 { Http11 } else { Http10 },
                     subject: RawStatus(code, reason),
-                    headers: r#try!(Headers::from_raw(res.headers))
+                    headers: Headers::from_raw(res.headers)?
                 }, len))
             },
             httparse::Status::Partial => httparse::Status::Partial
@@ -992,7 +991,7 @@ mod tests {
 
 
     use crate::buffer::BufReader;
-    use mock::MockStream;
+    use crate::mock::MockStream;
     use crate::http::HttpMessage;
 
     use super::{read_chunk_size, parse_request, parse_response, Http11Message};

@@ -80,7 +80,7 @@ impl<S: Scheme + Any> Header for Authorization<S> where <S as FromStr>::Err: 'st
         if raw.len() != 1 {
             return Err(crate::Error::Header);
         }
-        let header = r#try!(from_utf8(unsafe { &raw.get_unchecked(0)[..] }));
+        let header = from_utf8(unsafe { &raw.get_unchecked(0)[..] })?;
         if let Some(scheme) = <S as Scheme>::scheme() {
             if header.starts_with(scheme) && header.len() > scheme.len() + 1 {
                 match header[scheme.len() + 1..].parse::<S>().map(Authorization) {
@@ -102,7 +102,7 @@ impl<S: Scheme + Any> Header for Authorization<S> where <S as FromStr>::Err: 'st
 impl<S: Scheme + Any> HeaderFormat for Authorization<S> where <S as FromStr>::Err: 'static {
     fn fmt_header(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(scheme) = <S as Scheme>::scheme() {
-            r#try!(write!(f, "{} ", scheme))
+            write!(f, "{} ", scheme)?
         };
         self.0.fmt_scheme(f)
     }
