@@ -3,6 +3,7 @@
 //#![cfg_attr(test, deny(warnings))]
 #![cfg_attr(all(test, feature = "nightly"), feature(test))]
 
+#![allow(unused_macros)]
 //! # Hyper
 //!
 //! Hyper is a fast, modern HTTP implementation written in and for Rust. It
