@@ -12,10 +12,10 @@ use std::fmt::{Debug, Display, Formatter};
 use std::io::{BufReader, Cursor, Error};
 use std::net::{Shutdown, SocketAddr};
 use std::sync::Arc;
-use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 
 use rustls::{ClientConnection, IoState, Reader, RootCertStore, ServerConnection, Writer};
+use mco_http::runtime::Mutex;
 
 
 pub enum Connection{
@@ -165,7 +165,7 @@ impl io::Write for TlsStream {
 pub struct WrappedStream(Arc<Mutex<TlsStream>>);
 
 impl WrappedStream {
-    fn lock(&self) -> MutexGuard<TlsStream> {
+    fn lock(&self) -> mco_http::runtime::MutexGuard<TlsStream> {
         self.0.lock().unwrap_or_else(|e| e.into_inner())
     }
 }

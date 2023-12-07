@@ -14,6 +14,10 @@ pub type Sender<T> = mco::std::sync::channel::Sender<T>;
 pub type JoinHandle<T> = mco::coroutine::JoinHandle<T>;
 #[cfg(feature = "mco")]
 pub type Mutex<T> = mco::std::sync::Mutex<T>;
+
+#[cfg(feature = "mco")]
+pub type MutexGuard<'a,T> = mco::std::sync::MutexGuard<'a,T>;
+
 #[cfg(feature = "mco")]
 pub type SyncBtreeMap<K,V> = mco::std::sync::SyncBtreeMap<K,V>;
 #[cfg(feature = "mco")]
@@ -51,6 +55,8 @@ pub type Sender<T> = crossbeam::channel::Sender<T>;
 pub type JoinHandle<T> = std::thread::JoinHandle<T>;
 #[cfg(not(feature = "mco"))]
 pub type Mutex<T> = std::sync::Mutex<T>;
+#[cfg(not(feature = "mco"))]
+pub type MutexGuard<'a,T> = std::sync::MutexGuard<'a,T>;
 #[cfg(not(feature = "mco"))]
 pub type SyncBtreeMap<K,V> = dark_std::sync::SyncBtreeMap<K,V>;
 #[cfg(not(feature = "mco"))]
