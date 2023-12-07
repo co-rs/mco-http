@@ -28,8 +28,8 @@ rustls = "0.20"
 rustls-pemfile = "0.2.1"
 
 [[bin]]
-name = "client"
-path = "src/client.rs"
+name = "http_client"
+path = "src/http_client.rs"
 [[bin]]
 name = "http"
 path = "src/http.rs"
