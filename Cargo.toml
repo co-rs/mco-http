@@ -4,7 +4,7 @@ members = [
 , "mco-http-rustls"]
 [package]
 name = "mco-http"
-version = "0.1.27"
+version = "0.1.28"
 edition = "2021"
 description = "A modern HTTP library."
 readme = "README.md"
