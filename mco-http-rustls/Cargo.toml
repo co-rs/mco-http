@@ -1,18 +1,23 @@
 [package]
 name = "mco-http-rustls"
 version = "0.1.0"
-authors = ["Joseph Birr-Pixton <jpixton@gmail.com>"]
+authors = ["Joseph Birr-Pixton <jpixton@gmail.com>","zhuxiujia <zhuxiujia@qq.com>"]
 license = "Apache-2.0/ISC/MIT"
 readme = "README.md"
 description = "Rustls+hyper integration for pure rust HTTPS"
 homepage = "https://github.com/ctz/hyper-rustls"
 repository = "https://github.com/ctz/hyper-rustls"
 
+[features]
+default = ["runtime_mco"]
+runtime_thread = ["mco-http/runtime_thread"]
+runtime_mco = ["mco-http/runtime_mco"]
+
 [dependencies]
 webpki-roots = "0.26.0"
 rustls = { version = "0.22",default-features = false, features = ["tls12","ring"] }
 rustls-pemfile="2.0"
-mco-http ={version = "0.1",path="../"}
+mco-http ={version = "0.1",path="../",default-features = false,features = [], optional = true}
 
 [dev-dependencies]
 log = "0.4"
