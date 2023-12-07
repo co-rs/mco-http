@@ -11,7 +11,7 @@ use mco_http::header::Connection;
 fn main() {
     let _=fast_log::init(Config::new().level(log::LevelFilter::Info).console());
 
-    let mut url = "http://www.baidu.com".to_string();
+    let mut url = "http://127.0.0.1:3000".to_string();
 
     let client = Client::new();
 

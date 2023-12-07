@@ -27,5 +27,5 @@ fn main() {
         .handle(|req:Request,resp:Response|{
             resp.send(b"Hello World!").unwrap();
         });
-    println!("Listening on http://127.0.0.1:3000");
+    println!("Listening on https://127.0.0.1:3000");
 }
