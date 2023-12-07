@@ -135,7 +135,7 @@ impl io::Read for TlsStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         loop {
             self.underlying_io();
-            try!(self.promote_tls_error());
+            self.promote_tls_error()?;
             match self.sess.as_mut().reader().read(buf) {
                 Ok(0) => continue,
                 Ok(n) => return Ok(n),
@@ -147,15 +147,15 @@ impl io::Read for TlsStream {
 
 impl io::Write for TlsStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let len = try!(self.sess.writer().write(buf));
-        try!(self.promote_tls_error());
+        let len = self.sess.writer().write(buf)?;
+        self.promote_tls_error()?;
         self.underlying_io();
         Ok(len)
     }
 
     fn flush(&mut self) -> io::Result<()> {
         let rc = self.sess.writer().flush();
-        try!(self.promote_tls_error());
+        self.promote_tls_error()?;
         self.underlying_io();
         rc
     }
