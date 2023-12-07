@@ -2,20 +2,77 @@ extern crate mco_http;
 extern crate rustls;
 extern crate vecio;
 extern crate webpki_roots;
+extern crate rustls_pki_types;
 
 use mco_http::net::{HttpStream, NetworkStream};
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 
-use std::io;
+use std::{fs, io};
+use std::fmt::{Debug, Display, Formatter, Pointer};
+use std::io::{BufReader, Cursor, Error, ErrorKind};
 use std::net::{Shutdown, SocketAddr};
 use std::sync::Arc;
 use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 
-use rustls::{ClientConnection, RootCertStore};
+use rustls::{ClientConnection, IoState, Reader, RootCertStore, ServerConnection, Writer};
+
+
+pub enum Connection{
+    Client(ClientConnection),
+    Server(ServerConnection)
+}
+
+impl Connection{
+    pub fn writer(&mut self) -> Writer<'_> {
+        match self {
+            Connection::Client(c) => {c.writer()}
+            Connection::Server(c) => {c.writer()}
+        }
+    }
+    pub fn reader(&mut self) -> Reader<'_> {
+        match self {
+            Connection::Client(c) => {c.reader()}
+            Connection::Server(c) => {c.reader()}
+        }
+    }
+    pub fn process_new_packets(&mut self) -> Result<IoState, rustls::Error> {
+        match self {
+            Connection::Client(c) => {c.process_new_packets()}
+            Connection::Server(c) => {c.process_new_packets()}
+        }
+    }
+    pub fn wants_write(&self) -> bool {
+        match self {
+            Connection::Client(c) => {c.wants_write()}
+            Connection::Server(c) => {c.wants_write()}
+        }
+    }
+
+    pub fn wants_read(&self) -> bool {
+        match self {
+            Connection::Client(c) => {c.wants_read()}
+            Connection::Server(c) => {c.wants_read()}
+        }
+    }
+    pub fn write_tls(&mut self, wr: &mut dyn io::Write) -> Result<usize, Error> {
+        match self {
+            Connection::Client(c) => {c.write_tls(wr)}
+            Connection::Server(c) => {c.write_tls(wr)}
+        }
+    }
+
+    pub fn read_tls(&mut self, wr: &mut dyn io::Read) -> Result<usize, Error> {
+        match self {
+            Connection::Client(c) => {c.read_tls(wr)}
+            Connection::Server(c) => {c.read_tls(wr)}
+        }
+    }
+}
+
 
 pub struct TlsStream {
-    sess: Box<ClientConnection>,
+    sess: Box<Connection>,
     underlying: HttpStream,
     tls_error: Option<rustls::Error>,
     io_error: Option<io::Error>,
@@ -79,7 +136,7 @@ impl io::Read for TlsStream {
         loop {
             self.underlying_io();
             try!(self.promote_tls_error());
-            match self.sess.read(buf) {
+            match self.sess.as_mut().reader().read(buf) {
                 Ok(0) => continue,
                 Ok(n) => return Ok(n),
                 Err(e) => return Err(e),
@@ -90,14 +147,14 @@ impl io::Read for TlsStream {
 
 impl io::Write for TlsStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let len = try!(self.sess.write(buf));
+        let len = try!(self.sess.writer().write(buf));
         try!(self.promote_tls_error());
         self.underlying_io();
         Ok(len)
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        let rc = self.sess.flush();
+        let rc = self.sess.writer().flush();
         try!(self.promote_tls_error());
         self.underlying_io();
         rc
@@ -168,15 +225,31 @@ impl TlsClient {
     }
 }
 
+
+#[derive(Debug)]
+pub struct DNSError{
+  pub inner:String
+}
+
+impl Display for DNSError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.inner, f)
+    }
+}
+
+impl std::error::Error for DNSError{
+
+}
+
 impl mco_http::net::SslClient for TlsClient {
     type Stream = WrappedStream;
 
     fn wrap_client(&self, stream: HttpStream, host: &str) -> mco_http::Result<WrappedStream> {
         let tls = TlsStream {
-            sess: Box::new(rustls::ClientConnection::new(
+            sess: Box::new(Connection::Client(ClientConnection::new(
                 self.cfg.clone(),
-                host.try_into().unwrap(),
-            )?),
+                host.to_string().try_into().unwrap(),
+            ).map_err(|e|mco_http::Error::Ssl(Box::new(e)))?)),
             underlying: stream,
             io_error: None,
             tls_error: None,
@@ -185,6 +258,7 @@ impl mco_http::net::SslClient for TlsClient {
         Ok(WrappedStream(Arc::new(Mutex::new(tls))))
     }
 }
+
 #[derive(Clone)]
 pub struct TlsServer {
     pub cfg: Arc<rustls::ServerConfig>,
@@ -192,14 +266,17 @@ pub struct TlsServer {
 
 impl TlsServer {
     pub fn new(certs: Vec<Vec<u8>>, key: Vec<u8>) -> TlsServer {
-        let mut config = rustls::ServerConfig::builder()
-            .with_safe_defaults()
-            .with_no_client_auth();
-
-        let certs = rustls_pemfile::certs(&mut certs.as_slice()).unwrap();
-        let key = rustls_pemfile::rsa_private_keys(&mut key.as_slice()).unwrap();
-
-        config.with_single_cert(certs, key[0].clone()).unwrap();
+        let flattened_data: Vec<u8> = certs.into_iter().flatten().collect();
+        let mut reader = BufReader::new(Cursor::new(flattened_data));
+        let mut keys = BufReader::new(Cursor::new(key));
+        let certs = rustls_pemfile::certs(&mut reader).map(|result| result.unwrap())
+            .collect();
+        let mut keys = rustls_pemfile::pkcs8_private_keys(&mut keys)
+            .map(|result| result.unwrap())
+            .collect::<Vec<_>>();
+        let config = rustls::ServerConfig::builder()
+            .with_no_client_auth()
+            .with_single_cert(certs, keys.pop().unwrap().into()).unwrap();
 
         TlsServer {
             cfg: Arc::new(config),
@@ -211,12 +288,12 @@ impl mco_http::net::SslServer for TlsServer {
     type Stream = WrappedStream;
 
     fn wrap_server(&self, stream: HttpStream) -> mco_http::Result<WrappedStream> {
+        let v=
+            rustls::ServerConnection::new(self.cfg.clone())
+                .map_err(|e| mco_http::Error::Ssl(Box::new(e)))?;
+
         let tls = TlsStream {
-            sess: Box::new(
-                rustls::ServerConnection::new(self.cfg.clone())
-                    .map_err(|e| mco_http::Error::from(e.to_string()))?,
-            )
-            .map_err(|e| mco_http::Error::from(e.to_string()))?,
+            sess: Box::new(Connection::Server(v)),
             underlying: stream,
             io_error: None,
             tls_error: None,

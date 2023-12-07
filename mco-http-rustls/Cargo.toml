@@ -12,6 +12,7 @@ repository = "https://github.com/ctz/hyper-rustls"
 webpki-roots = "0.26.0"
 rustls = { version="0.22",features = [] }
 rustls-pemfile="2.0"
+rustls-pki-types="0.2"
 rotor = "0.6"
 vecio = "0.1"
 
