@@ -1,8 +1,6 @@
 extern crate mco_http;
 extern crate rustls;
-extern crate vecio;
 extern crate webpki_roots;
-extern crate rustls_pki_types;
 
 use mco_http::net::{HttpStream, NetworkStream};
 use std::convert::{TryInto};
