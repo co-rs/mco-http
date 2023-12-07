@@ -5,11 +5,11 @@ extern crate webpki_roots;
 extern crate rustls_pki_types;
 
 use mco_http::net::{HttpStream, NetworkStream};
-use std::convert::{TryFrom, TryInto};
+use std::convert::{TryInto};
 
 use std::{io};
-use std::fmt::{Debug, Display, Formatter, Pointer};
-use std::io::{BufReader, Cursor, Error, ErrorKind};
+use std::fmt::{Debug, Display, Formatter};
+use std::io::{BufReader, Cursor, Error};
 use std::net::{Shutdown, SocketAddr};
 use std::sync::Arc;
 use std::sync::{Mutex, MutexGuard};

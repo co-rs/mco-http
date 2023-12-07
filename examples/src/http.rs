@@ -5,7 +5,7 @@ extern crate fast_log;
 use fast_log::config::Config;
 use mco_http::server::{Request, Response};
 
-fn hello(req: Request, res: Response) {
+fn hello(_req: Request, res: Response) {
     res.send(b"Hello World!").unwrap();
 }
 

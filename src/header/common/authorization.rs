@@ -2,7 +2,8 @@ use std::any::Any;
 use std::fmt::{self, Display};
 use std::str::{FromStr, from_utf8};
 use std::ops::{Deref, DerefMut};
-use base64::{encode, decode};
+use base64::{Engine};
+use base64::engine::general_purpose::STANDARD;
 use crate::header::{Header, HeaderFormat};
 
 /// `Authorization` header, defined in [RFC7235](https://tools.ietf.org/html/rfc7235#section-4.2)
@@ -153,14 +154,14 @@ impl Scheme for Basic {
             text.push_str(&pass[..]);
         }
 
-        f.write_str(&encode(text.as_bytes()))
+        f.write_str(&STANDARD.encode(text.as_bytes()))
     }
 }
 
 impl FromStr for Basic {
     type Err = crate::Error;
     fn from_str(s: &str) -> crate::Result<Basic> {
-        match decode(s) {
+        match STANDARD.decode(s) {
             Ok(decoded) => match String::from_utf8(decoded) {
                 Ok(text) => {
                     let parts = &mut text.split(':');
