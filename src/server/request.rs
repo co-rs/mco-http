@@ -11,15 +11,14 @@ use crate::net::NetworkStream;
 use crate::version::{HttpVersion};
 use crate::method::Method;
 use crate::header::{Headers, ContentLength, TransferEncoding};
-use crate::proto::h1::{self, Incoming, HttpReader};
-use crate::proto::h1::HttpReader::{SizedReader, ChunkedReader, EmptyReader};
-use crate::server::extensions::Extensions;
+use crate::http::h1::{self, Incoming, HttpReader};
+use crate::http::h1::HttpReader::{SizedReader, ChunkedReader, EmptyReader};
 use crate::uri::RequestUri;
 
 /// A request bundles several parts of an incoming `NetworkStream`, given to a `Handler`.
 pub struct Request<'a, 'b: 'a> {
     /// The IP address of the remote connection.
-    pub remote_addr: Option<SocketAddr>,
+    pub remote_addr: SocketAddr,
     /// The `Method`, such as `Get`, `Post`, etc.
     pub method: Method,
     /// The headers of the incoming request.
@@ -28,19 +27,17 @@ pub struct Request<'a, 'b: 'a> {
     pub uri: RequestUri,
     /// The version of HTTP for this request.
     pub version: HttpVersion,
-    /// http body
-    pub body: HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>,
-    /// The extra User defined data
-    pub extra: Extensions,
+    body: HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>
 }
 
 
 impl<'a, 'b: 'a> Request<'a, 'b> {
     /// Create a new Request, reading the StartLine and Headers so they are
     /// immediately useful.
-    pub fn new(stream: &'a mut BufReader<&'b mut dyn NetworkStream>, addr: Option<SocketAddr>)
+    pub fn new(stream: &'a mut BufReader<&'b mut dyn NetworkStream>, addr: SocketAddr)
                -> crate::Result<Request<'a, 'b>> {
-        let Incoming { version, subject: (method, uri), headers } = h1::parse_request(stream)?;
+
+        let Incoming { version, subject: (method, uri), headers } = r#try!(h1::parse_request(stream));
         debug!("Request Line: {:?} {:?} {:?}", method, uri, version);
         debug!("{:?}", headers);
 
@@ -62,8 +59,7 @@ impl<'a, 'b: 'a> Request<'a, 'b> {
             uri: uri,
             headers: headers,
             version: version,
-            body: body,
-            extra: Default::default(),
+            body: body
         })
     }
 
@@ -90,7 +86,7 @@ impl<'a, 'b: 'a> Request<'a, 'b> {
 
     /// Deconstruct a Request into its constituent parts.
     #[inline]
-    pub fn deconstruct(self) -> (Option<SocketAddr>, Method, Headers,
+    pub fn deconstruct(self) -> (SocketAddr, Method, Headers,
                                  RequestUri, HttpVersion,
                                  HttpReader<&'a mut BufReader<&'b mut dyn NetworkStream>>) {
         (self.remote_addr, self.method, self.headers,
@@ -122,7 +118,7 @@ mod tests {
 
     fn read_to_string(mut req: Request) -> io::Result<String> {
         let mut s = String::new();
-        req.read_to_string(&mut s)?;
+        r#try!(req.read_to_string(&mut s));
         Ok(s)
     }
 
@@ -139,7 +135,7 @@ mod tests {
         let mock: &mut dyn NetworkStream = &mut mock;
         let mut stream = BufReader::new(mock);
 
-        let req = Request::new(&mut stream, Some(sock("127.0.0.1:80"))).unwrap();
+        let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();
         assert_eq!(read_to_string(req).unwrap(), "".to_owned());
     }
 
@@ -154,10 +150,10 @@ mod tests {
         ");
 
         // FIXME: Use Type ascription
-        let mock: &mut dyn NetworkStream = &mut mock;
+        let mock: &mut NetworkStream = &mut mock;
         let mut stream = BufReader::new(mock);
 
-        let req = Request::new(&mut stream, Some(sock("127.0.0.1:80"))).unwrap();
+        let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();
         assert_eq!(read_to_string(req).unwrap(), "I'm a good request.".to_owned());
     }
 
@@ -171,10 +167,10 @@ mod tests {
         ");
 
         // FIXME: Use Type ascription
-        let mock: &mut dyn NetworkStream = &mut mock;
+        let mock: &mut NetworkStream = &mut mock;
         let mut stream = BufReader::new(mock);
 
-        let req = Request::new(&mut stream, Some(sock("127.0.0.1:80"))).unwrap();
+        let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();
         assert_eq!(read_to_string(req).unwrap(), "".to_owned());
     }
 
@@ -188,10 +184,10 @@ mod tests {
         ");
 
         // FIXME: Use Type ascription
-        let mock: &mut dyn NetworkStream = &mut mock;
+        let mock: &mut NetworkStream = &mut mock;
         let mut stream = BufReader::new(mock);
 
-        let req = Request::new(&mut stream, Some(sock("127.0.0.1:80"))).unwrap();
+        let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();
         assert_eq!(read_to_string(req).unwrap(), "".to_owned());
     }
 
@@ -213,16 +209,16 @@ mod tests {
         );
 
         // FIXME: Use Type ascription
-        let mock: &mut dyn NetworkStream = &mut mock;
+        let mock: &mut NetworkStream = &mut mock;
         let mut stream = BufReader::new(mock);
 
-        let req = Request::new(&mut stream, Some(sock("127.0.0.1:80"))).unwrap();
+        let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();
 
         // The headers are correct?
         match req.headers.get::<Host>() {
             Some(host) => {
                 assert_eq!("example.domain", host.hostname);
-            }
+            },
             None => panic!("Host header expected!"),
         };
         match req.headers.get::<TransferEncoding>() {
@@ -252,10 +248,10 @@ mod tests {
         );
 
         // FIXME: Use Type ascription
-        let mock: &mut dyn NetworkStream = &mut mock;
+        let mock: &mut NetworkStream = &mut mock;
         let mut stream = BufReader::new(mock);
 
-        let req = Request::new(&mut stream, Some(sock("127.0.0.1:80"))).unwrap();
+        let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();
 
         assert!(read_to_string(req).is_err());
     }
@@ -276,10 +272,10 @@ mod tests {
         );
 
         // FIXME: Use Type ascription
-        let mock: &mut dyn NetworkStream = &mut mock;
+        let mock: &mut NetworkStream = &mut mock;
         let mut stream = BufReader::new(mock);
 
-        let req = Request::new(&mut stream, Some(sock("127.0.0.1:80"))).unwrap();
+        let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();
 
         assert!(read_to_string(req).is_err());
     }
@@ -300,11 +296,12 @@ mod tests {
         );
 
         // FIXME: Use Type ascription
-        let mock: &mut dyn NetworkStream = &mut mock;
+        let mock: &mut NetworkStream = &mut mock;
         let mut stream = BufReader::new(mock);
 
-        let req = Request::new(&mut stream, Some(sock("127.0.0.1:80"))).unwrap();
+        let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();
 
         assert_eq!(read_to_string(req).unwrap(), "1".to_owned());
     }
+
 }

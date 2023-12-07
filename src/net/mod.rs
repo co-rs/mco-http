@@ -2,16 +2,14 @@
 use std::any::{Any, TypeId};
 use std::fmt;
 use std::io::{self, ErrorKind, Read, Write};
-use std::net::{SocketAddr, ToSocketAddrs, Shutdown};
+use std::net::{SocketAddr, ToSocketAddrs, TcpStream, TcpListener, Shutdown};
 use std::mem;
 use std::sync::Arc;
 
 use std::time::Duration;
-use crate::runtime::TcpListener;
 
 use typeable::Typeable;
 use traitobject;
-use crate::runtime::TcpStream;
 
 /// The write-status indicating headers have not been written.
 pub enum Fresh {}
@@ -82,7 +80,7 @@ pub trait NetworkStream: Read + Write + Any + Send + Typeable {
     // Unsure about name and implementation...
 
     #[doc(hidden)]
-    fn set_previous_response_expected_no_content(&mut self, _expected: bool) {}
+    fn set_previous_response_expected_no_content(&mut self, _expected: bool) { }
 
     #[doc(hidden)]
     fn previous_response_expected_no_content(&self) -> bool {
@@ -120,7 +118,7 @@ impl dyn NetworkStream {
         mem::transmute(traitobject::data_mut(self))
     }
 
-    unsafe fn downcast_unchecked<T: 'static>(self: Box<dyn NetworkStream>) -> Box<T> {
+    unsafe fn downcast_unchecked<T: 'static>(self: Box<dyn NetworkStream>) -> Box<T>  {
         let raw: *mut dyn NetworkStream = mem::transmute(self);
         mem::transmute(traitobject::data_mut(raw))
     }
@@ -175,7 +173,7 @@ impl dyn NetworkStream + Send {
         mem::transmute(traitobject::data_mut(self))
     }
 
-    unsafe fn downcast_unchecked<T: 'static>(self: Box<dyn NetworkStream + Send>) -> Box<T> {
+    unsafe fn downcast_unchecked<T: 'static>(self: Box<dyn NetworkStream + Send>) -> Box<T>  {
         let raw: *mut dyn NetworkStream = mem::transmute(self);
         mem::transmute(traitobject::data_mut(raw))
     }
@@ -211,8 +209,7 @@ impl dyn NetworkStream + Send {
 
     /// If the underlying type is `T`, extract it.
     #[inline]
-    pub fn downcast<T: Any>(self: Box<dyn NetworkStream + Send>)
-                            -> Result<Box<T>, Box<dyn NetworkStream + Send>> {
+    pub fn downcast<T: Any>(self: Box<dyn NetworkStream + Send>) -> Result<Box<T>, Box<dyn NetworkStream + Send>> {
         if self.is::<T>() {
             Ok(unsafe { self.downcast_unchecked() })
         } else {
@@ -226,7 +223,7 @@ impl dyn NetworkStream + Send {
 pub struct HttpListener {
     listener: Arc<TcpListener>,
 
-    read_timeout: Option<Duration>,
+    read_timeout : Option<Duration>,
     write_timeout: Option<Duration>,
 }
 
@@ -235,7 +232,7 @@ impl From<TcpListener> for HttpListener {
         HttpListener {
             listener: Arc::new(listener),
 
-            read_timeout: None,
+            read_timeout : None,
             write_timeout: None,
         }
     }
@@ -244,7 +241,7 @@ impl From<TcpListener> for HttpListener {
 impl HttpListener {
     /// Start listening to an address over HTTP.
     pub fn new<To: ToSocketAddrs>(addr: To) -> crate::Result<HttpListener> {
-        Ok(HttpListener::from(TcpListener::bind(addr)?))
+        Ok(HttpListener::from(r#try!(TcpListener::bind(addr))))
     }
 }
 
@@ -253,9 +250,9 @@ impl NetworkListener for HttpListener {
 
     #[inline]
     fn accept(&mut self) -> crate::Result<HttpStream> {
-        let stream = HttpStream(self.listener.accept()?.0);
-        stream.set_read_timeout(self.read_timeout)?;
-        stream.set_write_timeout(self.write_timeout)?;
+        let stream = HttpStream(r#try!(self.listener.accept()).0);
+        r#try!(stream.set_read_timeout(self.read_timeout));
+        r#try!(stream.set_write_timeout(self.write_timeout));
         Ok(stream)
     }
 
@@ -399,16 +396,16 @@ impl NetworkConnector for HttpConnector {
 
     fn connect(&self, host: &str, port: u16, scheme: &str) -> crate::Result<HttpStream> {
         let addr = &(host, port);
-        Ok(match scheme {
+        Ok(r#try!(match scheme {
             "http" => {
                 debug!("http scheme");
-                Ok(HttpStream(TcpStream::connect(addr)?))
+                Ok(HttpStream(r#try!(TcpStream::connect(addr))))
             },
             _ => {
                 Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                   "Invalid scheme for Http"))
+                                "Invalid scheme for Http"))
             }
-        }?)
+        }))
     }
 }
 
@@ -428,8 +425,8 @@ impl NetworkConnector for HttpConnector {
 ///
 /// ```norun
 /// Client::with_connector(|addr: &str, port: u16, scheme: &str| {
-///     let b = TcpBuilder::new_v4());
-///     b.bind("127.0.0.1:0"));
+///     let b = r#try!(TcpBuilder::new_v4());
+///     r#try!(b.bind("127.0.0.1:0"));
 ///     b.connect(&(addr, port))
 /// });
 /// ```
@@ -437,7 +434,7 @@ impl<F> NetworkConnector for F where F: Fn(&str, u16, &str) -> io::Result<TcpStr
     type Stream = HttpStream;
 
     fn connect(&self, host: &str, port: u16, scheme: &str) -> crate::Result<HttpStream> {
-        Ok(HttpStream((*self)(host, port, scheme)?))
+        Ok(HttpStream(r#try!((*self)(host, port, scheme))))
     }
 }
 
@@ -463,7 +460,7 @@ pub enum HttpsStream<S: NetworkStream> {
     /// A plain text stream.
     Http(HttpStream),
     /// A stream protected by SSL.
-    Https(S),
+    Https(S)
 }
 
 impl<S: NetworkStream> Read for HttpsStream<S> {
@@ -540,7 +537,7 @@ impl<S: SslServer> HttpsListener<S> {
     pub fn new<To: ToSocketAddrs>(addr: To, ssl: S) -> crate::Result<HttpsListener<S>> {
         HttpListener::new(addr).map(|l| HttpsListener {
             listener: l,
-            ssl: ssl,
+            ssl: ssl
         })
     }
 
@@ -548,7 +545,7 @@ impl<S: SslServer> HttpsListener<S> {
     pub fn with_listener(listener: HttpListener, ssl: S) -> HttpsListener<S> {
         HttpsListener {
             listener: listener,
-            ssl: ssl,
+            ssl: ssl
         }
     }
 }
@@ -600,7 +597,7 @@ impl<S: SslClient, C: NetworkConnector<Stream=HttpStream>> NetworkConnector for 
     type Stream = HttpsStream<S::Stream>;
 
     fn connect(&self, host: &str, port: u16, scheme: &str) -> crate::Result<Self::Stream> {
-        let stream = self.connector.connect(host, port, "http")?;
+        let stream = r#try!(self.connector.connect(host, port, "http"));
         if scheme == "https" {
             debug!("https scheme");
             self.ssl.wrap_client(stream, host).map(HttpsStream::Https)

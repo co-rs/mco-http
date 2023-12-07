@@ -129,7 +129,7 @@ pub mod request;
 pub mod response;
 pub mod extensions;
 pub use extensions::*;
-use crate::proto::should_keep_alive;
+use crate::http::should_keep_alive;
 
 mod listener;
 
@@ -368,7 +368,7 @@ impl<H: Handler + 'static> Worker<H> {
         let mut rdr = BufReader::new(stream2);
         let mut wrt = BufWriter::new(stream);
 
-        while self.keep_alive_loop(&mut rdr, &mut wrt, Some(addr)) {
+        while self.keep_alive_loop(&mut rdr, &mut wrt, addr) {
             if let Err(e) = self.set_read_timeout(*rdr.get_ref(), self.timeouts.keep_alive) {
                 info!("set_read_timeout keep_alive {:?}", e);
                 break;
@@ -422,7 +422,7 @@ impl<H: Handler + 'static> Worker<H> {
     }
 
     fn keep_alive_loop<W: Write>(&self, rdr: &mut BufReader<&mut dyn NetworkStream>,
-                                 wrt: &mut W, addr: Option<SocketAddr>) -> bool {
+                                 wrt: &mut W, addr: SocketAddr) -> bool {
         let req = match Request::new(rdr, addr) {
             Ok(req) => req,
             Err(Error::Io(ref e)) if e.kind() == ErrorKind::ConnectionAborted => {

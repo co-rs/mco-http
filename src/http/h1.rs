@@ -23,7 +23,7 @@ use crate::uri::RequestUri;
 use self::HttpReader::{SizedReader, ChunkedReader, EofReader, EmptyReader};
 use self::HttpWriter::{ChunkedWriter, SizedWriter, EmptyWriter, ThroughWriter};
 
-use crate::proto::{
+use crate::http::{
     RawStatus,
     Protocol,
     HttpMessage,

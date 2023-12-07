@@ -169,7 +169,6 @@ pub mod client;
 pub mod error;
 pub mod method;
 pub mod header;
-pub mod proto;
 pub mod net;
 pub mod server;
 pub mod status;
@@ -181,7 +180,8 @@ pub mod path;
 pub mod route;
 pub mod runtime;
 pub mod json;
-mod mock;
+pub mod http;
+pub mod mock;
 
 /// Re-exporting the mime crate, for convenience.
 pub mod mime {

@@ -8,9 +8,12 @@ use std::mem;
 use std::io::{self, Write};
 use std::ptr;
 use std::thread;
+
+use time::now_utc;
+
 use crate::header;
-use crate::proto::h1::{LINE_ENDING, HttpWriter};
-use crate::proto::h1::HttpWriter::{ThroughWriter, ChunkedWriter, SizedWriter, EmptyWriter};
+use crate::http::h1::{LINE_ENDING, HttpWriter};
+use crate::http::h1::HttpWriter::{ThroughWriter, ChunkedWriter, SizedWriter, EmptyWriter};
 use crate::status;
 use crate::net::{Fresh, Streaming};
 use crate::version;
@@ -79,11 +82,10 @@ impl<'a, W: Any> Response<'a, W> {
 
     fn write_head(&mut self) -> io::Result<Body> {
         debug!("writing head: {:?} {:?}", self.version, self.status);
-        write!(&mut self.body, "{} {}\r\n", self.version, self.status)?;
+        r#try!(write!(&mut self.body, "{} {}\r\n", self.version, self.status));
 
         if !self.headers.has::<header::Date>() {
-            let date = httpdate::HttpDate::from(std::time::SystemTime::now()).to_string();
-            self.headers.set_raw("Date",vec![date.into_bytes()]);
+            self.headers.set(header::Date(header::HttpDate(now_utc())));
         }
 
         let body_type = match self.status {
@@ -115,8 +117,8 @@ impl<'a, W: Any> Response<'a, W> {
 
 
         debug!("headers [\n{:?}]", self.headers);
-        write!(&mut self.body, "{}", self.headers)?;
-        write!(&mut self.body, "{}", LINE_ENDING)?;
+        r#try!(write!(&mut self.body, "{}", self.headers));
+        r#try!(write!(&mut self.body, "{}", LINE_ENDING));
 
         Ok(body_type)
     }
@@ -166,15 +168,15 @@ impl<'a> Response<'a, Fresh> {
     #[inline]
     pub fn send(self, body: &[u8]) -> io::Result<()> {
         self.headers.set(header::ContentLength(body.len() as u64));
-        let mut stream = self.start()?;
-        stream.write_all(body)?;
+        let mut stream = r#try!(self.start());
+        r#try!(stream.write_all(body));
         stream.end()
     }
 
     /// Consume this Response<Fresh>, writing the Headers and Status and
     /// creating a Response<Streaming>
     pub fn start(mut self) -> io::Result<Response<'a, Streaming>> {
-        let body_type = self.write_head()?;
+        let body_type = r#try!(self.write_head());
         let (version, body, status, headers) = self.deconstruct();
         let stream = match body_type {
             Body::Chunked => ChunkedWriter(body.into_inner()),
@@ -207,7 +209,7 @@ impl<'a> Response<'a, Streaming> {
     pub fn end(self) -> io::Result<()> {
         trace!("ending");
         let (_, body, _, _) = self.deconstruct();
-        body.end()?;
+        r#try!(body.end());
         Ok(())
     }
 }
@@ -271,8 +273,6 @@ impl<'a, T: Any> Drop for Response<'a, T> {
 mod tests {
     use crate::header::Headers;
     use crate::mock::MockStream;
-    use crate::runtime;
-    use crate::status::StatusCode;
     use super::Response;
 
     macro_rules! lines {
@@ -360,7 +360,7 @@ mod tests {
         let stream = MockStream::new();
         let stream = Arc::new(Mutex::new(stream));
         let inner_stream = stream.clone();
-        let join_handle = runtime::spawn(move || {
+        let join_handle = thread::spawn(move || {
             let mut headers = Headers::new();
             let mut stream = inner_stream.lock().unwrap();
             let mut res = Response::new(&mut *stream, &mut headers);
@@ -414,6 +414,7 @@ mod tests {
 
     #[test]
     fn test_no_content() {
+        use crate::status::StatusCode;
         let mut headers = Headers::new();
         let mut stream = MockStream::new();
         {

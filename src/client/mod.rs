@@ -88,8 +88,8 @@ pub mod pool;
 pub mod request;
 pub mod response;
 
-use crate::proto::Protocol;
-use crate::proto::h1::Http11Protocol;
+use crate::http::Protocol;
+use crate::http::h1::Http11Protocol;
 
 
 /// A Client to use additional features with Requests.

@@ -1,54 +1,21 @@
-//! Code taken from Hyper, stripped down and with modification.
-//!
-//! See [https://github.com/hyperium/hyper](Hyper) for more information
-
-// Copyright (c) 2014 Sean McArthur
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
-use std::fmt;
 use std::io::{self, Read, Write, Cursor};
-use std::net::SocketAddr;
+use std::net::{SocketAddr, Shutdown};
 use std::time::Duration;
+use std::cell::Cell;
 
-use crate::net::NetworkStream;
+use crate::net::{NetworkStream, NetworkConnector, SslClient};
 
+#[derive(Clone, Debug)]
 pub struct MockStream {
-    pub peer_addr:String,
     pub read: Cursor<Vec<u8>>,
+    next_reads: Vec<Vec<u8>>,
     pub write: Vec<u8>,
-}
-
-impl Clone for MockStream {
-    fn clone(&self) -> MockStream {
-        MockStream {
-            peer_addr: "127.0.0.1:1337".to_string(),
-            read: Cursor::new(self.read.get_ref().clone()),
-            write: self.write.clone(),
-        }
-    }
-}
-
-impl fmt::Debug for MockStream {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "MockStream {{ read: {:?}, write: {:?} }}", self.read.get_ref(), self.write)
-    }
+    pub is_closed: bool,
+    pub error_on_write: bool,
+    pub error_on_read: bool,
+    pub read_timeout: Cell<Option<Duration>>,
+    pub write_timeout: Cell<Option<Duration>>,
+    pub id: u64,
 }
 
 impl PartialEq for MockStream {
@@ -58,25 +25,56 @@ impl PartialEq for MockStream {
 }
 
 impl MockStream {
-    #[allow(dead_code)]
+    pub fn new() -> MockStream {
+        MockStream::with_input(b"")
+    }
+
     pub fn with_input(input: &[u8]) -> MockStream {
+        MockStream::with_responses(vec![input])
+    }
+
+    pub fn with_responses(mut responses: Vec<&[u8]>) -> MockStream {
         MockStream {
-            peer_addr: "".to_string(),
-            read: Cursor::new(input.to_vec()),
+            read: Cursor::new(responses.remove(0).to_vec()),
+            next_reads: responses.into_iter().map(|arr| arr.to_vec()).collect(),
             write: vec![],
+            is_closed: false,
+            error_on_write: false,
+            error_on_read: false,
+            read_timeout: Cell::new(None),
+            write_timeout: Cell::new(None),
+            id: 0,
         }
     }
 }
 
 impl Read for MockStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.read.read(buf)
+        if self.error_on_read {
+            Err(io::Error::new(io::ErrorKind::Other, "mock error"))
+        } else {
+            match self.read.read(buf) {
+                Ok(n) => {
+                    if self.read.position() as usize == self.read.get_ref().len() {
+                        if self.next_reads.len() > 0 {
+                            self.read = Cursor::new(self.next_reads.remove(0));
+                        }
+                    }
+                    Ok(n)
+                },
+                r => r
+            }
+        }
     }
 }
 
 impl Write for MockStream {
     fn write(&mut self, msg: &[u8]) -> io::Result<usize> {
-        Write::write(&mut self.write, msg)
+        if self.error_on_write {
+            Err(io::Error::new(io::ErrorKind::Other, "mock error"))
+        } else {
+            Write::write(&mut self.write, msg)
+        }
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -86,14 +84,85 @@ impl Write for MockStream {
 
 impl NetworkStream for MockStream {
     fn peer_addr(&mut self) -> io::Result<SocketAddr> {
-        Ok(self.peer_addr.parse().unwrap())
+        Ok("127.0.0.1:1337".parse().unwrap())
     }
 
-    fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> {
+    fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
+        self.read_timeout.set(dur);
         Ok(())
     }
 
-    fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> {
+    fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
+        self.write_timeout.set(dur);
         Ok(())
+    }
+
+    fn close(&mut self, _how: Shutdown) -> io::Result<()> {
+        self.is_closed = true;
+        Ok(())
+    }
+}
+
+pub struct MockConnector;
+
+impl NetworkConnector for MockConnector {
+    type Stream = MockStream;
+
+    fn connect(&self, _host: &str, _port: u16, _scheme: &str) -> crate::Result<MockStream> {
+        Ok(MockStream::new())
+    }
+}
+
+/// new connectors must be created if you wish to intercept requests.
+macro_rules! mock_connector (
+    ($name:ident {
+        $($url:expr => $res:expr)*
+    }) => (
+
+        struct $name;
+
+        impl $crate::net::NetworkConnector for $name {
+            type Stream = ::mock::MockStream;
+            fn connect(&self, host: &str, port: u16, scheme: &str)
+                    -> $crate::Result<::mock::MockStream> {
+                use std::collections::HashMap;
+                debug!("MockStream::connect({:?}, {:?}, {:?})", host, port, scheme);
+                let mut map = HashMap::new();
+                $(map.insert($url, $res);)*
+
+
+                let key = format!("{}://{}", scheme, host);
+                // ignore port for now
+                match map.get(&*key) {
+                    Some(&res) => Ok($crate::mock::MockStream::with_input(res.as_bytes())),
+                    None => panic!("{:?} doesn't know url {}", stringify!($name), key)
+                }
+            }
+        }
+
+    );
+
+    ($name:ident { $($response:expr),+ }) => (
+        struct $name;
+
+        impl $crate::net::NetworkConnector for $name {
+            type Stream = $crate::mock::MockStream;
+            fn connect(&self, _: &str, _: u16, _: &str)
+                    -> $crate::Result<$crate::mock::MockStream> {
+                Ok($crate::mock::MockStream::with_responses(vec![
+                    $($response),+
+                ]))
+            }
+        }
+    );
+);
+
+#[derive(Debug, Default)]
+pub struct MockSsl;
+
+impl<T: NetworkStream + Send + Clone> SslClient<T> for MockSsl {
+    type Stream = T;
+    fn wrap_client(&self, stream: T, _host: &str) -> crate::Result<T> {
+        Ok(stream)
     }
 }

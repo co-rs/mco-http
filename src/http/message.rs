@@ -12,7 +12,7 @@ use std::time::Duration;
 use typeable::Typeable;
 
 use crate::header::Headers;
-use crate::proto::RawStatus;
+use crate::http::RawStatus;
 use crate::url::Url;
 
 use crate::method;
@@ -123,7 +123,7 @@ impl dyn HttpMessage {
     /// If the underlying type is T, extract it.
     #[inline]
     pub fn downcast<T: Any>(self: Box<dyn HttpMessage>)
-            -> Result<Box<T>, Box<dyn HttpMessage>> {
+                            -> Result<Box<T>, Box<dyn HttpMessage>> {
         if self.is::<T>() {
             Ok(unsafe { self.downcast_unchecked() })
         } else {
