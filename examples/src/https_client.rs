@@ -6,11 +6,10 @@ use mco_http::Client;
 use mco_http::net::HttpsConnector;
 use mco_http_rustls::TlsClient;
 
-//FIXME not successful
 fn main() {
     let _ = fast_log::init(Config::new().level(log::LevelFilter::Info).console());
 
-    let url = "https://127.0.0.1:3000".to_string();
+    let url = "https://www.baidu.com".to_string();
 
     let client = Client::with_connector(HttpsConnector::new(TlsClient::new()));
 
