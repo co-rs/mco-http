@@ -13,24 +13,26 @@ pub fn tunnel(proxy: (Scheme, Cow<'static, str>, u16)) -> Proxy<HttpConnector, s
         proxy: proxy,
         ssl: self::no_ssl::Plaintext,
     }
+
 }
 
 pub struct Proxy<C, S>
-    where C: NetworkConnector + Send + Sync + 'static,
-          C::Stream: NetworkStream + Send + Clone,
-          S: SslClient<C::Stream> {
+where C: NetworkConnector + Send + Sync + 'static,
+      C::Stream: NetworkStream + Send + Clone,
+      S: SslClient<C::Stream> {
     pub connector: C,
     pub proxy: (Scheme, Cow<'static, str>, u16),
     pub ssl: S,
 }
 
 impl<C, S> NetworkConnector for Proxy<C, S>
-    where C: NetworkConnector + Send + Sync + 'static,
-          C::Stream: NetworkStream + Send + Clone,
-          S: SslClient<C::Stream> {
+where C: NetworkConnector + Send + Sync + 'static,
+      C::Stream: NetworkStream + Send + Clone,
+      S: SslClient<C::Stream> {
     type Stream = Proxied<C::Stream, S::Stream>;
 
     fn connect(&self, host: &str, port: u16, scheme: &str) -> crate::Result<Self::Stream> {
+        use httparse;
         use std::io::{Read, Write};
         use crate::version::HttpVersion::Http11;
         trace!("{:?} proxy for '{}://{}:{}'", self.proxy, scheme, host, port);
@@ -38,25 +40,25 @@ impl<C, S> NetworkConnector for Proxy<C, S>
             "http" => {
                 self.connector.connect(self.proxy.1.as_ref(), self.proxy.2, self.proxy.0.as_ref())
                     .map(Proxied::Normal)
-            }
+            },
             "https" => {
-                let mut stream = self.connector.connect(self.proxy.1.as_ref(), self.proxy.2, self.proxy.0.as_ref())?;
+                let mut stream = r#try!(self.connector.connect(self.proxy.1.as_ref(), self.proxy.2, self.proxy.0.as_ref()));
                 trace!("{:?} CONNECT {}:{}", self.proxy, host, port);
-                write!(&mut stream, "{method} {host}:{port} {version}\r\nHost: {host}:{port}\r\n\r\n",
-                            method=Method::Connect, host=host, port=port, version=Http11)?;
-                stream.flush()?;
+                r#try!(write!(&mut stream, "{method} {host}:{port} {version}\r\nHost: {host}:{port}\r\n\r\n",
+                            method=Method::Connect, host=host, port=port, version=Http11));
+                r#try!(stream.flush());
                 let mut buf = [0; 1024];
                 let mut n = 0;
                 while n < buf.len() {
-                    n += stream.read(&mut buf[n..])?;
+                    n += r#try!(stream.read(&mut buf[n..]));
                     let mut headers = [httparse::EMPTY_HEADER; 10];
                     let mut res = httparse::Response::new(&mut headers);
-                    if res.parse(&buf[..n])?.is_complete() {
+                    if r#try!(res.parse(&buf[..n])).is_complete() {
                         let code = res.code.expect("complete parsing lost code");
                         if code >= 200 && code < 300 {
                             trace!("CONNECT success = {:?}", code);
                             return self.ssl.wrap_client(stream, host)
-                                .map(Proxied::Tunneled);
+                                .map(Proxied::Tunneled)
                         } else {
                             trace!("CONNECT response = {:?}", code);
                             return Err(crate::Error::Status);
@@ -64,7 +66,7 @@ impl<C, S> NetworkConnector for Proxy<C, S>
                     }
                 }
                 Err(crate::Error::TooLarge)
-            }
+            },
             _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid scheme").into())
         }
     }
@@ -73,7 +75,7 @@ impl<C, S> NetworkConnector for Proxy<C, S>
 #[derive(Debug)]
 pub enum Proxied<T1, T2> {
     Normal(T1),
-    Tunneled(T2),
+    Tunneled(T2)
 }
 
 #[cfg(test)]

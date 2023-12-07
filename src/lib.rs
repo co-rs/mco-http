@@ -1,21 +1,21 @@
-#![doc(html_root_url = "https://docs.rs/hyper/v0.10.16")]
+#![doc(html_root_url = "https://docs.rs/mco_http/v0.10.16")]
 //#![cfg_attr(test, deny(missing_docs))]
 //#![cfg_attr(test, deny(warnings))]
 #![cfg_attr(all(test, feature = "nightly"), feature(test))]
 
 //! # Hyper
 //!
-//! mco-http is a fast, modern HTTP implementation written in and for Rust. It
+//! Hyper is a fast, modern HTTP implementation written in and for Rust. It
 //! is a low-level typesafe abstraction over raw HTTP, providing an elegant
 //! layer over "stringly-typed" HTTP.
 //!
-//! mco-http offers both a [Client](client/index.html) and a
+//! Hyper offers both a [Client](client/index.html) and a
 //! [Server](server/index.html) which can be used to drive complex web
 //! applications written entirely in Rust.
 //!
 //! ## Internal Design
 //!
-//! mco-http is designed as a relatively low-level wrapper over raw HTTP. It should
+//! Hyper is designed as a relatively low-level wrapper over raw HTTP. It should
 //! allow the implementation of higher-level abstractions with as little pain as
 //! possible, and should not irrevocably hide any information from its users.
 //!
@@ -46,7 +46,7 @@
 //! typesafe API for interacting with headers that does not rely on the use of
 //! "string-typing."
 //!
-//! Each HTTP header in mco-http has an associated type and implementation of the
+//! Each HTTP header in Hyper has an associated type and implementation of the
 //! `Header` trait, which defines an HTTP headers name as a string, how to parse
 //! that header, and how to format that header.
 //!
@@ -68,7 +68,7 @@
 //!
 //! #### Handler + Server
 //!
-//! A `Handler` in mco-http accepts a `Request` and `Response`. This is where
+//! A `Handler` in Hyper accepts a `Request` and `Response`. This is where
 //! user-code can handle each connection. The server accepts connections in a
 //! task pool with a customizable number of threads, and passes the Request /
 //! Response to the handler.
@@ -92,11 +92,11 @@
 //!
 //! One of the traditional problems with representing outgoing HTTP Responses is
 //! tracking the write-status of the Response - have we written the status-line,
-//! the headers, the body, etc.? mco-http tracks this information statically using the
+//! the headers, the body, etc.? Hyper tracks this information statically using the
 //! type system and prevents you, using the type system, from writing headers after
 //! you have started writing to the body or vice versa.
 //!
-//! mco-http does this through a phantom type parameter in the definition of Response,
+//! Hyper does this through a phantom type parameter in the definition of Response,
 //! which tracks whether you are allowed to write to the headers or the body. This
 //! phantom type can have two values `Fresh` or `Streaming`, with `Fresh`
 //! indicating that you can write the headers and `Streaming` indicating that you
@@ -133,6 +133,7 @@ extern crate time;
 #[macro_use] extern crate url;
 extern crate unicase;
 extern crate httparse;
+extern crate num_cpus;
 extern crate traitobject;
 extern crate typeable;
 
@@ -150,10 +151,10 @@ extern crate test;
 
 
 pub use url::Url;
-pub use client::Client;
-pub use error::{Result, Error};
-pub use method::Method::{Get, Head, Post, Delete};
-pub use status::StatusCode::{Ok, BadRequest, NotFound};
+pub use crate::client::Client;
+pub use crate::error::{Result, Error};
+pub use crate::method::Method::{Get, Head, Post, Delete};
+pub use crate::status::StatusCode::{Ok, BadRequest, NotFound};
 pub use server::Server;
 pub use language_tags::LanguageTag;
 
@@ -163,25 +164,28 @@ macro_rules! todo(
     })
 );
 
+#[cfg(test)]
+#[macro_use]
+mod mock;
 #[doc(hidden)]
 pub mod buffer;
 pub mod client;
 pub mod error;
 pub mod method;
 pub mod header;
+pub mod http;
 pub mod net;
 pub mod server;
 pub mod status;
 pub mod uri;
 pub mod version;
+
 pub mod multipart;
-pub mod query;
+pub mod json;
 pub mod path;
+pub mod query;
 pub mod route;
 pub mod runtime;
-pub mod json;
-pub mod http;
-pub mod mock;
 
 /// Re-exporting the mime crate, for convenience.
 pub mod mime {

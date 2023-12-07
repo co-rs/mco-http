@@ -18,7 +18,7 @@ use crate::header::parsing::from_one_raw_str;
 ///
 /// let mut headers = Headers::new();
 /// headers.set(
-///     Origin::new("http", "hyper.rs", None)
+///     Origin::new("http", "mco_http.rs", None)
 /// );
 /// ```
 /// ```
@@ -34,7 +34,7 @@ use crate::header::parsing::from_one_raw_str;
 pub struct Origin {
     /// The scheme, such as http or https
     pub scheme: String,
-    /// The host, such as Host{hostname: "hyper.rs".to_owned(), port: None}
+    /// The host, such as Host{hostname: "mco_http.rs".to_owned(), port: None}
     pub host: Host,
 }
 
@@ -72,7 +72,7 @@ impl FromStr for Origin {
         };
         // idx + 3 because thats how long "://" is
         let (scheme, etc) = (&s[..idx], &s[idx + 3..]);
-        let host = Host::from_str(etc)?;
+        let host = r#try!(Host::from_str(etc));
 
 
         Ok(Origin{

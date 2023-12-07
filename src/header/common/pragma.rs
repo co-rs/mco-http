@@ -1,5 +1,8 @@
 use std::fmt;
 
+#[allow(unused_imports)]
+use std::ascii::AsciiExt;
+
 use crate::header::{Header, HeaderFormat, parsing};
 
 /// The `Pragma` header defined by HTTP/1.0.

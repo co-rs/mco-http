@@ -128,7 +128,7 @@ impl<'a> Response<'a, Fresh> {
     /// Creates a new Response that can be used to write to a network stream.
     #[inline]
     pub fn new(stream: &'a mut (dyn Write + 'a), headers: &'a mut header::Headers) ->
-    Response<'a, Fresh> {
+            Response<'a, Fresh> {
         Response {
             status: status::StatusCode::Ok,
             version: version::HttpVersion::Http11,
@@ -272,7 +272,7 @@ impl<'a, T: Any> Drop for Response<'a, T> {
 #[cfg(test)]
 mod tests {
     use crate::header::Headers;
-    use crate::mock::MockStream;
+    use mock::MockStream;
     use super::Response;
 
     macro_rules! lines {

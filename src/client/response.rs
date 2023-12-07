@@ -21,8 +21,8 @@ pub struct Response {
     pub version: version::HttpVersion,
     /// The final URL of this response.
     pub url: Url,
-    pub status_raw: RawStatus,
-    pub message: Box<dyn HttpMessage>,
+    status_raw: RawStatus,
+    message: Box<dyn HttpMessage>,
 }
 
 impl Response {
@@ -109,24 +109,24 @@ mod tests {
 
     use crate::header::TransferEncoding;
     use crate::header::Encoding;
-    use crate::proto::HttpMessage;
-    use crate::mock::MockStream;
+    use crate::http::HttpMessage;
+    use mock::MockStream;
     use crate::status;
     use crate::version;
-    use crate::proto::h1::Http11Message;
+    use crate::http::h1::Http11Message;
 
     use super::Response;
 
     fn read_to_string(mut r: Response) -> io::Result<String> {
         let mut s = String::new();
-        r.read_to_string(&mut s)?;
+        r#try!(r.read_to_string(&mut s));
         Ok(s)
     }
 
 
     #[test]
     fn test_into_inner() {
-        let message: Box<dyn HttpMessage> = Box::new(
+        let message: Box<HttpMessage> = Box::new(
             Http11Message::with_stream(Box::new(MockStream::new())));
         let message = message.downcast::<Http11Message>().ok().unwrap();
         let b = message.into_inner().downcast::<MockStream>().ok().unwrap();
@@ -149,7 +149,7 @@ mod tests {
             \r\n"
         );
 
-        let url = Url::parse("http://hyper.rs").unwrap();
+        let url = Url::parse("http://mco_http.rs").unwrap();
         let res = Response::new(url, Box::new(stream)).unwrap();
 
         // The status line is correct?
@@ -181,7 +181,7 @@ mod tests {
             \r\n"
         );
 
-        let url = Url::parse("http://hyper.rs").unwrap();
+        let url = Url::parse("http://mco_http.rs").unwrap();
         let res = Response::new(url, Box::new(stream)).unwrap();
 
         assert!(read_to_string(res).is_err());
@@ -201,7 +201,7 @@ mod tests {
             \r\n"
         );
 
-        let url = Url::parse("http://hyper.rs").unwrap();
+        let url = Url::parse("http://mco_http.rs").unwrap();
         let res = Response::new(url, Box::new(stream)).unwrap();
 
         assert!(read_to_string(res).is_err());
@@ -221,7 +221,7 @@ mod tests {
             \r\n"
         );
 
-        let url = Url::parse("http://hyper.rs").unwrap();
+        let url = Url::parse("http://mco_http.rs").unwrap();
         let res = Response::new(url, Box::new(stream)).unwrap();
 
         assert_eq!(read_to_string(res).unwrap(), "1".to_owned());
@@ -229,7 +229,7 @@ mod tests {
 
     #[test]
     fn test_parse_error_closes() {
-        let url = Url::parse("http://hyper.rs").unwrap();
+        let url = Url::parse("http://mco_http.rs").unwrap();
         let stream = MockStream::with_input(b"\
             definitely not http
         ");

@@ -35,7 +35,7 @@ impl<'a, 'b: 'a> Request<'a, 'b> {
     /// Create a new Request, reading the StartLine and Headers so they are
     /// immediately useful.
     pub fn new(stream: &'a mut BufReader<&'b mut dyn NetworkStream>, addr: SocketAddr)
-               -> crate::Result<Request<'a, 'b>> {
+        -> crate::Result<Request<'a, 'b>> {
 
         let Incoming { version, subject: (method, uri), headers } = r#try!(h1::parse_request(stream));
         debug!("Request Line: {:?} {:?} {:?}", method, uri, version);
@@ -106,7 +106,7 @@ mod tests {
     use crate::buffer::BufReader;
     use crate::header::{Host, TransferEncoding, Encoding};
     use crate::net::NetworkStream;
-    use crate::mock::MockStream;
+    use mock::MockStream;
     use super::Request;
 
     use std::io::{self, Read};
@@ -132,7 +132,7 @@ mod tests {
         ");
 
         // FIXME: Use Type ascription
-        let mock: &mut dyn NetworkStream = &mut mock;
+        let mock: &mut NetworkStream = &mut mock;
         let mut stream = BufReader::new(mock);
 
         let req = Request::new(&mut stream, sock("127.0.0.1:80")).unwrap();

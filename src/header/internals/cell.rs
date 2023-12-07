@@ -100,7 +100,7 @@ impl<V: ?Sized + fmt::Debug + Any + 'static> PtrMapCell<V> {
                         let mut hm = HashMap::with_capacity(2);
                         hm.insert(id, one);
                         hm.insert(key, val);
-                        let _=mem::replace(map, PtrMap::Many(hm));
+                        mem::replace(map, PtrMap::Many(hm));
                     },
                     _ => unreachable!()
                 }

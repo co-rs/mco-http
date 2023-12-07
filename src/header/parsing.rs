@@ -17,7 +17,7 @@ pub fn from_one_raw_str<T: str::FromStr>(raw: &[Vec<u8>]) -> crate::Result<T> {
 
 /// Reads a raw string into a value.
 pub fn from_raw_str<T: str::FromStr>(raw: &[u8]) -> crate::Result<T> {
-    let s = str::from_utf8(raw)?;
+    let s = r#try!(str::from_utf8(raw));
     T::from_str(s).or(Err(crate::Error::Header))
 }
 
@@ -26,7 +26,7 @@ pub fn from_raw_str<T: str::FromStr>(raw: &[u8]) -> crate::Result<T> {
 pub fn from_comma_delimited<T: str::FromStr, S: AsRef<[u8]>>(raw: &[S]) -> crate::Result<Vec<T>> {
     let mut result = Vec::new();
     for s in raw {
-        let s = str::from_utf8(s.as_ref())?;
+        let s = r#try!(str::from_utf8(s.as_ref()));
         result.extend(s.split(',')
                       .filter_map(|x| match x.trim() {
                           "" => None,
@@ -41,9 +41,9 @@ pub fn from_comma_delimited<T: str::FromStr, S: AsRef<[u8]>>(raw: &[S]) -> crate
 pub fn fmt_comma_delimited<T: Display>(f: &mut fmt::Formatter, parts: &[T]) -> fmt::Result {
     for (i, part) in parts.iter().enumerate() {
         if i != 0 {
-            f.write_str(", ")?;
+            r#try!(f.write_str(", "));
         }
-        Display::fmt(part, f)?;
+        r#try!(Display::fmt(part, f));
     }
     Ok(())
 }
@@ -102,7 +102,7 @@ pub fn parse_extended_value(val: &str) -> crate::Result<ExtendedValue> {
     // Interpret the first piece as a Charset
     let charset: Charset = match parts.next() {
         None => return Err(crate::Error::Header),
-        Some(n) => FromStr::from_str(n)?,
+        Some(n) => r#try!(FromStr::from_str(n)),
     };
 
     // Interpret the second piece as a language tag

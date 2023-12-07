@@ -14,9 +14,9 @@ use httparse;
 
 /// An error type for the `mime-multipart` crate.
 pub enum Error {
-    /// The mco-http request did not have a Content-Type header.
+    /// The mco_http request did not have a Content-Type header.
     NoRequestContentType,
-    /// The mco-http request Content-Type top-level Mime was not `Multipart`.
+    /// The mco_http request Content-Type top-level Mime was not `Multipart`.
     NotMultipart,
     /// The Content-Type header failed to specify boundary token.
     BoundaryNotSpecified,
@@ -134,9 +134,9 @@ impl fmt::Debug for Error {
 impl StdError for Error {
     fn description(&self) -> &str{
         match *self {
-            Error::NoRequestContentType => "The mco-http request did not have a Content-Type header.",
+            Error::NoRequestContentType => "The mco_http request did not have a Content-Type header.",
             Error::NotMultipart =>
-                "The mco-http request Content-Type top-level Mime was not multipart.",
+                "The mco_http request Content-Type top-level Mime was not multipart.",
             Error::BoundaryNotSpecified =>
                 "The Content-Type header failed to specify a boundary token.",
             Error::PartialHeaders =>
@@ -156,7 +156,7 @@ impl StdError for Error {
             Error::Httparse(_) =>
                 "A parse error occurred while parsing the headers of a multipart section.",
             Error::Io(_) => "An I/O error occurred.",
-            Error::Hyper(_) => "A mco-http error occurred.",
+            Error::Hyper(_) => "A mco_http error occurred.",
             Error::Utf8(_) => "A UTF-8 error occurred.",
             Error::Decoding(_) => "A decoding error occurred.",
             Error::MissingDisposition => "MissingDisposition",

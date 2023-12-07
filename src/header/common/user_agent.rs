@@ -29,7 +29,7 @@ header! {
     /// use mco_http::header::{Headers, UserAgent};
     ///
     /// let mut headers = Headers::new();
-    /// headers.set(UserAgent("hyper/0.5.2".to_owned()));
+    /// headers.set(UserAgent("mco_http/0.5.2".to_owned()));
     /// ```
     (UserAgent, "User-Agent") => [String]
 

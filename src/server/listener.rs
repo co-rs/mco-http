@@ -1,7 +1,7 @@
-use std::sync::{Arc};
+use std::sync::{Arc, mpsc};
+use std::thread;
 
 use crate::net::NetworkListener;
-use crate::runtime;
 
 pub struct ListenerPool<A: NetworkListener> {
     acceptor: A
@@ -18,16 +18,16 @@ impl<A: NetworkListener + Send + 'static> ListenerPool<A> {
     /// ## Panics
     ///
     /// Panics if threads == 0.
-    pub fn accept<F>(self, work: F, tasks: usize)
+    pub fn accept<F>(self, work: F, threads: usize)
         where F: Fn(A::Stream) + Send + Sync + 'static {
-        assert!(tasks != 0, "Can't accept on 0 threads.");
+        assert!(threads != 0, "Can't accept on 0 threads.");
 
-        let (super_tx, supervisor_rx) = runtime::chan();
+        let (super_tx, supervisor_rx) = mpsc::channel();
 
         let work = Arc::new(work);
 
         // Begin work.
-        for _ in 0..tasks {
+        for _ in 0..threads {
             spawn_with(super_tx.clone(), work.clone(), self.acceptor.clone())
         }
 
@@ -39,19 +39,15 @@ impl<A: NetworkListener + Send + 'static> ListenerPool<A> {
     }
 }
 
-fn spawn_with<A, F>(supervisor: runtime::Sender<()>, work: Arc<F>, mut acceptor: A)
+fn spawn_with<A, F>(supervisor: mpsc::Sender<()>, work: Arc<F>, mut acceptor: A)
 where A: NetworkListener + Send + 'static,
       F: Fn(<A as NetworkListener>::Stream) + Send + Sync + 'static {
-    runtime::spawn(move || {
+    thread::spawn(move || {
         let _sentinel = Sentinel::new(supervisor, ());
+
         loop {
             match acceptor.accept() {
-                Ok(stream) => {
-                    let w = work.clone();
-                    runtime::spawn(move ||{
-                        w(stream)
-                    });
-                },
+                Ok(stream) => work(stream),
                 Err(e) => {
                     info!("Connection failed: {}", e);
                 }
@@ -62,11 +58,11 @@ where A: NetworkListener + Send + 'static,
 
 struct Sentinel<T: Send + 'static> {
     value: Option<T>,
-    supervisor: runtime::Sender<T>,
+    supervisor: mpsc::Sender<T>,
 }
 
 impl<T: Send + 'static> Sentinel<T> {
-    fn new(channel: runtime::Sender<T>, data: T) -> Sentinel<T> {
+    fn new(channel: mpsc::Sender<T>, data: T) -> Sentinel<T> {
         Sentinel {
             value: Some(data),
             supervisor: channel,

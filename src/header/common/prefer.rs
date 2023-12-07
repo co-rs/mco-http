@@ -49,7 +49,7 @@ use crate::header::parsing::{from_comma_delimited, fmt_comma_delimited};
 #[derive(PartialEq, Clone, Debug)]
 pub struct Prefer(pub Vec<Preference>);
 
-__hyper__deref!(Prefer => Vec<Preference>);
+__mco_http__deref!(Prefer => Vec<Preference>);
 
 impl Header for Prefer {
     fn header_name() -> &'static str {
@@ -57,7 +57,7 @@ impl Header for Prefer {
     }
 
     fn parse_header(raw: &[Vec<u8>]) -> crate::Result<Prefer> {
-        let preferences = from_comma_delimited(raw)?;
+        let preferences = r#try!(from_comma_delimited(raw));
         if !preferences.is_empty() {
             Ok(Prefer(preferences))
         } else {
@@ -112,12 +112,12 @@ impl fmt::Display for Preference {
             Wait(secs) => return write!(f, "wait={}", secs),
 
             Extension(ref name, ref value, ref params) => {
-                write!(f, "{}", name)?;
-                if value != "" { write!(f, "={}", value)?; }
+                r#try!(write!(f, "{}", name));
+                if value != "" { r#try!(write!(f, "={}", value)); }
                 if params.len() > 0 {
                     for &(ref name, ref value) in params {
-                        write!(f, "; {}", name)?;
-                        if value != "" { write!(f, "={}", value)?; }
+                        r#try!(write!(f, "; {}", name));
+                        if value != "" { r#try!(write!(f, "={}", value)); }
                     }
                 }
                 return Ok(());

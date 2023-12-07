@@ -1,6 +1,6 @@
 //! Headers container, and common header fields.
 //!
-//! hyper has the opinion that Headers should be strongly-typed, because that's
+//! mco_http has the opinion that Headers should be strongly-typed, because that's
 //! why we're using Rust in the first place. To set or get any header, an object
 //! must implement the `Header` trait from this module. Several common headers
 //! are already provided, such as `Host`, `ContentType`, `UserAgent`, and others.
@@ -14,9 +14,9 @@
 //!
 //! # Defining Custom Headers
 //!
-//! mco-http provides many of the most commonly used headers in HTTP. If
+//! Hyper provides many of the most commonly used headers in HTTP. If
 //! you need to define a custom header, it's easy to do while still taking
-//! advantage of the type system. mco-http includes a `header!` macro for defining
+//! advantage of the type system. Hyper includes a `header!` macro for defining
 //! many wrapper-style headers.
 //!
 //! ```
@@ -101,7 +101,7 @@ mod internals;
 mod shared;
 pub mod parsing;
 
-pub type HeaderName = UniCase<CowStr>;
+type HeaderName = UniCase<CowStr>;
 
 /// A trait for any object that will represent a header field and value.
 ///
@@ -162,14 +162,14 @@ impl<'a, 'b> MultilineFormatter<'a, 'b> {
         use std::fmt::Write;
         match self.0 {
             Multi::Line(ref name, ref mut f) => {
-                f.write_str(*name)?;
-                f.write_str(": ")?;
-                write!(NewlineReplacer(*f), "{}", line)?;
+                r#try!(f.write_str(*name));
+                r#try!(f.write_str(": "));
+                r#try!(write!(NewlineReplacer(*f), "{}", line));
                 f.write_str("\r\n")
             },
             Multi::Join(ref mut first, ref mut f) => {
                 if !*first {
-                    f.write_str(", ")?;
+                    r#try!(f.write_str(", "));
                 } else {
                     *first = false;
                 }
@@ -203,8 +203,8 @@ impl<'a, 'b> fmt::Write for NewlineReplacer<'a, 'b> {
         let mut since = 0;
         for (i, &byte) in s.as_bytes().iter().enumerate() {
             if byte == b'\r' || byte == b'\n' {
-                self.0.write_str(&s[since..i])?;
-                self.0.write_str(" ")?;
+                r#try!(self.0.write_str(&s[since..i]));
+                r#try!(self.0.write_str(" "));
                 since = i + 1;
             }
         }
@@ -267,25 +267,10 @@ fn header_name<T: Header>() -> &'static str {
 }
 
 /// A map of header fields on requests and responses.
-///
-/// Example:
-///
-/// ```
-/// //set_raw
-/// # use mco_http::header::Headers;
-/// # let mut headers = Headers::new();
-/// headers.set_raw("content-length", vec![b"5".to_vec()]);
-/// ```
-/// ```
-/// //get_raw
-/// # use mco_http::header::Headers;
-/// # let mut headers = Headers::new();
-/// let raw_content_type = headers.get_raw("content-type");
-/// ```
 #[derive(Clone)]
 pub struct Headers {
     //data: HashMap<HeaderName, Item>
-    pub data: VecMap<HeaderName, Item>,
+    data: VecMap<HeaderName, Item>,
 }
 
 impl Headers {
@@ -297,21 +282,25 @@ impl Headers {
         }
     }
 
-    pub fn with_capacity(capacity: usize) -> Headers {
+    pub fn with_capacity(size:usize)-> Headers{
         Headers {
-            data: VecMap::with_capacity(capacity)
+            data: VecMap::with_capacity(size)
         }
     }
 
+    #[doc(hidden)]
     pub fn from_raw(raw: &[httparse::Header]) -> crate::Result<Headers> {
         let mut headers = Headers::new();
         for header in raw {
+            trace!("raw header: {:?}={:?}", header.name, &header.value[..]);
             let name = UniCase(CowStr(Cow::Owned(header.name.to_owned())));
             let item = match headers.data.entry(name) {
                 Entry::Vacant(entry) => entry.insert(Item::new_raw(vec![])),
                 Entry::Occupied(entry) => entry.into_mut()
             };
-            item.raw_mut().push(header.value.to_vec());
+            let trim = header.value.iter().rev().take_while(|&&x| x == b' ').count();
+            let value = &header.value[.. header.value.len() - trim];
+            item.raw_mut().push(value.to_vec());
         }
         Ok(headers)
     }
@@ -465,7 +454,7 @@ impl PartialEq for Headers {
 impl fmt::Display for Headers {
    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for header in self.iter() {
-            fmt::Display::fmt(&header, f)?;
+            r#try!(fmt::Display::fmt(&header, f));
         }
         Ok(())
     }
@@ -473,11 +462,11 @@ impl fmt::Display for Headers {
 
 impl fmt::Debug for Headers {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Headers { ")?;
+        r#try!(f.write_str("Headers { "));
         for header in self.iter() {
-            write!(f, "{:?}, ", header)?;
+            r#try!(write!(f, "{:?}, ", header));
         }
-        f.write_str("}")?;
+        r#try!(f.write_str("}"));
         Ok(())
     }
 }
@@ -594,7 +583,7 @@ impl<'a, H: HeaderFormat> fmt::Debug for HeaderFormatter<'a, H> {
 }
 
 #[derive(Clone, Hash, Eq, PartialEq, PartialOrd, Ord)]
-pub struct CowStr(Cow<'static, str>);
+struct CowStr(Cow<'static, str>);
 
 impl Deref for CowStr {
     type Target = Cow<'static, str>;
@@ -729,12 +718,11 @@ mod tests {
         assert_eq!(headers.get::<CrazyLength>(), Some(&CrazyLength(Some(false), 10)));
     }
 
-    // disable,we use all of data
-    // #[test]
-    // fn test_trailing_whitespace() {
-    //     let headers = Headers::from_raw(&raw!(b"Content-Length: 10   ")).unwrap();
-    //     assert_eq!(headers.get::<ContentLength>(), Some(&ContentLength(10)));
-    // }
+    #[test]
+    fn test_trailing_whitespace() {
+        let headers = Headers::from_raw(&raw!(b"Content-Length: 10   ")).unwrap();
+        assert_eq!(headers.get::<ContentLength>(), Some(&ContentLength(10)));
+    }
 
     #[test]
     fn test_multiple_reads() {

@@ -1,6 +1,9 @@
 use std::fmt::{self, Display};
 use std::str::FromStr;
 
+#[allow(unused_imports)]
+use std::ascii::AsciiExt;
+
 use self::Charset::*;
 
 /// A Mime charset.

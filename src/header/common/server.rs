@@ -22,7 +22,7 @@ header! {
     /// use mco_http::header::{Headers, Server};
     ///
     /// let mut headers = Headers::new();
-    /// headers.set(Server("hyper/0.5.2".to_owned()));
+    /// headers.set(Server("mco_http/0.5.2".to_owned()));
     /// ```
     // TODO: Maybe parse as defined in the spec?
     (Server, "Server") => [String]

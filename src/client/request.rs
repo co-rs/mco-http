@@ -61,9 +61,9 @@ impl Request<Fresh> {
     /// properly initialized by the caller (e.g. a TCP connection's already established).
     pub fn with_message(method: Method, url: Url, message: Box<dyn HttpMessage>)
             -> crate::Result<Request<Fresh>> {
-        let mut headers = Headers::with_capacity(1);
+        let mut headers = Headers::new();
         {
-            let (host, port) = get_host_and_port(&url)?;
+            let (host, port) = r#try!(get_host_and_port(&url));
             headers.set(Host {
                 hostname: host.to_owned(),
                 port: Some(port),
@@ -98,8 +98,8 @@ impl Request<Fresh> {
         C: NetworkConnector<Stream=S>,
         S: Into<Box<dyn NetworkStream + Send>> {
         let stream = {
-            let (host, port) = get_host_and_port(&url)?;
-            connector.connect(host, port, url.scheme())?.into()
+            let (host, port) = r#try!(get_host_and_port(&url));
+            r#try!(connector.connect(host, port, url.scheme())).into()
         };
 
         Request::with_message(method, url, Box::new(Http11Message::with_stream(stream)))
@@ -176,12 +176,12 @@ mod tests {
     use std::str::from_utf8;
     use url::Url;
     use crate::method::Method::{Get, Head, Post};
-    use crate::mock::{MockStream, MockConnector};
+    use mock::{MockStream, MockConnector};
     use crate::net::Fresh;
     use crate::header::{ContentLength,TransferEncoding,Encoding};
     use url::form_urlencoded;
     use super::Request;
-    use crate::proto::h1::Http11Message;
+    use crate::http::h1::Http11Message;
 
     fn run_request(req: Request<Fresh>) -> Vec<u8> {
         let req = req.start().unwrap();
@@ -294,7 +294,7 @@ mod tests {
 
     #[test]
     fn test_write_error_closes() {
-        let url = Url::parse("http://hyper.rs").unwrap();
+        let url = Url::parse("http://mco_http.rs").unwrap();
         let req = Request::with_connector(
             Get, url, &mut MockConnector
         ).unwrap();

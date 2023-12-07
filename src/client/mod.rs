@@ -46,14 +46,8 @@
 //! // can outlive the main thread, so we must use reference counting to keep
 //! // the Client alive long enough. Scoped threads could skip the Arc.
 //! let client = Arc::new(Client::new());
-//! let clone0 = client.clone();
 //! let clone1 = client.clone();
 //! let clone2 = client.clone();
-//!
-//! mco::co!(move ||{
-//!   clone0.get("http://example.domain").send().unwrap();
-//! });
-//!
 //! thread::spawn(move || {
 //!     clone1.get("http://example.domain").send().unwrap();
 //! });
@@ -292,7 +286,7 @@ impl<'a> RequestBuilder<'a> {
     /// Execute this request and receive a Response back.
     pub fn send(self) -> crate::Result<Response> {
         let RequestBuilder { client, method, url, headers, body } = self;
-        let mut url = url?;
+        let mut url = r#try!(url);
         trace!("send method={:?}, url={:?}, client={:?}", method, url, client);
 
         let can_have_body = match method {
@@ -308,16 +302,13 @@ impl<'a> RequestBuilder<'a> {
 
         loop {
             let mut req = {
-                let (host, port) = get_host_and_port(&url)?;
-                let mut message = client.protocol.new_message(&host, port, url.scheme())?;
+                let (host, port) = r#try!(get_host_and_port(&url));
+                let mut message = r#try!(client.protocol.new_message(&host, port, url.scheme()));
                 if url.scheme() == "http" && client.proxy.is_some() {
                     message.set_proxied(true);
                 }
 
-                let mut h = Headers::with_capacity({match headers.as_ref() {
-                    None => {1}
-                    Some(n) => {n.len()}
-                }});
+                let mut h = Headers::new();
                 h.set(Host {
                     hostname: host.to_owned(),
                     port: Some(port),
@@ -329,8 +320,8 @@ impl<'a> RequestBuilder<'a> {
                 Request::with_headers_and_message(method.clone(), url.clone(), headers, message)
             };
 
-            req.set_write_timeout(client.write_timeout)?;
-            req.set_read_timeout(client.read_timeout)?;
+            r#try!(req.set_write_timeout(client.write_timeout));
+            r#try!(req.set_read_timeout(client.read_timeout));
 
             match (can_have_body, body.as_ref()) {
                 (true, Some(body)) => match body.size() {
@@ -340,11 +331,11 @@ impl<'a> RequestBuilder<'a> {
                 (true, None) => req.headers_mut().set(ContentLength(0)),
                 _ => () // neither
             }
-            let mut streaming = req.start()?;
+            let mut streaming = r#try!(req.start());
             if let Some(mut rdr) = body.take() {
-                copy(&mut rdr, &mut streaming)?;
+                r#try!(copy(&mut rdr, &mut streaming));
             }
-            let res = streaming.send()?;
+            let res = r#try!(streaming.send());
             if !res.status.is_redirection() {
                 return Ok(res)
             }
@@ -592,8 +583,8 @@ mod scheme {
 mod tests {
     use std::io::Read;
     use crate::header::Server;
-    use crate::proto::h1::Http11Message;
-    use crate::mock::{MockStream, MockSsl};
+    use crate::http::h1::Http11Message;
+    use mock::{MockStream, MockSsl};
     use super::{Client, RedirectPolicy};
     use super::scheme::Scheme;
     use super::proxy::Proxy;
@@ -743,7 +734,7 @@ mod tests {
         struct BadBody;
 
         impl ::std::io::Read for BadBody {
-            fn read(&mut self, _buf: &mut [u8]) -> ::std::io::Result<usize> {
+            fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
                 Err(std::io::Error::new(std::io::ErrorKind::Other, "BadBody read"))
             }
         }

@@ -1,3 +1,5 @@
+use crate::header::Headers;
+
 #[derive(Clone)]
 pub struct VecMap<K, V> {
     vec: Vec<(K, V)>,
@@ -10,9 +12,9 @@ impl<K: PartialEq, V> VecMap<K, V> {
         }
     }
 
-    pub fn with_capacity(capacity: usize) -> VecMap<K, V> {
+    pub fn with_capacity(size:usize)-> Self{
         VecMap {
-            vec: Vec::with_capacity(capacity)
+            vec: Vec::with_capacity(size)
         }
     }
 
@@ -49,7 +51,7 @@ impl<K: PartialEq, V> VecMap<K, V> {
     }
 
     pub fn len(&self) -> usize { self.vec.len() }
-    pub fn iter(&self) -> ::std::slice::Iter<(K, V)> {
+    pub fn iter(&self) -> std::slice::Iter<(K, V)> {
         self.vec.iter()
     }
     pub fn remove(&mut self, key: &K) -> Option<V> {

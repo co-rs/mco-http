@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::fmt::{Debug, Formatter};
+use std::ops::Deref;
 use crate::net::Fresh;
 use crate::server::{Handler, Request, Response};
 use crate::status::StatusCode;
@@ -129,7 +130,7 @@ impl Route {
 
 
 impl Handler for Route {
-    fn handle(&self, mut req: Request, mut res: Response) {
+    fn handle<'a, 'k>(&'a self, mut req: Request<'a, 'k>, mut res: Response<'a, Fresh>){
         for  m in &self.middleware {
             let mut r = Some(res);
             //finish?.this is safety
@@ -164,7 +165,8 @@ impl Handler for Route {
 }
 
 impl Handler for Arc<Route> {
-    fn handle(&self, req: Request, res: Response<'_, Fresh>) {
-        Route::handle(self, req, res)
+    fn handle<'a, 'k>(&'a self, mut req: Request<'a, 'k>, mut res: Response<'a, Fresh>) {
+        // Route::handle(&self, req, res)
+        self.deref().handle(req,res)
     }
 }

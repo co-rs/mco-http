@@ -2,6 +2,9 @@ use std::fmt;
 use std::borrow::Cow;
 use std::str::FromStr;
 
+#[allow(unused_imports)]
+use std::ascii::AsciiExt;
+
 use mime::Mime;
 use language_tags::LanguageTag;
 
@@ -418,33 +421,33 @@ impl fmt::Display for Link {
 
 impl fmt::Display for LinkValue {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "<{}>", self.link)?;
+        r#try!(write!(f, "<{}>", self.link));
 
         if let Some(ref rel) = self.rel {
-            fmt_delimited(f, rel.as_slice(), " ", ("; rel=\"", "\""))?;
+            r#try!(fmt_delimited(f, rel.as_slice(), " ", ("; rel=\"", "\"")));
         }
         if let Some(ref anchor) = self.anchor {
-            write!(f, "; anchor=\"{}\"", anchor)?;
+            r#try!(write!(f, "; anchor=\"{}\"", anchor));
         }
         if let Some(ref rev) = self.rev {
-            fmt_delimited(f, rev.as_slice(), " ", ("; rev=\"", "\""))?;
+            r#try!(fmt_delimited(f, rev.as_slice(), " ", ("; rev=\"", "\"")));
         }
         if let Some(ref href_lang) = self.href_lang {
             for tag in href_lang {
-                write!(f, "; hreflang={}", tag)?;
+                r#try!(write!(f, "; hreflang={}", tag));
             }
         }
         if let Some(ref media_desc) = self.media_desc {
-            fmt_delimited(f, media_desc.as_slice(), ", ", ("; media=\"", "\""))?;
+            r#try!(fmt_delimited(f, media_desc.as_slice(), ", ", ("; media=\"", "\"")));
         }
         if let Some(ref title) = self.title {
-            write!(f, "; title=\"{}\"", title)?;
+            r#try!(write!(f, "; title=\"{}\"", title));
         }
         if let Some(ref title_star) = self.title_star {
-            write!(f, "; title*={}", title_star)?;
+            r#try!(write!(f, "; title*={}", title_star));
         }
         if let Some(ref media_type) = self.media_type {
-            write!(f, "; type=\"{}\"", media_type)?;
+            r#try!(write!(f, "; type=\"{}\"", media_type));
         }
 
         Ok(())
@@ -857,15 +860,15 @@ impl<'a> Iterator for SplitAsciiUnquoted<'a> {
 fn fmt_delimited<T: fmt::Display>(f: &mut fmt::Formatter, p: &[T], d: &str, b: (&str, &str)) -> fmt::Result {
     if p.len() != 0 {
         // Write a starting string `b.0` before the first element
-        write!(f, "{}{}", b.0, p[0])?;
+        r#try!(write!(f, "{}{}", b.0, p[0]));
 
         for i in &p[1..] {
             // Write the next element preceded by the delimiter `d`
-            write!(f, "{}{}", d, i)?;
+            r#try!(write!(f, "{}{}", d, i));
         }
 
         // Write a ending string `b.1` before the first element
-        write!(f, "{}", b.1)?;
+        r#try!(write!(f, "{}", b.1));
     }
 
     Ok(())
@@ -901,8 +904,8 @@ mod tests {
     use crate::header::Header;
 
     use crate::buffer::BufReader;
-    use crate::mock::MockStream;
-    use crate::proto::h1::parse_request;
+    use mock::MockStream;
+    use crate::http::h1::parse_request;
 
     use mime::Mime;
     use mime::TopLevel::Text;
@@ -987,7 +990,7 @@ mod tests {
         let expected_link = Link::new(vec![first_link, second_link, third_link]);
 
         let mut raw = MockStream::with_input(b"GET /super_short_uri/and_whatever HTTP/1.1\r\nHost: \
-                                  hyper.rs\r\nAccept: a lot of things\r\nAccept-Charset: \
+                                  mco_http.rs\r\nAccept: a lot of things\r\nAccept-Charset: \
                                   utf8\r\nAccept-Encoding: *\r\nLink: </TheBook/chapter2>; \
                                   rel=\"previous\"; title*=UTF-8'de'letztes%20Kapitel, \
                                   </TheBook/chapter4>; rel=\"next\"; title*=\

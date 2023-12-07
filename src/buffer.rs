@@ -87,7 +87,7 @@ impl<R: Read> BufReader<R> {
         let v = &mut self.buf;
         trace!("read_into_buf buf[{}..{}]", self.cap, v.len());
         if self.cap < v.capacity() {
-            let nread = self.inner.read(&mut v[self.cap..])?;
+            let nread = r#try!(self.inner.read(&mut v[self.cap..]));
             self.cap += nread;
             Ok(nread)
         } else {
@@ -122,8 +122,8 @@ impl<R: Read> Read for BufReader<R> {
             return self.inner.read(buf);
         }
         let nread = {
-           let mut rem = self.fill_buf()?;
-           rem.read(buf)?
+           let mut rem = r#try!(self.fill_buf());
+           r#try!(rem.read(buf))
         };
         self.consume(nread);
         Ok(nread)
@@ -133,7 +133,7 @@ impl<R: Read> Read for BufReader<R> {
 impl<R: Read> BufRead for BufReader<R> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
         if self.pos == self.cap {
-            self.cap = self.inner.read(&mut self.buf)?;
+            self.cap = r#try!(self.inner.read(&mut self.buf));
             self.pos = 0;
         }
         Ok(&self.buf[self.pos..self.cap])

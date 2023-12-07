@@ -14,7 +14,7 @@ header! {
     /// ```
     ///
     /// # Example values
-    /// * `http://www.example.org/hypertext/Overview.html`
+    /// * `http://www.example.org/mco_httptext/Overview.html`
     ///
     /// # Examples
     /// ```
@@ -34,7 +34,7 @@ header! {
 
     test_referer {
         // Testcase from the RFC
-        test_header!(test1, vec![b"http://www.example.org/hypertext/Overview.html"]);
+        test_header!(test1, vec![b"http://www.example.org/mco_httptext/Overview.html"]);
     }
 }
 

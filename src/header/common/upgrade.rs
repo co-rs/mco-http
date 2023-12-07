@@ -87,7 +87,7 @@ pub enum ProtocolName {
     WebSocket,
     /// `h2c` value, HTTP/2 over cleartext TCP
     H2c,
-    /// Any other protocol name not known to hyper
+    /// Any other protocol name not known to mco_http
     Unregistered(String),
 }
 
@@ -141,15 +141,15 @@ impl FromStr for Protocol {
     type Err =();
     fn from_str(s: &str) -> Result<Protocol, ()> {
         let mut parts = s.splitn(2, '/');
-        Ok(Protocol::new(parts.next().unwrap().parse()?, parts.next().map(|x| x.to_owned())))
+        Ok(Protocol::new(r#try!(parts.next().unwrap().parse()), parts.next().map(|x| x.to_owned())))
     }
 }
 
 impl Display for Protocol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.name, f)?;
+        r#try!(fmt::Display::fmt(&self.name, f));
         if let Some(ref version) = self.version {
-            write!(f, "/{}", version)?;
+            r#try!(write!(f, "/{}", version));
         }
         Ok(())
     }

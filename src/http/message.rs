@@ -13,11 +13,11 @@ use typeable::Typeable;
 
 use crate::header::Headers;
 use crate::http::RawStatus;
-use crate::url::Url;
+use url::Url;
 
 use crate::method;
 use crate::version;
-use crate::traitobject;
+use traitobject;
 
 /// The trait provides an API for creating new `HttpMessage`s depending on the underlying HTTP
 /// protocol.
@@ -123,7 +123,7 @@ impl dyn HttpMessage {
     /// If the underlying type is T, extract it.
     #[inline]
     pub fn downcast<T: Any>(self: Box<dyn HttpMessage>)
-                            -> Result<Box<T>, Box<dyn HttpMessage>> {
+            -> Result<Box<T>, Box<dyn HttpMessage>> {
         if self.is::<T>() {
             Ok(unsafe { self.downcast_unchecked() })
         } else {

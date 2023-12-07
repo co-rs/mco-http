@@ -6,7 +6,7 @@ use url::idna::domain_to_unicode;
 
 /// The `Host` header.
 ///
-/// HTTP/1.1 requires that all requests include a `Host` header, and so hyper
+/// HTTP/1.1 requires that all requests include a `Host` header, and so mco_http
 /// client requests add one automatically.
 ///
 /// Currently is just a String, but it should probably become a better type,
@@ -19,7 +19,7 @@ use url::idna::domain_to_unicode;
 /// let mut headers = Headers::new();
 /// headers.set(
 ///     Host{
-///         hostname: "hyper.rs".to_owned(),
+///         hostname: "mco_http.rs".to_owned(),
 ///         port: None,
 ///     }
 /// );
@@ -30,7 +30,7 @@ use url::idna::domain_to_unicode;
 /// let mut headers = Headers::new();
 /// headers.set(
 ///     Host{
-///         hostname: "hyper.rs".to_owned(),
+///         hostname: "mco_http.rs".to_owned(),
 ///         port: Some(8080),
 ///     }
 /// );

@@ -68,7 +68,7 @@ use std::str::from_utf8;
 #[derive(Clone, PartialEq, Debug)]
 pub struct SetCookie(pub Vec<String>);
 
-__hyper__deref!(SetCookie => Vec<String>);
+__mco_http__deref!(SetCookie => Vec<String>);
 
 impl Header for SetCookie {
     fn header_name() -> &'static str {
@@ -103,7 +103,7 @@ impl HeaderFormat for SetCookie {
 
     fn fmt_multi_header(&self, f: &mut crate::header::MultilineFormatter) -> fmt::Result {
         for cookie in &self.0 {
-            f.fmt_line(cookie)?;
+            r#try!(f.fmt_line(cookie));
         }
         Ok(())
     }

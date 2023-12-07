@@ -62,11 +62,11 @@ impl FromStr for RequestUri {
         } else if bytes.starts_with(b"/") {
             Ok(RequestUri::AbsolutePath(s.to_owned()))
         } else if bytes.contains(&b'/') {
-            Ok(RequestUri::AbsoluteUri(Url::parse(s)?))
+            Ok(RequestUri::AbsoluteUri(r#try!(Url::parse(s))))
         } else {
             let mut temp = "http://".to_owned();
             temp.push_str(s);
-            Url::parse(&temp[..])?;
+            r#try!(Url::parse(&temp[..]));
             todo!("compare vs u.authority()");
             Ok(RequestUri::Authority(s.to_owned()))
         }
@@ -91,8 +91,8 @@ fn test_uri_fromstr() {
     }
 
     read("*", RequestUri::Star);
-    read("http://hyper.rs/", RequestUri::AbsoluteUri(Url::parse("http://hyper.rs/").unwrap()));
-    read("hyper.rs", RequestUri::Authority("hyper.rs".to_owned()));
+    read("http://mco_http.rs/", RequestUri::AbsoluteUri(Url::parse("http://mco_http.rs/").unwrap()));
+    read("mco_http.rs", RequestUri::Authority("mco_http.rs".to_owned()));
     read("/", RequestUri::AbsolutePath("/".to_owned()));
 }
 
@@ -103,8 +103,8 @@ fn test_uri_display() {
     }
 
     assert_display("*", RequestUri::Star);
-    assert_display("http://hyper.rs/", RequestUri::AbsoluteUri(Url::parse("http://hyper.rs/").unwrap()));
-    assert_display("hyper.rs", RequestUri::Authority("hyper.rs".to_owned()));
+    assert_display("http://mco_http.rs/", RequestUri::AbsoluteUri(Url::parse("http://mco_http.rs/").unwrap()));
+    assert_display("mco_http.rs", RequestUri::Authority("mco_http.rs".to_owned()));
     assert_display("/", RequestUri::AbsolutePath("/".to_owned()));
 
 }

@@ -41,7 +41,7 @@ use crate::header::{Header, HeaderFormat};
 ///
 /// let mut headers = Headers::new();
 /// headers.set(
-///     AccessControlAllowOrigin::Value("http://hyper.rs".to_owned())
+///     AccessControlAllowOrigin::Value("http://mco_http.rs".to_owned())
 /// );
 /// ```
 #[derive(Clone, PartialEq, Debug)]
@@ -67,7 +67,7 @@ impl Header for AccessControlAllowOrigin {
         Ok(match &value[..] {
             b"*" => AccessControlAllowOrigin::Any,
             b"null" => AccessControlAllowOrigin::Null,
-            _ => AccessControlAllowOrigin::Value(String::from_utf8(value.clone())?)
+            _ => AccessControlAllowOrigin::Value(r#try!(String::from_utf8(value.clone())))
         })
     }
 }
@@ -83,7 +83,7 @@ impl HeaderFormat for AccessControlAllowOrigin {
 }
 
 impl Display for AccessControlAllowOrigin {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> std::fmt::Result {
         self.fmt_header(f)
     }
 }

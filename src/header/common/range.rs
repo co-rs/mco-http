@@ -105,13 +105,13 @@ impl fmt::Display for Range {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Range::Bytes(ref ranges) => {
-                write!(f, "bytes=")?;
+                r#try!(write!(f, "bytes="));
 
                 for (i, range) in ranges.iter().enumerate() {
                     if i != 0 {
-                        f.write_str(",")?;
+                        r#try!(f.write_str(","));
                     }
-                    Display::fmt(range, f)?;
+                    r#try!(Display::fmt(range, f));
                 }
                 Ok(())
             },

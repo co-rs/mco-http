@@ -1,4 +1,3 @@
-use std::str::FromStr;
 use mime::Mime;
 
 header! {
@@ -77,18 +76,11 @@ impl ContentType {
         ContentType(mime!(Text/Html; Charset=Utf8))
     }
 
-    /// A constructor  to easily create a `Content-Type: text/html; charset=utf-8` header.
-    #[inline]
-    pub fn xml() -> ContentType {
-        ContentType(mime!(Text/Xml; Charset=Utf8))
-    }
-
     /// A constructor  to easily create a `Content-Type: application/www-form-url-encoded` header.
     #[inline]
     pub fn form_url_encoded() -> ContentType {
         ContentType(mime!(Application/WwwFormUrlEncoded))
     }
-
     /// A constructor  to easily create a `Content-Type: image/jpeg` header.
     #[inline]
     pub fn jpeg() -> ContentType {
@@ -99,32 +91,6 @@ impl ContentType {
     #[inline]
     pub fn png() -> ContentType {
         ContentType(mime!(Image/Png))
-    }
-
-    #[inline]
-    pub fn application_xml() -> ContentType {
-        ContentType(mime!(Application/Xml))
-    }
-
-    #[inline]
-    pub fn application_html() -> ContentType {
-        ContentType(mime!(Application/Html))
-    }
-
-    #[inline]
-    pub fn application_json() -> ContentType {
-        ContentType(mime!(Application/Json))
-    }
-    
-    #[inline]
-    pub fn application_octet_stream() -> ContentType {
-        ContentType(mime!(Application/OctetStream))
-    }
-
-    /// from a content_type str
-    #[inline]
-    pub fn from_str(content_type:&str) -> Result<ContentType,()> {
-        Ok(ContentType(Mime::from_str(content_type)?))
     }
 }
 

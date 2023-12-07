@@ -24,9 +24,8 @@ use self::Error::{
 };
 
 pub use url::ParseError;
-use crate::Error::{Parse, ParseJson};
 
-/// Result type often returned from methods that can have hyper `Error`s.
+/// Result type often returned from methods that can have mco_http `Error`s.
 pub type Result<T> = ::std::result::Result<T, Error>;
 
 /// A set of errors that can occur parsing HTTP streams.
@@ -51,12 +50,11 @@ pub enum Error {
     /// Parsing a field as string failed
     Utf8(Utf8Error),
 
+    /// Other error
+    Other(String),
+
     #[doc(hidden)]
-    __Nonexhaustive(Void),
-
-    Parse(String),
-
-    ParseJson(String)
+    __Nonexhaustive(Void)
 }
 
 #[doc(hidden)]
@@ -92,8 +90,7 @@ impl StdError for Error {
             Io(ref e) => e.description(),
             Ssl(ref e) => e.description(),
             Utf8(ref e) => e.description(),
-            Parse(ref e) => e,
-            ParseJson(ref e) => e,
+            Error::Other(ref e) => &e,
             Error::__Nonexhaustive(..) =>  unreachable!(),
         }
     }
@@ -154,18 +151,6 @@ impl From<httparse::Error> for Error {
             httparse::Error::TooManyHeaders => TooLarge,
             httparse::Error::Version => Version,
         }
-    }
-}
-
-impl From<serde_urlencoded::de::Error> for Error {
-    fn from(err: serde_urlencoded::de::Error) -> Error {
-        Error::Parse(err.to_string())
-    }
-}
-
-impl From<serde_json::Error> for Error{
-    fn from(arg: serde_json::Error) -> Self {
-        Error::ParseJson(arg.to_string())
     }
 }
 

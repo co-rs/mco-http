@@ -6,5 +6,5 @@ use crate::error::Result;
 pub fn read_json<T: DeserializeOwned>(req: &mut Request) -> Result<T> {
     let mut json_data = Vec::new();
     req.read_to_end(&mut json_data)?;
-    Ok(serde_json::from_slice(&json_data)?)
+    Ok(serde_json::from_slice(&json_data).map_err(|e|crate::Error::Other(e.to_string()))?)
 }

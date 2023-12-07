@@ -71,9 +71,9 @@ impl fmt::Display for ContentLength {
     }
 }
 
-__hyper__deref!(ContentLength => u64);
+__mco_http__deref!(ContentLength => u64);
 
-__hyper__tm!(ContentLength, tests {
+__mco_http__tm!(ContentLength, tests {
     // Testcase from RFC
     test_header!(test1, vec![b"3495"], Some(HeaderField(3495)));
 

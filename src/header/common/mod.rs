@@ -94,9 +94,9 @@ macro_rules! bench_header(
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! __hyper__deref {
+macro_rules! __mco_http__deref {
     ($from:ty => $to:ty) => {
-        impl std::ops::Deref for $from {
+        impl ::std::ops::Deref for $from {
             type Target = $to;
 
             fn deref(&self) -> &$to {
@@ -104,7 +104,7 @@ macro_rules! __hyper__deref {
             }
         }
 
-        impl std::ops::DerefMut for $from {
+        impl ::std::ops::DerefMut for $from {
             fn deref_mut(&mut self) -> &mut $to {
                 &mut self.0
             }
@@ -114,7 +114,7 @@ macro_rules! __hyper__deref {
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! __hyper__tm {
+macro_rules! __mco_http__tm {
     ($id:ident, $tm:ident{$($tf:item)*}) => {
         #[allow(unused_imports)]
         #[cfg(test)]
@@ -193,7 +193,7 @@ macro_rules! header {
         $(#[$a])*
         #[derive(Clone, Debug, PartialEq)]
         pub struct $id(pub Vec<$item>);
-        __hyper__deref!($id => Vec<$item>);
+        __mco_http__deref!($id => Vec<$item>);
         impl $crate::header::Header for $id {
             fn header_name() -> &'static str {
                 $n
@@ -203,12 +203,12 @@ macro_rules! header {
             }
         }
         impl $crate::header::HeaderFormat for $id {
-            fn fmt_header(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+            fn fmt_header(&self, f: &mut ::std::fmt::Formatter) -> std::fmt::Result {
                 $crate::header::parsing::fmt_comma_delimited(f, &self.0[..])
             }
         }
         impl ::std::fmt::Display for $id {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> std::fmt::Result {
                 use $crate::header::HeaderFormat;
                 self.fmt_header(f)
             }
@@ -219,7 +219,7 @@ macro_rules! header {
         $(#[$a])*
         #[derive(Clone, Debug, PartialEq)]
         pub struct $id(pub Vec<$item>);
-        __hyper__deref!($id => Vec<$item>);
+        __mco_http__deref!($id => Vec<$item>);
         impl $crate::header::Header for $id {
             fn header_name() -> &'static str {
                 $n
@@ -229,12 +229,12 @@ macro_rules! header {
             }
         }
         impl $crate::header::HeaderFormat for $id {
-            fn fmt_header(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+            fn fmt_header(&self, f: &mut ::std::fmt::Formatter) -> std::fmt::Result {
                 $crate::header::parsing::fmt_comma_delimited(f, &self.0[..])
             }
         }
         impl ::std::fmt::Display for $id {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> std::fmt::Result {
                 use $crate::header::HeaderFormat;
                 self.fmt_header(f)
             }
@@ -245,7 +245,7 @@ macro_rules! header {
         $(#[$a])*
         #[derive(Clone, Debug, PartialEq)]
         pub struct $id(pub $value);
-        __hyper__deref!($id => $value);
+        __mco_http__deref!($id => $value);
         impl $crate::header::Header for $id {
             fn header_name() -> &'static str {
                 $n
@@ -255,12 +255,12 @@ macro_rules! header {
             }
         }
         impl $crate::header::HeaderFormat for $id {
-            fn fmt_header(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+            fn fmt_header(&self, f: &mut ::std::fmt::Formatter) -> std::fmt::Result {
                 ::std::fmt::Display::fmt(&**self, f)
             }
         }
         impl ::std::fmt::Display for $id {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> std::fmt::Result {
                 ::std::fmt::Display::fmt(&**self, f)
             }
         }
@@ -290,7 +290,7 @@ macro_rules! header {
             }
         }
         impl $crate::header::HeaderFormat for $id {
-            fn fmt_header(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+            fn fmt_header(&self, f: &mut ::std::fmt::Formatter) -> std::fmt::Result {
                 match *self {
                     $id::Any => f.write_str("*"),
                     $id::Items(ref fields) => $crate::header::parsing::fmt_comma_delimited(
@@ -299,7 +299,7 @@ macro_rules! header {
             }
         }
         impl ::std::fmt::Display for $id {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> std::fmt::Result {
                 use $crate::header::HeaderFormat;
                 self.fmt_header(f)
             }
@@ -313,7 +313,7 @@ macro_rules! header {
             ($id, $n) => ($item)*
         }
 
-        __hyper__tm! { $id, $tm { $($tf)* }}
+        __mco_http__tm! { $id, $tm { $($tf)* }}
     };
     ($(#[$a:meta])*($id:ident, $n:expr) => ($item:ty)+ $tm:ident{$($tf:item)*}) => {
         header! {
@@ -321,7 +321,7 @@ macro_rules! header {
             ($id, $n) => ($item)+
         }
 
-        __hyper__tm! { $id, $tm { $($tf)* }}
+        __mco_http__tm! { $id, $tm { $($tf)* }}
     };
     ($(#[$a:meta])*($id:ident, $n:expr) => [$item:ty] $tm:ident{$($tf:item)*}) => {
         header! {
@@ -329,7 +329,7 @@ macro_rules! header {
             ($id, $n) => [$item]
         }
 
-        __hyper__tm! { $id, $tm { $($tf)* }}
+        __mco_http__tm! { $id, $tm { $($tf)* }}
     };
     ($(#[$a:meta])*($id:ident, $n:expr) => {Any / ($item:ty)+} $tm:ident{$($tf:item)*}) => {
         header! {
@@ -337,7 +337,7 @@ macro_rules! header {
             ($id, $n) => {Any / ($item)+}
         }
 
-        __hyper__tm! { $id, $tm { $($tf)* }}
+        __mco_http__tm! { $id, $tm { $($tf)* }}
     };
 }
 

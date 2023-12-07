@@ -28,7 +28,7 @@ impl FormData {
         let mut nodes: Vec<Node> = Vec::with_capacity(self.fields.len() + self.files.len());
 
         for &(ref name, ref value) in &self.fields {
-            let mut h = Headers::with_capacity(2);
+            let mut h = crate::header::Headers::with_capacity(2);
             h.set(ContentType(Mime(TopLevel::Text, SubLevel::Plain, vec![])));
             h.set(ContentDisposition {
                 disposition: DispositionType::Ext("form-data".to_owned()),

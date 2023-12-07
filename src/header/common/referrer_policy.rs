@@ -1,5 +1,8 @@
 use std::fmt;
 
+#[allow(unused_imports)]
+use std::ascii::AsciiExt;
+
 use crate::header::{Header, HeaderFormat, parsing};
 
 /// `Referrer-Policy` header, part of
@@ -58,7 +61,7 @@ impl Header for ReferrerPolicy {
     fn parse_header(raw: &[Vec<u8>]) -> crate::Result<ReferrerPolicy> {
         use self::ReferrerPolicy::*;
         // See https://www.w3.org/TR/referrer-policy/#determine-policy-for-token
-        let headers: Vec<String> = parsing::from_comma_delimited(raw)?;
+        let headers: Vec<String> = r#try!(parsing::from_comma_delimited(raw));
 
         for h in headers.iter().rev() {
             let slice = &h.to_ascii_lowercase()[..];

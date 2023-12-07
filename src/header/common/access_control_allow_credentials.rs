@@ -71,7 +71,7 @@ impl HeaderFormat for AccessControlAllowCredentials {
 }
 
 impl Display for AccessControlAllowCredentials {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> std::fmt::Result {
         self.fmt_header(f)
     }
 }

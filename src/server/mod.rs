@@ -80,7 +80,7 @@
 //!     match req.method {
 //!         mco_http::Post => {
 //!             io::copy(&mut req, &mut res.start().unwrap()).unwrap();
-//!         }
+//!         },
 //!         _ => *res.status_mut() = StatusCode::MethodNotAllowed
 //!     }
 //! }).unwrap();
@@ -100,7 +100,7 @@
 //! 1. You are typically never notified that your late header is doing nothing.
 //! 2. There's a runtime cost to checking on every write.
 //!
-//! Instead, hyper handles this statically, or at compile-time. A
+//! Instead, mco_http handles this statically, or at compile-time. A
 //! `Response<Fresh>` includes a `headers_mut()` method, allowing you add more
 //! headers. It also does not implement `Write`, so you can't accidentally
 //! write early. Once the "head" of the response is correct, you can "send" it
@@ -110,13 +110,20 @@
 use std::fmt;
 use std::io::{self, ErrorKind, BufWriter, Write};
 use std::net::{SocketAddr, ToSocketAddrs, Shutdown};
+use std::thread::{self, JoinHandle};
 use std::time::Duration;
+
+use num_cpus;
+
 pub use self::request::Request;
 pub use self::response::Response;
+
 pub use crate::net::{Fresh, Streaming};
-use crate::{Error, runtime};
+
+use crate::Error;
 use crate::buffer::BufReader;
 use crate::header::{Headers, Expect, Connection};
+use crate::http;
 use crate::method::Method;
 use crate::net::{NetworkListener, NetworkStream, HttpListener, HttpsListener, SslServer};
 use crate::status::StatusCode;
@@ -127,9 +134,6 @@ use self::listener::ListenerPool;
 
 pub mod request;
 pub mod response;
-pub mod extensions;
-pub use extensions::*;
-use crate::http::should_keep_alive;
 
 mod listener;
 
@@ -139,22 +143,21 @@ mod listener;
 /// incoming connection, and hand them to the provided handler.
 #[derive(Debug)]
 pub struct Server<L = HttpListener> {
-    pub listener: L,
-    pub timeouts: Timeouts,
+    listener: L,
+    timeouts: Timeouts,
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct Timeouts {
+struct Timeouts {
     read: Option<Duration>,
     keep_alive: Option<Duration>,
 }
-
 
 impl Default for Timeouts {
     fn default() -> Timeouts {
         Timeouts {
             read: None,
-            keep_alive: Some(Duration::from_secs(5)),
+            keep_alive: Some(Duration::from_secs(5))
         }
     }
 }
@@ -165,7 +168,7 @@ impl<L: NetworkListener> Server<L> {
     pub fn new(listener: L) -> Server<L> {
         Server {
             listener: listener,
-            timeouts: Timeouts::default(),
+            timeouts: Timeouts::default()
         }
     }
 
@@ -178,22 +181,19 @@ impl<L: NetworkListener> Server<L> {
     ///
     /// Default is enabled with a 5 second timeout.
     #[inline]
-    pub fn keep_alive(mut self, timeout: Option<Duration>) -> Self {
+    pub fn keep_alive(&mut self, timeout: Option<Duration>) {
         self.timeouts.keep_alive = timeout;
-        self
     }
 
     /// Sets the read timeout for all Request reads.
-    pub fn set_read_timeout(mut self, dur: Option<Duration>) -> Self {
+    pub fn set_read_timeout(&mut self, dur: Option<Duration>) {
         self.listener.set_read_timeout(dur);
         self.timeouts.read = dur;
-        self
     }
 
     /// Sets the write timeout for all Response writes.
-    pub fn set_write_timeout(mut self, dur: Option<Duration>) -> Self {
+    pub fn set_write_timeout(&mut self, dur: Option<Duration>) {
         self.listener.set_write_timeout(dur);
-        self
     }
 
     /// Get the address that the server is listening on.
@@ -218,118 +218,30 @@ impl<S: SslServer + Clone + Send> Server<HttpsListener<S>> {
     }
 }
 
-macro_rules! t_c {
-    ($e: expr) => {
-        match $e {
-            Ok(val) => val,
-            Err(err) => {
-                error!("call = {:?}\nerr = {:?}", stringify!($e), err);
-                continue;
-            }
-        }
-    };
-}
-
 impl<L: NetworkListener + Send + 'static> Server<L> {
     /// Binds to a socket and starts handling connections.
     pub fn handle<H: Handler + 'static>(self, handler: H) -> crate::Result<Listening> {
-        Self::handle_tasks(self, handler, num_cpus::get())
+        self.handle_threads(handler, num_cpus::get() * 5 / 4)
     }
 
     /// Binds to a socket and starts handling connections with the provided
-    /// number of tasks on pool
-    pub fn handle_tasks<H: Handler + 'static>(self, handler: H, tasks: usize) -> crate::Result<Listening> {
-        handle_task(self, handler, tasks)
+    /// number of threads.
+    pub fn handle_threads<H: Handler + 'static>(self, handler: H,
+            threads: usize) -> crate::Result<Listening> {
+        handle(self, handler, threads)
     }
-
-
-    // /// Binds to a socket and starts handling connections.
-    // pub fn handle_stack<H: Handler + 'static>(self, handler: H, stack_size: usize) -> crate::Result<Listening> {
-    //     let worker = Arc::new(Worker::new(handler, self.timeouts));
-    //     let mut listener = self.listener.clone();
-    //     let h = runtime::spawn_stack_size(move || {
-    //         for stream in listener.incoming() {
-    //             let mut stream = t_c!(stream);
-    //             let addr = {
-    //                 match stream.peer_addr(){
-    //                     Ok(v) => {Some(v)}
-    //                     Err(e) => {
-    //                         if e.kind() == NotConnected{
-    //                             let _=stream.close(Shutdown::Both);
-    //                         }
-    //                         return;
-    //                     }
-    //                 }
-    //             };
-    //             let w = worker.clone();
-    //             runtime::spawn_stack_size(move || {
-    //                 {
-    //                     #[cfg(unix)]
-    //                     stream.set_nonblocking(true);
-    //                     {
-    //                         match w.timeouts.keep_alive_type {
-    //                             KeepAliveType::WaitTime(timeout) => {
-    //                                 let mut now = std::time::Instant::now();
-    //                                 loop {
-    //                                     stream.reset_io();
-    //                                     let keep_alive = w.handle_connection(&mut stream,addr);
-    //                                     stream.wait_io();
-    //                                     if keep_alive == false {
-    //                                         return;
-    //                                     } else {
-    //                                         if now.elapsed() <= timeout {
-    //                                             now = std::time::Instant::now();
-    //                                         }else{
-    //                                             return;
-    //                                         }
-    //                                     }
-    //                                 }
-    //                             }
-    //                             KeepAliveType::WaitError(total) => {
-    //                                 let mut count = 0;
-    //                                 loop {
-    //                                     stream.reset_io();
-    //                                     let keep_alive = w.handle_connection(&mut stream,addr);
-    //                                     stream.wait_io();
-    //                                     if keep_alive == false {
-    //                                         return;
-    //                                     }else{
-    //                                         count += 1;
-    //                                         if count >= total {
-    //                                             return;
-    //                                         }
-    //                                         yield_now();
-    //                                     }
-    //                                 }
-    //                             }
-    //                         }
-    //                     }
-    //                 }
-    //             }, stack_size);
-    //         }
-    //     }, stack_size);
-    //     let socket = self.listener.clone().local_addr()?;
-    //     return Ok(Listening {
-    //         _guard: Some(h),
-    //         socket: socket,
-    //     });
-    // }
 }
 
-fn handle_task<H, L>(mut server: Server<L>, handler: H, tasks: usize) -> crate::Result<Listening>
-    where H: Handler + 'static, L: NetworkListener + Send + 'static {
-    let socket = server.listener.local_addr()?;
+fn handle<H, L>(mut server: Server<L>, handler: H, threads: usize) -> crate::Result<Listening>
+where H: Handler + 'static, L: NetworkListener + Send + 'static {
+    let socket = r#try!(server.listener.local_addr());
 
-    debug!("tasks = {:?}", tasks);
+    debug!("threads = {:?}", threads);
     let pool = ListenerPool::new(server.listener);
     let worker = Worker::new(handler, server.timeouts);
-    let work = move |mut stream| {
-        worker.handle_connection(&mut stream);
-    };
+    let work = move |mut stream| worker.handle_connection(&mut stream);
 
-    let guard = runtime::spawn(move || {
-        pool.accept(work, tasks);
-    });
+    let guard = thread::spawn(move || pool.accept(work, threads));
 
     Ok(Listening {
         _guard: Some(guard),
@@ -337,19 +249,18 @@ fn handle_task<H, L>(mut server: Server<L>, handler: H, tasks: usize) -> crate::
     })
 }
 
-pub struct Worker<H: Handler + 'static> {
+struct Worker<H: Handler + 'static> {
     handler: H,
     timeouts: Timeouts,
 }
 
 impl<H: Handler + 'static> Worker<H> {
-    pub fn new(handler: H, timeouts: Timeouts) -> Worker<H> {
+    fn new(handler: H, timeouts: Timeouts) -> Worker<H> {
         Worker {
             handler: handler,
             timeouts: timeouts,
         }
     }
-
 
     fn handle_connection<S>(&self, stream: &mut S) where S: NetworkStream + Clone {
         debug!("Incoming stream");
@@ -384,45 +295,12 @@ impl<H: Handler + 'static> Worker<H> {
         }
     }
 
-    // pub fn handle_connection<S>(&self, stream: &mut S, mut addr:Option<SocketAddr>) -> bool where S: NetworkStream {
-    //     debug!("Incoming stream");
-    //     self.handler.on_connection_start();
-    //
-    //     if addr.is_none(){
-    //         addr = match stream.peer_addr() {
-    //             Ok(addr) => Some(addr),
-    //             Err(e) => {
-    //                 error!("Peer Name error: {:?}", e);
-    //                 return false;
-    //             }
-    //         };
-    //     }
-    //     //safety will forget copy s
-    //     let mut s: S = unsafe { std::mem::transmute_copy(stream) };
-    //     let mut rdr = BufReader::new(&mut s as &mut dyn NetworkStream);
-    //     let mut wrt = BufWriter::new(stream);
-    //
-    //     let mut keep_alive = self.timeouts.keep_alive.is_some();
-    //     while self.keep_alive_loop(&mut rdr, &mut wrt, addr) {
-    //         if let Err(e) = self.set_read_timeout(*rdr.get_ref(), self.timeouts.keep_alive) {
-    //             info!("set_read_timeout keep_alive {:?}", e);
-    //             break;
-    //         }
-    //         keep_alive = true;
-    //     }
-    //     self.handler.on_connection_end();
-    //     debug!("keep_alive loop ending for {:?}", addr);
-    //
-    //     std::mem::forget(s);
-    //     keep_alive
-    // }
-
     fn set_read_timeout(&self, s: &dyn NetworkStream, timeout: Option<Duration>) -> io::Result<()> {
         s.set_read_timeout(timeout)
     }
 
     fn keep_alive_loop<W: Write>(&self, rdr: &mut BufReader<&mut dyn NetworkStream>,
-                                 wrt: &mut W, addr: SocketAddr) -> bool {
+            wrt: &mut W, addr: SocketAddr) -> bool {
         let req = match Request::new(rdr, addr) {
             Ok(req) => req,
             Err(Error::Io(ref e)) if e.kind() == ErrorKind::ConnectionAborted => {
@@ -450,7 +328,7 @@ impl<H: Handler + 'static> Worker<H> {
         }
 
         let mut keep_alive = self.timeouts.keep_alive.is_some() &&
-           should_keep_alive(req.version, &req.headers);
+            http::should_keep_alive(req.version, &req.headers);
         let version = req.version;
         let mut res_headers = Headers::new();
         if !keep_alive {
@@ -465,15 +343,15 @@ impl<H: Handler + 'static> Worker<H> {
         // if the request was keep-alive, we need to check that the server agrees
         // if it wasn't, then the server cannot force it to be true anyways
         if keep_alive {
-            keep_alive = should_keep_alive(version, &res_headers);
+            keep_alive = http::should_keep_alive(version, &res_headers);
         }
 
-        debug!("keep_alive = {:?} for {:?}", keep_alive, addr);
+        debug!("keep_alive = {:?} for {}", keep_alive, addr);
         keep_alive
     }
 
     fn handle_expect<W: Write>(&self, req: &Request, wrt: &mut W) -> bool {
-        if req.version == Http11 && req.headers.get() == Some(&Expect::Continue) {
+         if req.version == Http11 && req.headers.get() == Some(&Expect::Continue) {
             let status = self.handler.check_continue((&req.method, &req.uri, &req.headers));
             match write!(wrt, "{} {}\r\n\r\n", Http11, status).and_then(|_| wrt.flush()) {
                 Ok(..) => (),
@@ -495,7 +373,7 @@ impl<H: Handler + 'static> Worker<H> {
 
 /// A listening server, which can later be closed.
 pub struct Listening {
-    _guard: Option<runtime::JoinHandle<()>>,
+    _guard: Option<JoinHandle<()>>,
     /// The socket addresses that the server is bound to.
     pub socket: SocketAddr,
 }
@@ -514,7 +392,7 @@ impl Drop for Listening {
 
 impl Listening {
     /// Warning: This function doesn't work. The server remains listening after you called
-    /// it. See https://github.com/hyperium/hyper/issues/338 for more details.
+    /// it. See https://github.com/mco_httpium/mco_http/issues/338 for more details.
     ///
     /// Stop the server from listening to its socket address.
     pub fn close(&mut self) -> crate::Result<()> {
@@ -529,7 +407,7 @@ pub trait Handler: Sync + Send {
     /// Receives a `Request`/`Response` pair, and should perform some action on them.
     ///
     /// This could reading from the request, and writing to the response.
-    fn handle(&self, req: Request, resp: Response<'_, Fresh>);
+    fn handle<'a, 'k>(&'a self, _: Request<'a, 'k>, _: Response<'a, Fresh>);
 
     /// Called when a Request includes a `Expect: 100-continue` header.
     ///
@@ -542,16 +420,16 @@ pub trait Handler: Sync + Send {
     /// This is run after a connection is received, on a per-connection basis (not a
     /// per-request basis, as a connection with keep-alive may handle multiple
     /// requests)
-    fn on_connection_start(&self) {}
+    fn on_connection_start(&self) { }
 
     /// This is run before a connection is closed, on a per-connection basis (not a
     /// per-request basis, as a connection with keep-alive may handle multiple
     /// requests)
-    fn on_connection_end(&self) {}
+    fn on_connection_end(&self) { }
 }
 
 impl<F> Handler for F where F: Fn(Request, Response<Fresh>), F: Sync + Send {
-    fn handle(&self, req: Request, res: Response) {
+    fn handle<'a, 'k>(&'a self, req: Request<'a, 'k>, res: Response<'a, Fresh>) {
         self(req, res)
     }
 }
@@ -560,7 +438,7 @@ impl<F> Handler for F where F: Fn(Request, Response<Fresh>), F: Sync + Send {
 mod tests {
     use crate::header::Headers;
     use crate::method::Method;
-    use crate::mock::MockStream;
+    use mock::MockStream;
     use crate::status::StatusCode;
     use crate::uri::RequestUri;
 
@@ -581,7 +459,7 @@ mod tests {
             res.start().unwrap().end().unwrap();
         }
 
-        Worker::new(handle, Default::default()).handle_connection(&mut mock,None);
+        Worker::new(handle, Default::default()).handle_connection(&mut mock);
         let cont = b"HTTP/1.1 100 Continue\r\n\r\n";
         assert_eq!(&mock.write[..cont.len()], cont);
         let res = b"HTTP/1.1 200 OK\r\n";
@@ -592,7 +470,7 @@ mod tests {
     fn test_check_continue_reject() {
         struct Reject;
         impl Handler for Reject {
-            fn handle(&self, _: Request, res: Response<'_, Fresh>) {
+            fn handle<'a, 'k>(&'a self, _: Request<'a, 'k>, res: Response<'a, Fresh>) {
                 res.start().unwrap().end().unwrap();
             }
 
@@ -610,7 +488,7 @@ mod tests {
             1234567890\
         ");
 
-        Worker::new(Reject, Default::default()).handle_connection(&mut mock,None);
+        Worker::new(Reject, Default::default()).handle_connection(&mut mock);
         assert_eq!(mock.write, &b"HTTP/1.1 417 Expectation Failed\r\n\r\n"[..]);
     }
 }

@@ -209,7 +209,8 @@ impl dyn NetworkStream + Send {
 
     /// If the underlying type is `T`, extract it.
     #[inline]
-    pub fn downcast<T: Any>(self: Box<dyn NetworkStream + Send>) -> Result<Box<T>, Box<dyn NetworkStream + Send>> {
+    pub fn downcast<T: Any>(self: Box<dyn NetworkStream + Send>)
+                            -> Result<Box<T>, Box<dyn NetworkStream + Send>> {
         if self.is::<T>() {
             Ok(unsafe { self.downcast_unchecked() })
         } else {
@@ -272,7 +273,7 @@ impl NetworkListener for HttpListener {
 
 #[cfg(windows)]
 impl ::std::os::windows::io::AsRawSocket for HttpListener {
-    fn as_raw_socket(&self) -> ::std::os::windows::io::RawSocket {
+    fn as_raw_socket(&self) -> std::os::windows::io::RawSocket {
         self.listener.as_raw_socket()
     }
 }
@@ -286,7 +287,7 @@ impl ::std::os::windows::io::FromRawSocket for HttpListener {
 
 #[cfg(unix)]
 impl ::std::os::unix::io::AsRawFd for HttpListener {
-    fn as_raw_fd(&self) -> ::std::os::unix::io::RawFd {
+    fn as_raw_fd(&self) -> std::os::unix::io::RawFd {
         self.listener.as_raw_fd()
     }
 }
@@ -334,7 +335,7 @@ impl Write for HttpStream {
 
 #[cfg(windows)]
 impl ::std::os::windows::io::AsRawSocket for HttpStream {
-    fn as_raw_socket(&self) -> ::std::os::windows::io::RawSocket {
+    fn as_raw_socket(&self) -> std::os::windows::io::RawSocket {
         self.0.as_raw_socket()
     }
 }
@@ -348,7 +349,7 @@ impl ::std::os::windows::io::FromRawSocket for HttpStream {
 
 #[cfg(unix)]
 impl ::std::os::unix::io::AsRawFd for HttpStream {
-    fn as_raw_fd(&self) -> ::std::os::unix::io::RawFd {
+    fn as_raw_fd(&self) -> std::os::unix::io::RawFd {
         self.0.as_raw_fd()
     }
 }
@@ -380,7 +381,7 @@ impl NetworkStream for HttpStream {
     fn close(&mut self, how: Shutdown) -> io::Result<()> {
         match self.0.shutdown(how) {
             Ok(_) => Ok(()),
-            // see https://github.com/hyperium/hyper/issues/508
+            // see https://github.com/mco_httpium/mco_http/issues/508
             Err(ref e) if e.kind() == ErrorKind::NotConnected => Ok(()),
             err => err
         }
@@ -613,13 +614,13 @@ pub type DefaultConnector = HttpConnector;
 
 #[cfg(test)]
 mod tests {
-    use crate::mock::MockStream;
+    use mock::MockStream;
     use super::{NetworkStream};
 
     #[test]
     fn test_downcast_box_stream() {
         // FIXME: Use Type ascription
-        let stream: Box<dyn NetworkStream + Send> = Box::new(MockStream::new());
+        let stream: Box<NetworkStream + Send> = Box::new(MockStream::new());
 
         let mock = stream.downcast::<MockStream>().ok().unwrap();
         assert_eq!(mock, Box::new(MockStream::new()));
@@ -628,7 +629,7 @@ mod tests {
     #[test]
     fn test_downcast_unchecked_box_stream() {
         // FIXME: Use Type ascription
-        let stream: Box<dyn NetworkStream + Send> = Box::new(MockStream::new());
+        let stream: Box<NetworkStream + Send> = Box::new(MockStream::new());
 
         let mock = unsafe { stream.downcast_unchecked::<MockStream>() };
         assert_eq!(mock, Box::new(MockStream::new()));

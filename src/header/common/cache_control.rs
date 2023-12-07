@@ -47,7 +47,7 @@ use crate::header::parsing::{from_comma_delimited, fmt_comma_delimited};
 #[derive(PartialEq, Clone, Debug)]
 pub struct CacheControl(pub Vec<CacheDirective>);
 
-__hyper__deref!(CacheControl => Vec<CacheDirective>);
+__mco_http__deref!(CacheControl => Vec<CacheDirective>);
 
 impl Header for CacheControl {
     fn header_name() -> &'static str {
@@ -55,7 +55,7 @@ impl Header for CacheControl {
     }
 
     fn parse_header(raw: &[Vec<u8>]) -> crate::Result<CacheControl> {
-        let directives = from_comma_delimited(raw)?;
+        let directives = r#try!(from_comma_delimited(raw));
         if !directives.is_empty() {
             Ok(CacheControl(directives))
         } else {

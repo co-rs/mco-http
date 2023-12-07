@@ -11,7 +11,7 @@ use std::str;
 ///
 /// The quality value is defined as a number between 0 and 1 with three decimal places. This means
 /// there are 1000 possible values. Since floating point numbers are not exact and the smallest
-/// floating point data type (`f32`) consumes four bytes, hyper uses an `u16` value to store the
+/// floating point data type (`f32`) consumes four bytes, mco_http uses an `u16` value to store the
 /// quality internally. For performance reasons you may set quality directly to a value between
 /// 0 and 1000 e.g. `Quality(532)` matches the quality `q=0.532`.
 ///
@@ -25,7 +25,7 @@ impl fmt::Display for Quality {
         match self.0 {
             1000 => Ok(()),
             0 => f.write_str("; q=0"),
-            x => write!(f, "; q=0.{}", format!("{:03}", x).trim_end_matches('0'))
+            x => write!(f, "; q=0.{}", format!("{:03}", x).trim_right_matches('0'))
         }
     }
 }
