@@ -1,6 +1,7 @@
 //! Error and Result module.
 use std::error::Error as StdError;
 use std::fmt;
+use std::fmt::{Display, Formatter};
 use std::io::Error as IoError;
 use std::str::Utf8Error;
 use std::string::FromUtf8Error;
@@ -66,35 +67,7 @@ impl fmt::Debug for Void {
     }
 }
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Uri(ref e) => fmt::Display::fmt(e, f),
-            Io(ref e) => fmt::Display::fmt(e, f),
-            Ssl(ref e) => fmt::Display::fmt(e, f),
-            Utf8(ref e) => fmt::Display::fmt(e, f),
-            ref e => f.write_str(e.description()),
-        }
-    }
-}
-
 impl StdError for Error {
-    fn description(&self) -> &str {
-        match *self {
-            Method => "Invalid Method specified",
-            Version => "Invalid HTTP version specified",
-            Header => "Invalid Header provided",
-            TooLarge => "Message head is too large",
-            Status => "Invalid Status provided",
-            Uri(ref e) => e.description(),
-            Io(ref e) => e.description(),
-            Ssl(ref e) => e.description(),
-            Utf8(ref e) => e.description(),
-            Error::Other(ref e) => &e,
-            Error::__Nonexhaustive(..) =>  unreachable!(),
-        }
-    }
-
     fn cause(&self) -> Option<&dyn StdError> {
         match *self {
             Io(ref error) => Some(error),
@@ -102,6 +75,24 @@ impl StdError for Error {
             Uri(ref error) => Some(error),
             Utf8(ref error) => Some(error),
             _ => None,
+        }
+    }
+}
+
+impl Display for Error{
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Method => f.write_str("Invalid Method specified"),
+            Version => f.write_str("Invalid HTTP version specified"),
+            Header => f.write_str("Invalid Header provided"),
+            TooLarge => f.write_str("Message head is too large"),
+            Status => f.write_str("Invalid Status provided"),
+            Uri(e) => write!(f, "{}", e),
+            Io(e) => write!(f, "{}", e),
+            Ssl(e) => write!(f, "{}", e),
+            Utf8(e) => write!(f, "{}", e),
+            Error::Other(e) => write!(f, "{}", e),
+            Error::__Nonexhaustive(..) =>  unreachable!(),
         }
     }
 }
