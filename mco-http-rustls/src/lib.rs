@@ -1,28 +1,24 @@
-extern crate webpki_roots;
-extern crate rustls;
 extern crate mco_http;
+extern crate rustls;
 extern crate vecio;
+extern crate webpki_roots;
 
-use std::convert::TryInto;
-use std::fs::File;
 use mco_http::net::{HttpStream, NetworkStream};
+use std::convert::TryInto;
 
 use std::io;
-use std::io::BufReader;
+use std::net::{Shutdown, SocketAddr};
 use std::sync::Arc;
 use std::sync::{Mutex, MutexGuard};
-use std::net::{SocketAddr, Shutdown};
 use std::time::Duration;
 
-use rustls::{ClientConnection, RootCertStore, ServerConfig};
-use rustls::server::WebPkiClientVerifier;
-
+use rustls::{ClientConnection, RootCertStore};
 
 pub struct TlsStream {
     sess: Box<ClientConnection>,
     underlying: HttpStream,
     tls_error: Option<rustls::Error>,
-    io_error: Option<io::Error>
+    io_error: Option<io::Error>,
 }
 
 impl TlsStream {
@@ -56,8 +52,8 @@ impl TlsStream {
         match self.tls_error.take() {
             Some(err) => {
                 return Err(io::Error::new(io::ErrorKind::ConnectionAborted, err));
-            },
-            None => return Ok(())
+            }
+            None => return Ok(()),
         };
     }
 
@@ -86,7 +82,7 @@ impl io::Read for TlsStream {
             match self.sess.read(buf) {
                 Ok(0) => continue,
                 Ok(n) => return Ok(n),
-                Err(e) => return Err(e)
+                Err(e) => return Err(e),
             }
         }
     }
@@ -133,7 +129,7 @@ impl io::Write for WrappedStream {
     }
 }
 
-impl mco_http::net::NetworkStream for WrappedStream {
+impl NetworkStream for WrappedStream {
     fn peer_addr(&mut self) -> io::Result<SocketAddr> {
         self.lock().peer_addr()
     }
@@ -152,23 +148,13 @@ impl mco_http::net::NetworkStream for WrappedStream {
 }
 
 pub struct TlsClient {
-    pub cfg: Arc<rustls::ClientConfig>
+    pub cfg: Arc<rustls::ClientConfig>,
 }
 
 impl TlsClient {
     pub fn new() -> TlsClient {
-        // let mut tls_config = rustls::ClientConfig::new();
-        // let cache = rustls::ClientSessionMemoryCache::new(64);
-        // tls_config.set_persistence(cache);
-        // tls_config.root_store.add_trust_anchors(&webpki_roots::ROOTS);
-
-
         let mut root_store = RootCertStore::empty();
-        root_store.extend(
-            webpki_roots::TLS_SERVER_ROOTS
-                .iter()
-                .cloned(),
-        );
+        root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
         let mut config = rustls::ClientConfig::builder()
             .with_root_certificates(root_store)
             .with_no_client_auth();
@@ -176,10 +162,8 @@ impl TlsClient {
         // Allow using SSLKEYLOGFILE.
         config.key_log = Arc::new(rustls::KeyLogFile::new());
 
-
-
         TlsClient {
-            cfg: Arc::new(config)
+            cfg: Arc::new(config),
         }
     }
 }
@@ -189,33 +173,36 @@ impl mco_http::net::SslClient for TlsClient {
 
     fn wrap_client(&self, stream: HttpStream, host: &str) -> mco_http::Result<WrappedStream> {
         let tls = TlsStream {
-            sess: Box::new(rustls::ClientConnection::new(self.cfg.clone(), host.try_into().unwrap())?),
+            sess: Box::new(rustls::ClientConnection::new(
+                self.cfg.clone(),
+                host.try_into().unwrap(),
+            )?),
             underlying: stream,
             io_error: None,
-            tls_error: None
+            tls_error: None,
         };
 
         Ok(WrappedStream(Arc::new(Mutex::new(tls))))
     }
 }
-
 #[derive(Clone)]
 pub struct TlsServer {
-    pub cfg: Arc<rustls::ServerConfig>
+    pub cfg: Arc<rustls::ServerConfig>,
 }
-
 
 impl TlsServer {
     pub fn new(certs: Vec<Vec<u8>>, key: Vec<u8>) -> TlsServer {
-        let mut tls_config = rustls::ServerConfig::builder_with_provider()
-            .with_client_cert_verifier();
-        let cache = rustls::ServerSessionMemoryCache::new(1024);
-        tls_config.set_persistence(cache);
-        tls_config = rustls::Ticketer::new();
-        tls_config.set_single_cert(certs, key);
+        let mut config = rustls::ServerConfig::builder()
+            .with_safe_defaults()
+            .with_no_client_auth();
+
+        let certs = rustls_pemfile::certs(&mut certs.as_slice()).unwrap();
+        let key = rustls_pemfile::rsa_private_keys(&mut key.as_slice()).unwrap();
+
+        config.with_single_cert(certs, key[0].clone()).unwrap();
 
         TlsServer {
-            cfg: Arc::new(tls_config)
+            cfg: Arc::new(config),
         }
     }
 }
@@ -225,13 +212,16 @@ impl mco_http::net::SslServer for TlsServer {
 
     fn wrap_server(&self, stream: HttpStream) -> mco_http::Result<WrappedStream> {
         let tls = TlsStream {
-            sess: Box::new(rustls::ServerSession::new(&self.cfg)),
+            sess: Box::new(
+                rustls::ServerConnection::new(self.cfg.clone())
+                    .map_err(|e| mco_http::Error::from(e.to_string()))?,
+            )
+            .map_err(|e| mco_http::Error::from(e.to_string()))?,
             underlying: stream,
             io_error: None,
-            tls_error: None
+            tls_error: None,
         };
 
         Ok(WrappedStream(Arc::new(Mutex::new(tls))))
     }
 }
-
