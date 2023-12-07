@@ -1,3 +1,6 @@
+pub mod proxy;
+pub use proxy::*;
+
 use std::any::Any;
 use std::fmt::{Debug, Formatter};
 use std::ops::Deref;
