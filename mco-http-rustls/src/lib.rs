@@ -239,13 +239,16 @@ impl mco_http::net::SslClient for TlsClient {
     }
 }
 
+
+pub use SSLServer as TlsServer;
+
 #[derive(Clone)]
-pub struct TlsServer {
+pub struct SSLServer {
     pub cfg: Arc<rustls::ServerConfig>,
 }
 
-impl TlsServer {
-    pub fn new(certs: Vec<Vec<u8>>, key: Vec<u8>) -> TlsServer {
+impl SSLServer {
+    pub fn new(certs: Vec<Vec<u8>>, key: Vec<u8>) -> SSLServer {
         let flattened_data: Vec<u8> = certs.into_iter().flatten().collect();
         let mut reader = BufReader::new(Cursor::new(flattened_data));
         let mut keys = BufReader::new(Cursor::new(key));
@@ -258,13 +261,13 @@ impl TlsServer {
             .with_no_client_auth()
             .with_single_cert(certs, keys.pop().unwrap().into()).unwrap();
 
-        TlsServer {
+        SSLServer {
             cfg: Arc::new(config),
         }
     }
 }
 
-impl mco_http::net::SslServer for TlsServer {
+impl mco_http::net::SslServer for SSLServer {
     type Stream = WrappedStream;
 
     fn wrap_server(&self, mut stream: HttpStream) -> mco_http::Result<WrappedStream> {
