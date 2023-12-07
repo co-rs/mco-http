@@ -220,7 +220,7 @@ impl<S: SslServer + Clone + Send> Server<HttpsListener<S>> {
 impl<L: NetworkListener + Send + 'static> Server<L> {
     /// Binds to a socket and starts handling connections.
     pub fn handle<H: Handler + 'static>(self, handler: H) -> crate::Result<Listening> {
-        self.handle_threads(handler, num_cpus::get() * 5 / 4)
+        self.handle_threads(handler, num_cpus::get() * 2)
     }
 
     /// Binds to a socket and starts handling connections with the provided
