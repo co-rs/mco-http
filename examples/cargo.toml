@@ -8,7 +8,7 @@ exclude = ["examples/*"]
 
 
 [dependencies]
-mco={version="*",path="../../mco"}
+mco={version="0.1"}
 mco-http = { path = "../" }
 mco-http-rustls = {path = "../mco-http-rustls"}
 fast_log = "1.6"
