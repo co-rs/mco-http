@@ -1,6 +1,6 @@
 [package]
 name = "mco-http-rustls"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Joseph Birr-Pixton <jpixton@gmail.com>","zhuxiujia <zhuxiujia@qq.com>"]
 license = "Apache-2.0/ISC/MIT"
 readme = "README.md"
