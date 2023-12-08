@@ -8,11 +8,9 @@ use mco_http::net::HttpsConnector;
 use mco_http_rustls::TlsClient;
 
 fn main() {
-    let _ = fast_log::init(Config::new().level(log::LevelFilter::Info).console());
+    let url = "https://www.baidu.com".to_string();
 
-    //let url = "https://www.baidu.com".to_string();
-    let url = "https://127.0.0.1:3000".to_string();
-
+    // let url = "https://127.0.0.1:3000".to_string();
     // use std::io::{BufReader, Cursor, Read};
     // let mut key=std::fs::File::open("examples/rustls/cert.pem").unwrap();
     // let mut buf=vec![];
