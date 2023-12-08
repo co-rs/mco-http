@@ -2,6 +2,7 @@
 extern crate mco_http;
 extern crate fast_log;
 extern crate serde_json;
+
 use fast_log::config::Config;
 use std::fs::File;
 use std::io::{Read, Write};
@@ -23,7 +24,7 @@ fn download(mut req: Request, res: Response) {
     res.headers.set(ContentType::png());
     //next,req thread new an png to me
     //Heavy computing tasks should be performed by threads
-    let png= spawn_blocking!(||{
+    let png = spawn_blocking!(||{
         let mut captcha = Captcha::new();
         captcha
             .add_chars(4)
@@ -39,7 +40,7 @@ fn download(mut req: Request, res: Response) {
 }
 
 fn main() {
-    let _=fast_log::init(Config::new().level(log::LevelFilter::Info).console());
+    let _ = fast_log::init(Config::new().level(log::LevelFilter::Info).console());
 
     let _listening = mco_http::Server::http("0.0.0.0:3000").unwrap()
         .handle(download).unwrap();

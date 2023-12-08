@@ -33,7 +33,7 @@ impl BizActivity {
     }
 
     pub fn count(pool: &SqlitePool) -> cdbc::Result<i32> {
-        #[derive(Debug,cdbc::Scan)]
+        #[derive(Debug, cdbc::Scan)]
         pub struct Count {
             pub count: Option<i32>,
         }
@@ -61,7 +61,7 @@ impl Controllers for Route {
 
 
 fn main() {
-    let _=fast_log::init(Config::new().level(log::LevelFilter::Info).console());
+    let _ = fast_log::init(Config::new().level(log::LevelFilter::Info).console());
 
     let mut route = Arc::new(Route::new());
     //insert pool

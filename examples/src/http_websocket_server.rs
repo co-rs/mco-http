@@ -6,7 +6,7 @@ use fast_log::config::Config;
 use tungstenite::{accept_hdr, handshake};
 
 fn main() {
-    let _=fast_log::init(Config::new().console());
+    let _ = fast_log::init(Config::new().console());
     let _listening = mco_http::Server::http("0.0.0.0:3000").unwrap()
         .handle_accept(|stream| {
             let callback = |req: &handshake::server::Request, response: handshake::server::Response| {
@@ -20,7 +20,7 @@ fn main() {
             loop {
                 let msg = websocket.read().unwrap();
                 if msg.is_binary() || msg.is_text() {
-                    println!("read msg={}",msg);
+                    println!("read msg={}", msg);
                     websocket.send(msg).unwrap();
                 }
             }
