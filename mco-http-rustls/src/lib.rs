@@ -246,33 +246,13 @@ impl SSLServer {
         let mut reader = BufReader::new(Cursor::new(flattened_data));
         let certs = rustls_pemfile::certs(&mut reader).map(|result| result.unwrap())
             .collect();
-        let mut key_der: Option<rustls_pki_types::PrivateKeyDer<'static>> = None;
-        let mut keys = rustls_pemfile::rsa_private_keys(&mut BufReader::new(Cursor::new(key.clone())))
-            .map(|result| result.expect("load rsa_private_keys fail"))
-            .collect::<Vec<_>>();
-        if keys.len() == 0 {
-            let mut keys = rustls_pemfile::pkcs8_private_keys(&mut BufReader::new(Cursor::new(key.clone())))
-                .map(|result| result.expect("load pkcs8_private_keys fail"))
-                .collect::<Vec<_>>();
-            if keys.len() != 0 {
-                key_der = Some(keys.pop().unwrap().into());
-            } else {
-                let mut keys = rustls_pemfile::ec_private_keys(&mut BufReader::new(Cursor::new(key.clone())))
-                    .map(|result| result.expect("load ec_private_keys fail"))
-                    .collect::<Vec<_>>();
-                if keys.len() != 0 {
-                    key_der = Some(keys.pop().unwrap().into());
-                }
-            }
-        } else {
-            key_der = Some(keys.pop().unwrap().into());
-        }
-        if key_der.is_none() {
+        let private_key=rustls_pemfile::private_key(&mut BufReader::new(Cursor::new(key.clone()))).expect("rustls_pemfile::private_key() read fail");
+        if private_key.is_none() {
             panic!("load keys is empty")
         }
         let config = rustls::ServerConfig::builder()
             .with_no_client_auth()
-            .with_single_cert(certs, key_der.unwrap()).unwrap();
+            .with_single_cert(certs, private_key.unwrap()).unwrap();
 
         SSLServer {
             cfg: Arc::new(config),
