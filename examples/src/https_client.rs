@@ -12,7 +12,7 @@ fn main() {
 
     // let url = "https://127.0.0.1:3000".to_string();
     // use std::io::{BufReader, Cursor, Read};
-    // let mut key=std::fs::File::open("examples/rustls/cert.pem").unwrap();
+    // let mut key=std::fs::File::open("examples/rustls/sample.pem").unwrap();
     // let mut buf=vec![];
     // _ = key.read_to_end(&mut buf);
     // let reader = &mut BufReader::new(Cursor::new(buf));

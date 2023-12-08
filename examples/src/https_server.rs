@@ -11,8 +11,8 @@ use mco_http_rustls::TlsServer;
 fn main() {
     let _ = fast_log::init(Config::new().console());
 
-    let mut f_cert = File::open("examples/rustls/cert.pem").unwrap();
-    let mut f_key = File::open("examples/rustls/key.rsa").unwrap();
+    let mut f_cert = File::open("examples/rustls/sample.pem").unwrap();
+    let mut f_key = File::open("examples/rustls/sample.rsa").unwrap();
 
     let mut buf =vec![];
     _ = f_cert.read_to_end(&mut buf);
