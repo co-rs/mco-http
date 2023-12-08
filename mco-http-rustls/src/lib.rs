@@ -12,7 +12,8 @@ use std::net::{Shutdown, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 
-use rustls::{ClientConnection, RootCertStore, ServerConnection, StreamOwned};
+use rustls::{ClientConfig, ClientConnection, ConfigBuilder, RootCertStore, ServerConnection, StreamOwned, WantsVerifier};
+use rustls::client::WantsClientCert;
 use mco_http::runtime::Mutex;
 
 
@@ -186,20 +187,113 @@ pub struct TlsClient {
 
 impl TlsClient {
     pub fn new() -> TlsClient {
-        let mut root_store = RootCertStore::empty();
-        root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
-        let mut config = rustls::ClientConfig::builder()
-            .with_root_certificates(root_store)
-            .with_no_client_auth();
+        // let mut root_store = RootCertStore::empty();
+        // root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+        // let mut config = rustls::ClientConfig::builder()
+        //     .with_root_certificates(root_store)
+        //     .with_no_client_auth();
+        //
+        // // Allow using SSLKEYLOGFILE.
+        // config.key_log = Arc::new(rustls::KeyLogFile::new());
+        //
+        // TlsClient {
+        //     cfg: Arc::new(config),
+        // }
+        return Self::new_ca(None).expect("crate TlsClient fail")
+    }
 
-        // Allow using SSLKEYLOGFILE.
-        config.key_log = Arc::new(rustls::KeyLogFile::new());
-
-        TlsClient {
-            cfg: Arc::new(config),
-        }
+    pub fn new_ca(mut ca:Option<&mut dyn io::BufRead>)-> Result<TlsClient,io::Error> {
+        // Prepare the TLS client config
+        let tls = match ca {
+            Some(ref mut rd) => {
+                // Read trust roots
+                let certs = rustls_pemfile::certs(rd).collect::<Result<Vec<_>, _>>()?;
+                let mut roots = RootCertStore::empty();
+                roots.add_parsable_certificates(certs);
+                // TLS client config using the custom CA store for lookups
+                rustls::ClientConfig::builder()
+                    .with_root_certificates(roots)
+                    .with_no_client_auth()
+            }
+            // Default TLS client config with native roots
+            None => rustls::ClientConfig::builder()
+                .with_native_roots()?
+                .with_no_client_auth(),
+        };
+        Ok(Self{
+            cfg: Arc::new(tls),
+        })
     }
 }
+
+
+/// Methods for configuring roots
+///
+/// This adds methods (gated by crate features) for easily configuring
+/// TLS server roots a rustls ClientConfig will trust.
+pub trait ConfigBuilderExt {
+    /// This configures the platform's trusted certs, as implemented by
+    /// rustls-native-certs
+    ///
+    /// This will return an error if no valid certs were found. In that case,
+    /// it's recommended to use `with_webpki_roots`.
+    //#[cfg(feature = "rustls-native-certs")]
+    fn with_native_roots(self) -> std::io::Result<ConfigBuilder<ClientConfig, WantsClientCert>>;
+
+    /// This configures the webpki roots, which are Mozilla's set of
+    /// trusted roots as packaged by webpki-roots.
+    //#[cfg(feature = "webpki-roots")]
+    fn with_webpki_roots(self) -> ConfigBuilder<ClientConfig, WantsClientCert>;
+}
+
+impl ConfigBuilderExt for ConfigBuilder<ClientConfig, WantsVerifier> {
+    //#[cfg(feature = "rustls-native-certs")]
+    //#[cfg_attr(not(feature = "logging"), allow(unused_variables))]
+    fn with_native_roots(self) -> std::io::Result<ConfigBuilder<ClientConfig, WantsClientCert>> {
+        let mut roots = rustls::RootCertStore::empty();
+        let mut valid_count = 0;
+        let mut invalid_count = 0;
+
+        for cert in rustls_native_certs::load_native_certs().expect("could not load platform certs")
+        {
+            match roots.add(cert) {
+                Ok(_) => valid_count += 1,
+                Err(err) => {
+                    log::debug!("certificate parsing failed: {:?}", err);
+                    invalid_count += 1
+                }
+            }
+        }
+        log::debug!(
+            "with_native_roots processed {} valid and {} invalid certs",
+            valid_count,
+            invalid_count
+        );
+        if roots.is_empty() {
+            log::debug!("no valid native root CA certificates found");
+            Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("no valid native root CA certificates found ({invalid_count} invalid)"),
+            ))?
+        }
+
+        Ok(self.with_root_certificates(roots))
+    }
+
+    //#[cfg(feature = "webpki-roots")]
+    fn with_webpki_roots(self) -> ConfigBuilder<ClientConfig, WantsClientCert> {
+        let mut roots = rustls::RootCertStore::empty();
+        roots.extend(
+            webpki_roots::TLS_SERVER_ROOTS
+                .iter()
+                .cloned(),
+        );
+        self.with_root_certificates(roots)
+    }
+}
+
+
+
 
 
 #[derive(Debug)]

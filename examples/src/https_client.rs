@@ -9,6 +9,7 @@ use mco_http_rustls::TlsClient;
 fn main() {
     let _ = fast_log::init(Config::new().level(log::LevelFilter::Info).console());
 
+    //let url = "https://www.baidu.com".to_string();
     let url = "https://127.0.0.1:3000".to_string();
 
     let client = Client::with_connector(HttpsConnector::new(TlsClient::new()));
