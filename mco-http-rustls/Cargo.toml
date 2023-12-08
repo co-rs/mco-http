@@ -1,6 +1,6 @@
 [package]
 name = "mco-http-rustls"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Joseph Birr-Pixton <jpixton@gmail.com>","zhuxiujia <zhuxiujia@qq.com>"]
 license = "Apache-2.0/ISC/MIT"
 readme = "README.md"
@@ -17,6 +17,7 @@ runtime_mco = ["mco-http/runtime_mco","mco-http/serde_json"]
 webpki-roots = "0.26.0"
 rustls = { version = "0.22",default-features = false, features = ["tls12","ring"] }
 rustls-pemfile="2.0"
+rustls-pki-types = "1.0"
 mco-http ={version = "0.1",path="../",default-features = false,features = [], optional = true}
 
 [dev-dependencies]

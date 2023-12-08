@@ -18,12 +18,12 @@ use rustls::server::Acceptor;
 use mco_http::runtime::Mutex;
 
 
-pub enum Connection{
-    Client(StreamOwned<ClientConnection,HttpStream>),
-    Server(StreamOwned<ServerConnection,HttpStream>)
+pub enum Connection {
+    Client(StreamOwned<ClientConnection, HttpStream>),
+    Server(StreamOwned<ServerConnection, HttpStream>),
 }
 
-impl Read for Connection{
+impl Read for Connection {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match self {
             Connection::Client(c) => {
@@ -36,7 +36,7 @@ impl Read for Connection{
     }
 }
 
-impl Write for Connection{
+impl Write for Connection {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match self {
             Connection::Client(c) => {
@@ -61,7 +61,6 @@ impl Write for Connection{
 }
 
 
-
 pub struct TlsStream {
     sess: Box<Connection>,
     tls_error: Option<rustls::Error>,
@@ -79,7 +78,7 @@ impl TlsStream {
     }
 }
 
-impl NetworkStream for TlsStream{
+impl NetworkStream for TlsStream {
     fn peer_addr(&mut self) -> io::Result<SocketAddr> {
         match self.sess.as_mut() {
             Connection::Client(c) => {
@@ -207,8 +206,8 @@ impl TlsClient {
 
 
 #[derive(Debug)]
-pub struct DNSError{
-  pub inner:String
+pub struct DNSError {
+    pub inner: String,
 }
 
 impl Display for DNSError {
@@ -217,20 +216,18 @@ impl Display for DNSError {
     }
 }
 
-impl std::error::Error for DNSError{
-
-}
+impl std::error::Error for DNSError {}
 
 impl mco_http::net::SslClient for TlsClient {
     type Stream = WrappedStream;
 
     fn wrap_client(&self, stream: HttpStream, host: &str) -> mco_http::Result<WrappedStream> {
-        let c=ClientConnection::new(
+        let c = ClientConnection::new(
             self.cfg.clone(),
             host.to_string().try_into().unwrap(),
-        ).map_err(|e|mco_http::Error::Ssl(Box::new(e)))?;
+        ).map_err(|e| mco_http::Error::Ssl(Box::new(e)))?;
         let tls = TlsStream {
-            sess: Box::new(Connection::Client(StreamOwned::new(c,stream))),
+            sess: Box::new(Connection::Client(StreamOwned::new(c, stream))),
             io_error: None,
             tls_error: None,
         };
@@ -251,15 +248,35 @@ impl SSLServer {
     pub fn new(certs: Vec<Vec<u8>>, key: Vec<u8>) -> SSLServer {
         let flattened_data: Vec<u8> = certs.into_iter().flatten().collect();
         let mut reader = BufReader::new(Cursor::new(flattened_data));
-        let mut keys = BufReader::new(Cursor::new(key));
         let certs = rustls_pemfile::certs(&mut reader).map(|result| result.unwrap())
             .collect();
-        let mut keys = rustls_pemfile::pkcs8_private_keys(&mut keys)
-            .map(|result| result.unwrap())
+        let mut key_der: Option<rustls_pki_types::PrivateKeyDer<'static>> = None;
+        let mut keys = rustls_pemfile::rsa_private_keys(&mut BufReader::new(Cursor::new(key.clone())))
+            .map(|result| result.expect("load rsa_private_keys fail"))
             .collect::<Vec<_>>();
+        if keys.len() == 0 {
+            let mut keys = rustls_pemfile::pkcs8_private_keys(&mut BufReader::new(Cursor::new(key.clone())))
+                .map(|result| result.expect("load pkcs8_private_keys fail"))
+                .collect::<Vec<_>>();
+            if keys.len() != 0 {
+                key_der = Some(keys.pop().unwrap().into());
+            } else {
+                let mut keys = rustls_pemfile::ec_private_keys(&mut BufReader::new(Cursor::new(key.clone())))
+                    .map(|result| result.expect("load ec_private_keys fail"))
+                    .collect::<Vec<_>>();
+                if keys.len() != 0 {
+                    key_der = Some(keys.pop().unwrap().into());
+                }
+            }
+        } else {
+            key_der = Some(keys.pop().unwrap().into());
+        }
+        if key_der.is_none() {
+            panic!("load keys is empty")
+        }
         let config = rustls::ServerConfig::builder()
             .with_no_client_auth()
-            .with_single_cert(certs, keys.pop().unwrap().into()).unwrap();
+            .with_single_cert(certs, key_der.unwrap()).unwrap();
 
         SSLServer {
             cfg: Arc::new(config),
@@ -271,18 +288,8 @@ impl mco_http::net::SslServer for SSLServer {
     type Stream = WrappedStream;
 
     fn wrap_server(&self, mut stream: HttpStream) -> mco_http::Result<WrappedStream> {
-        // let mut acceptor = Acceptor::default();
-        // let accepted = loop {
-        //     acceptor.read_tls(&mut stream).unwrap();
-        //     if let Some(accepted) = acceptor.accept().unwrap() {
-        //         break accepted;
-        //     }
-        // };
-        // let conn = accepted
-        //     .into_connection(self.cfg.clone())
-        //     .unwrap();
-        let  conn = ServerConnection::new(self.cfg.clone()).unwrap();
-        let  stream = rustls::StreamOwned::new(conn, stream);
+        let conn = ServerConnection::new(self.cfg.clone()).unwrap();
+        let stream = rustls::StreamOwned::new(conn, stream);
 
         let tls = TlsStream {
             sess: Box::new(Connection::Server(stream)),
