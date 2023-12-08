@@ -265,7 +265,7 @@ fn handle_accept<L>(mut server: Server<L>, handler: fn(L::Stream), threads: usiz
 
     debug!("threads = {:?}", threads);
     let pool = ListenerPool::new(server.listener);
-    let work = move |mut stream| {
+    let work = move |stream| {
         handler(stream)
     };
 

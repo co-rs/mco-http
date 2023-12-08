@@ -9,7 +9,7 @@ fn main() {
     let _=fast_log::init(Config::new().console());
     let _listening = mco_http::Server::http("0.0.0.0:3000").unwrap()
         .handle_accept(|stream| {
-            let callback = |req: &handshake::server::Request, mut response: handshake::server::Response| {
+            let callback = |req: &handshake::server::Request, response: handshake::server::Response| {
                 println!("Received a new ws handshake");
                 println!("The request's path is: {}", req.uri().to_string());
                 println!("The request's headers are:");

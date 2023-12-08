@@ -7,7 +7,7 @@ use tungstenite::protocol::Role;
 use tungstenite::stream::MaybeTlsStream;
 
 fn main() {
-    let (mut s, response) =
+    let (mut s, _response) =
         connect(url::Url::parse("ws://127.0.0.1:3000").unwrap()).expect("Can't connect");
 
     //replace TcpStream
