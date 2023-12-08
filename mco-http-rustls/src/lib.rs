@@ -199,12 +199,12 @@ impl TlsClient {
                 let mut roots = RootCertStore::empty();
                 roots.add_parsable_certificates(certs);
                 // TLS client config using the custom CA store for lookups
-                rustls::ClientConfig::builder()
+                ClientConfig::builder()
                     .with_root_certificates(roots)
                     .with_no_client_auth()
             }
             // Default TLS client config with native roots
-            None => rustls::ClientConfig::builder()
+            None => ClientConfig::builder()
                 .with_native_roots()?
                 .with_no_client_auth(),
         };
