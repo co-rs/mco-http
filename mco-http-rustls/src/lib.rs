@@ -12,7 +12,7 @@ use std::net::{Shutdown, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 
-use rustls::{ClientConfig, ClientConnection, ConfigBuilder, RootCertStore, ServerConnection, StreamOwned, WantsVerifier};
+use rustls::{ClientConfig, ClientConnection, ConfigBuilder, RootCertStore, ServerConfig, ServerConnection, StreamOwned, WantsVerifier};
 use rustls::client::WantsClientCert;
 use mco_http::runtime::Mutex;
 
@@ -323,6 +323,8 @@ pub struct SSLServer {
 }
 
 impl SSLServer {
+
+    /// new with with_single_cert
     pub fn new(certs: Vec<Vec<u8>>, key: Vec<u8>) -> SSLServer {
         let flattened_data: Vec<u8> = certs.into_iter().flatten().collect();
         let mut reader = BufReader::new(Cursor::new(flattened_data));
@@ -340,6 +342,14 @@ impl SSLServer {
             cfg: Arc::new(config),
         }
     }
+
+    /// new with_tls_config, Passes a rustls [`ServerConfig`] to configure the TLS connection
+    pub fn with_tls_config(self, config: ServerConfig) -> SSLServer {
+        SSLServer {
+            cfg: Arc::new(config),
+        }
+    }
+
 }
 
 impl mco_http::net::SslServer for SSLServer {
