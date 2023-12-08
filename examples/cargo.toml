@@ -28,6 +28,7 @@ rustls = "0.20"
 rustls-pemfile = "0.2.1"
 
 tungstenite = "0.21"
+url = "2.1"
 
 [[bin]]
 name = "http_client"
@@ -78,8 +79,13 @@ path = "src/http_server_router_middleware.rs"
 name = "http_server_upload"
 path = "src/http_server_upload.rs"
 [[bin]]
-name = "http_server_websocket"
-path = "src/http_server_websocket.rs"
+name = "http_websocket_server"
+path = "src/http_websocket_server.rs"
+[[bin]]
+name = "http_websocket_client"
+path = "src/http_websocket_client.rs"
+
+
 [profile.release]
 lto = true
 opt-level = 3

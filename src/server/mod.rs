@@ -233,6 +233,11 @@ impl<L: NetworkListener + Send + 'static> Server<L> {
             threads: usize) -> crate::Result<Listening> {
         handle(self, handler, threads)
     }
+
+    /// Binds to a socket and starts handling connections.
+    pub fn handle_accept(self, handler: fn(L::Stream)) -> crate::Result<Listening> {
+        handle_accept::<L>(self,handler, num_cpus::get() * 2)
+    }
 }
 
 fn handle<H, L>(mut server: Server<L>, handler: H, threads: usize) -> crate::Result<Listening>
@@ -242,7 +247,27 @@ where H: Handler + 'static, L: NetworkListener + Send + 'static {
     debug!("threads = {:?}", threads);
     let pool = ListenerPool::new(server.listener);
     let worker = Worker::new(handler, server.timeouts);
-    let work = move |mut stream| worker.handle_connection(&mut stream);
+    let work = move |mut stream| {
+        worker.handle_connection(&mut stream);
+    };
+
+    let guard = runtime::spawn(move || pool.accept(work, threads));
+
+    Ok(Listening {
+        _guard: Some(guard),
+        socket: socket,
+    })
+}
+
+fn handle_accept<L>(mut server: Server<L>, handler: fn(L::Stream), threads: usize) -> crate::Result<Listening>
+    where L: NetworkListener + Send + 'static {
+    let socket = server.listener.local_addr()?;
+
+    debug!("threads = {:?}", threads);
+    let pool = ListenerPool::new(server.listener);
+    let work = move |mut stream| {
+        handler(stream)
+    };
 
     let guard = runtime::spawn(move || pool.accept(work, threads));
 
