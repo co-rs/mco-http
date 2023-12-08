@@ -177,9 +177,9 @@ mod tests {
         ($from:expr => $error:pat) => {
             match Error::from($from) {
                 e @ $error => {
-                    let desc = e.cause().unwrap().description();
-                    assert_eq!(desc, $from.description().to_owned());
-                    assert_eq!(desc, e.description());
+                    let desc = e.cause().unwrap().to_string();
+                    assert_eq!(desc, $from.to_string().to_owned());
+                    assert_eq!(desc, e.to_string());
                 },
                 _ => panic!("{:?}", $from)
             }
