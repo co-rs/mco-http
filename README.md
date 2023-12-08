@@ -2,8 +2,8 @@
 
 * HTTP framework based on Coroutine library [mco](https://github.com/co-rs/mco),  Original code fork from Hyper，We improved the underlying logic
 * Light weight, high performance
-* support http/https server (see examples/)
-* support http/https client (see examples/)
+* support http/https server (see examples)
+* support http/https client (see examples)
 * support route
 * support Interceptor/middleware
 
