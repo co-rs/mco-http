@@ -2,19 +2,17 @@ extern crate mco_http;
 extern crate rustls;
 extern crate webpki_roots;
 
-use mco_http::net::{HttpsStream, HttpStream, NetworkStream};
+use mco_http::net::{HttpStream, NetworkStream};
 use std::convert::{TryInto};
 
 use std::{io};
 use std::fmt::{Debug, Display, Formatter};
-use std::io::{BufReader, Cursor, Error, Read, Write};
+use std::io::{BufReader, Cursor, Read, Write};
 use std::net::{Shutdown, SocketAddr};
-use std::ops::DerefMut;
 use std::sync::Arc;
 use std::time::Duration;
 
-use rustls::{ClientConnection, IoState, Reader, RootCertStore, ServerConnection, StreamOwned, Writer};
-use rustls::server::Acceptor;
+use rustls::{ClientConnection, RootCertStore, ServerConnection, StreamOwned};
 use mco_http::runtime::Mutex;
 
 
