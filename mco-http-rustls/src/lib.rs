@@ -62,7 +62,6 @@ impl Write for Connection {
 pub struct TlsStream {
     sess: Box<Connection>,
     tls_error: Option<rustls::Error>,
-    io_error: Option<io::Error>,
 }
 
 impl TlsStream {
@@ -226,7 +225,6 @@ impl mco_http::net::SslClient for TlsClient {
         ).map_err(|e| mco_http::Error::Ssl(Box::new(e)))?;
         let tls = TlsStream {
             sess: Box::new(Connection::Client(StreamOwned::new(c, stream))),
-            io_error: None,
             tls_error: None,
         };
 
@@ -285,13 +283,12 @@ impl SSLServer {
 impl mco_http::net::SslServer for SSLServer {
     type Stream = WrappedStream;
 
-    fn wrap_server(&self, mut stream: HttpStream) -> mco_http::Result<WrappedStream> {
+    fn wrap_server(&self, stream: HttpStream) -> mco_http::Result<WrappedStream> {
         let conn = ServerConnection::new(self.cfg.clone()).unwrap();
         let stream = rustls::StreamOwned::new(conn, stream);
 
         let tls = TlsStream {
             sess: Box::new(Connection::Server(stream)),
-            io_error: None,
             tls_error: None,
         };
 
