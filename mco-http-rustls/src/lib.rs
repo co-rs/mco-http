@@ -187,18 +187,6 @@ pub struct TlsClient {
 
 impl TlsClient {
     pub fn new() -> TlsClient {
-        // let mut root_store = RootCertStore::empty();
-        // root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
-        // let mut config = rustls::ClientConfig::builder()
-        //     .with_root_certificates(root_store)
-        //     .with_no_client_auth();
-        //
-        // // Allow using SSLKEYLOGFILE.
-        // config.key_log = Arc::new(rustls::KeyLogFile::new());
-        //
-        // TlsClient {
-        //     cfg: Arc::new(config),
-        // }
         return Self::new_ca(None).expect("crate TlsClient fail")
     }
 
